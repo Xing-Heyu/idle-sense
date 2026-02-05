@@ -1,43 +1,38 @@
 """
-idle-sense 核心模块
-统一接口和系统检测
+idle_sense/core.py
+跨平台闲置检测统一接口
 """
 
-import platform
-import logging
+导入平台
 
-logger = logging.getLogger(__name__)
-
-
-def is_idle(threshold: float = 0.3) -> bool:
-    """
-    检测电脑是否处于闲置状态
-    
-    Args:
-阈值：CPU使用率阈值（0.3表示30%）
-    
-返回值：
-布尔型：True表示空闲，False表示正在使用
-    """
+def _get_platform_module():
+    """获取平台对应的模块"""
     system = platform.system()
     
-    尝试:
-        如果系统 ==“Windows”:
-            fromwindowsimportis_idleaswindows_is_idle
-            return windows_is_idle(threshold)
-        elif system == "Darwin":  # macOS
-            from .macos import is_idle as macos_is_idle
-            return macos_is_idle(threshold)
-        elif系统 ==“Linux”:
-            # 暂不支持Linux，返回False（安全默认）
-logger.warning(“Linux支持尚未实现”)
-            返回 False
-        否则:
-logger.error(f"不支持的系统：{system}")
-            返回 False
-     exceptImportError ase:
-logger.error(f"导入错误：{e}")
-        返回 False
-     exceptException ase:
-        logger.error(f"Unexpected error: {e}")
-        return False  # 出错时默认返回非闲置，避免打扰用户
+    if system == "Windows":
+        from idle_sense import windows
+        return windows
+    elif system == "Darwin":
+        from idle_sense import macos
+        返回macos
+    elif系统 =="Linux":
+        raise NotImplementedError("Linux支持开发中")
+    else:
+        引发 NotImplementedErrorf"不支持的系统:{
+
+# 提前导入
+_PLATFORM_MODULE = _get_platform_module()
+
+def is_idle(idle_threshold_sec: int = 300, cpu_threshold: float = 15.0,
+           memory_threshold: float = 70.0) -> bool:
+    """判断当前系统是否闲置"""
+    返回_PLATFORM_MODULE.空闲状态(空闲阈值秒, CPU阈值, 内存阈值)
+
+ get_system_status(idle_threshold_sec: int = 300, cpu_threshold: float = 15.0,
+内存阈值: float =70.0)-> 字典:
+    """获取当前系统状态"""
+    返回_PLATFORM_MODULE.获取系统状态(空闲阈值秒, CPU阈值, 内存阈值)
+
+ 获取平台()-> 字符串:
+    """获取当前平台名称"""
+    return platform.system()
