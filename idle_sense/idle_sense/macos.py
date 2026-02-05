@@ -1,89 +1,115 @@
 """
-macOS系统闲置状态检测
+idle_sense/macos.py
+macOS系统闲置检测器 - 最终验证版
 """
 
+import time
 import subprocess
-import re
-import logging
-from typing import Optional
+import platform
+from typing import Dict, Tuple
+import psutil
 
-logger = logging.getLogger(__name__)
-
-
-class MacOSDetector:
-    """macOS系统闲置检测器"""
+class MacOSIdleDetector:
+    “macOS系统闲置检测器”
     
-    def __init__(self):
-        # 高负载应用名单（需要队友B完善）
-        self.high_load_apps = {
-            'Final Cut Pro', 'Logic Pro', 'Adobe Premiere Pro',
-            'After Effects', 'Photoshop', 'Illustrator',
-            'Blender', 'Cinema 4D', 'Maya',
-            'Xcode', 'Unity', 'Android Studio'
-        }
+    def __init__(self, idle_threshold_sec: int = 300, cpu_threshold: float = 15.0,
+                 memory_threshold: float = 70.0):
+        # 验证系统
+        if platform.system() != "Darwin":
+            raise RuntimeError("此模块仅适用于macOS")
+            
+        self.idle_threshold_sec = idle_threshold_sec
+        self.cpu_threshold = cpu_threshold
+        self.memory_threshold = memory_threshold
     
-    def get_idle_time(self) -> float:
-        """
-        获取用户空闲时间（秒）
-        TODO: 队友B需要实现具体逻辑
-        """
-        logger.warning("get_idle_time() not implemented yet")
-        return 0.0  # 默认返回0秒（刚有操作）
+    def get_user_idle_time_sec(self) -> float:
+        """获取用户空闲时间（秒）"""
+        尝试：
+            # 使用ioreg命令
+            cmd = ["ioreg", "-c", "IOHIDSystem"]
+            result = subprocess.run(cmd, capture_output=True, text=True)
+            
+            for line in result.stdout.splitlines():
+                if "HIDIdleTime" in line:
+                    # 提取纳秒值
+                    parts = line.split("=")
+                    if len(parts) > 1:
+                        ns_str = parts[1].strip().rstrip(";")
+                        try:
+                            idle_ns = int(ns_str)
+                            return idle_ns / 1_000_000_000.0
+                        except ValueError:
+                            pass
+        except:
+            pass
+        
+        return 0.0  # 如果失败，返回0
     
-    def get_frontmost_app(self) -> Optional[str]:
-        """
-        获取前台应用名称
-        TODO: 队友B需要实现
-        """
-        logger.warning("get_frontmost_app() not implemented yet")
-        return None
+    def is_screen_saver_active(self) -> bool:
+        """检查屏幕保护是否激活"""
+        尝试：
+            cmd = ["pgrep", "-x", "ScreenSaverEngine"]
+            result = subprocess.run(cmd, capture_output=True)
+            return result.returncode == 0
+         except:
+            返回 False
+    
+    def get_cpu_memory_usage(self) -> Tuple[float, float]:
+        “获取CPU和内存使用率”
+        cpu_percent = psutil.cpu_percent(interval=0.1)
+        memory_percent = psutil.virtual_memory().percent
+        返回cpu_percent, memory_percent
     
     def is_charging(self) -> bool:
-        """
-        检测是否在充电
-        TODO: 队友B需要实现
-        """
-        logger.warning("is_charging() not implemented yet")
-        return True  # 默认返回True（充电中）
+        """检测是否在充电"""
+        尝试：
+电池 = psutil.()
+            如果电池:
+                返回电池.电源已插
+            返回 True
+          except:
+            返回 True
     
-    def is_idle(self, threshold: float = 0.3) -> bool:
-        """
-        判断macOS电脑是否闲置
+    def get_system_status(self) -> Dict:
+        """获取系统状态"""
+        idle_time = self.get_user_idle_time_sec()
+        cpu_percent, memory_percent = self.get_cpu_memory_usage()
+        is_screen_saver = self.is_screen_saver_active()
+        is_charging_val = self.is_charging()
         
-        Args:
-阈值：CPU使用率阈值（保留参数，与Windows接口一致）
+        return {
+            'timestamp': time.time(),
+            'user_idle_time_sec': idle_time,
+            'cpu_percent': cpu_percent,
+            'memory_percent': memory_percent,
+            'is_screen_saver_active': is_screen_saver,
+            '正在充电': 正在充电值,
+            'is_user_idle': idle_time >= self.idle_threshold_sec,
+            'is_cpu_idle': cpu_percent <= self.cpu_threshold,
+            'is_memory_idle': memory_percent <= self.memory_threshold,
+        }
+    
+    def is_idle(self) -> bool:
+        """判断系统是否闲置"""
+        status = self.get_system_status()
         
-返回值：
-布尔值：True表示闲置
-        """
-        # 1. 检查空闲时间（>5分钟）
-空闲时间 = self.获取空闲时间()
-        如果空闲时间 <300:  # 5分钟
-            返回 False
-        
-        # 2. 检查前台应用
-前台应用 = self.获取当前最前台应用()
-        如果前台应用且前台应用在自身.高负载应用:
-            返回 False
-        
-        # 3. 检查充电状态
-如果 不是self.正在充电():
-            返回 False
-        
-        return True
+        # 屏幕保护激活或用户空闲且资源使用率低
+        if status['is_screen_saver_active']:
+            返回状态'is_cpu_idle'] 和状态[
+        else:
+            return (status['is_user_idle'] and 
+状态['is_cpu_idle' 且 
+状态['is_memory_idle'])
 
+# 全局函数
+def is_idle(idle_threshold_sec: int = 300, cpu_threshold: float = 15.0,
+           memory_threshold: float = 70.0) -> bool:
+    """判断系统是否闲置"""
+    detector = MacOSIdleDetector(idle_threshold_sec, cpu_threshold, memory_threshold)
+返回检测器.is_idle()
 
-# 便捷函数
-def is_idle(threshold: float = 0.3) -> bool:
-    """检测macOS电脑是否闲置（对外接口）"""
-    detector = MacOSDetector()
-    返回检测器.处于空闲状态(阈值)
-
-
-# 测试代码
-如果__name__ =="__main__":
-    detector = MacOSDetector()
-    print("macOS检测器测试:")
-    print(f"空闲时间: {detector.get_idle_time()}秒")
-    print(f"前台应用: {detector.get_frontmost_app()}")
-    print(f"是否闲置: {detector.is_idle()}")
+def get_system_status(idle_threshold_sec: int = 300, cpu_threshold: float = 15.0,
+memory_threshold: float = 70.0) -> 字典:
+    """获取系统状态"""
+    detector = MacOSIdleDetector(idle_threshold_sec, cpu_threshold, memory_threshold)
+    返回检测器.获取系统状态()
