@@ -4,7 +4,7 @@ scheduler/simple_server.py
 """
 
 from fastapi import FastAPI
-from typing import List, Dict
+from typing import List, Dict, Optional
 import time
 
 app = FastAPI()
@@ -39,7 +39,7 @@ def submit_task(code: str):
 @app.get("/get_task")
 def get_task():
     """获取一个任务"""
-    用于任务中的任务：
+    for task in tasks:
         if task["status"] == "pending":
             task["status"] = "running"
             print(f"[调度中心] 任务 {task['task_id']} 已分配")
@@ -55,17 +55,17 @@ def get_task():
 def submit_result(task_id: int, result: str):
     """提交任务结果"""
     # 更新任务状态
-    用于任务中的任务：
+    for task in tasks:
         if task["task_id"] == task_id:
-任务["状态"] = "已完成"
-任务["完成时间"]= 时间.时间()
+            task["status"] = "completed"
+            task["completed_at"] = time.time()
             break
     
     # 保存结果
-结果[任务ID] = {
+    results[task_id] = {
         "task_id": task_id,
         "result": result,
-        "completed_at": 时间。时间()
+        "completed_at": time.time()
     }
     
     print(f"[调度中心] 任务 {task_id} 已完成")
@@ -74,7 +74,7 @@ def submit_result(task_id: int, result: str):
 @app.get("/status/{task_id}")
 def get_status(task_id: int):
     """获取任务状态"""
-    用于任务中的任务：
+    for task in tasks:
         if task["task_id"] == task_id:
             return {
                 "task_id": task_id,
@@ -87,3 +87,14 @@ def get_status(task_id: int):
 def get_results():
     """获取所有结果"""
     return list(results.values())
+
+# 可选：添加CORS支持（用于网页调用）
+from fastapi.middleware.cors import CORSMiddleware
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  # 允许所有来源，生产环境应限制
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
