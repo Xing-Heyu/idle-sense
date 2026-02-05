@@ -1,4 +1,24 @@
-fastapi>=0.104.0
-uvicorn>=0.24.0
-psutil>=5.9.0
-requests>=2.31.0
+# ============================================
+# idle-sense: Cross-platform idle detection
+# ============================================
+
+# [CORE] Platform-specific idle detection
+psutil>=5.9.0                # System monitoring (CPU, memory, battery)
+
+# [SCHEDULER] FastAPI server for task distribution
+fastapi>=0.104.0             # Web framework for scheduler
+uvicorn[standard]>=0.24.0    # ASGI server for FastAPI
+python-multipart>=0.0.6      # Form parsing for FastAPI (optional but recommended)
+
+# [CLIENT] Node client for task execution
+requests>=2.31.0             # HTTP client for communicating with scheduler
+
+# [OPTIONAL] Development tools (not required for production)
+# pytest>=7.4.0              # Testing framework
+# black>=23.0.0              # Code formatting
+# flake8>=6.0.0              # Code linting
+# types-requests>=2.31.0     # Type stubs for requests
+
+# [CLOUD] Cloud deployment considerations
+# Note: All core dependencies are cloud-compatible
+# No GUI or system-level dependencies
