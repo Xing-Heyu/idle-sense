@@ -32,11 +32,35 @@
 - 矩阵运算性能
 - 整数运算性能
 
-## 使用方法
+**修改后（清晰指导）：**
+```markdown
+### 作为任务提交到调度中心
 
-### 作为独立脚本运行
-```bash
-# 直接运行示例
-python examples/simple_calculation.py
-python examples/data_processing.py
-python examples/benchmark.py
+1. **首先创建一个提交脚本** `submit_fibonacci.py`:
+```python
+# submit_fibonacci.py
+import requests
+
+# 要提交的代码
+task_code = """
+def fib(n):
+    if n <= 1:
+        return n
+    return fib(n-1) + fib(n-2)
+
+result = fib(30)
+print(f"斐波那契数列第30项: {result}")
+__result__ = result
+"""
+
+# 提交到调度中心
+response = requests.post(
+    "http://localhost:8000/submit",
+    json={"code": task_code}
+)
+
+print(f"任务ID: {response.json()['task_id']}")  2.  运行提交脚本:   bash 复制   下载    # 确保调度中心已启动
+python scheduler/simple_server.py
+
+# 运行提交脚本
+python submit_fibonacci.py  3.  查看结果:   bash 复制   下载    curl http://localhost:8000/status/任务ID
