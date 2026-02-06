@@ -1,7 +1,4 @@
-# ❌ 当前有问题的代码（在 web_interface.py 中导入的）
-# 需要确保 simple_server.py 语法正确
 
-# ✅ 修复后的完整代码（语法正确版）
 """
 scheduler/simple_server.py
 Minimal Task Scheduler - Syntax Fixed Version
