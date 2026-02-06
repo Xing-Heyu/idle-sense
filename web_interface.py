@@ -1,7 +1,7 @@
 """
 web_interface.py
 闲置计算加速器 - 网页控制界面
-使用 Streamlit 构建，无需前端知识
+修复版：适配新版调度中心API
 """
 
 import streamlit as st
@@ -33,14 +33,26 @@ if 'auto_refresh' not in st.session_state:
 if 'last_refresh' not in st.session_state:
     st.session_state.last_refresh = datetime.now()
 
-# 工具函数
+# 工具函数 - 增强错误处理
 def check_scheduler_health():
     """检查调度中心是否在线"""
     try:
         response = requests.get(f"{SCHEDULER_URL}/", timeout=5)
-        return response.status_code == 200, response.json() if response.status_code == 200 else None
-    except:
-        return False, None
+        if response.status_code == 200:
+            return True, response.json()
+        else:
+            # 尝试获取健康端点
+            try:
+                health_response = requests.get(f"{SCHEDULER_URL}/health", timeout=3)
+                if health_response.status_code == 200:
+                    return True, health_response.json()
+            except:
+                pass
+            return False, {"error": f"HTTP {response.status_code}"}
+    except requests.exceptions.ConnectionError:
+        return False, {"error": "无法连接到调度中心"}
+    except Exception as e:
+        return False, {"error": str(e)}
 
 def submit_task(code, timeout=300, cpu=1.0, memory=512):
     """提交任务到调度中心"""
@@ -58,7 +70,12 @@ def submit_task(code, timeout=300, cpu=1.0, memory=512):
             json=payload,
             timeout=10
         )
-        return response.status_code == 200, response.json() if response.status_code == 200 else None
+        if response.status_code == 200:
+            return True, response.json()
+        else:
+            return False, {"error": f"HTTP {response.status_code}: {response.text}"}
+    except requests.exceptions.ConnectionError:
+        return False, {"error": "无法连接到调度中心"}
     except Exception as e:
         return False, {"error": str(e)}
 
@@ -66,25 +83,98 @@ def get_task_status(task_id):
     """获取任务状态"""
     try:
         response = requests.get(f"{SCHEDULER_URL}/status/{task_id}", timeout=5)
-        return response.status_code == 200, response.json() if response.status_code == 200 else None
+        if response.status_code == 200:
+            return True, response.json()
+        else:
+            return False, {"error": f"HTTP {response.status_code}"}
     except:
-        return False, None
+        return False, {"error": "请求失败"}
 
 def get_all_nodes():
-    """获取所有节点信息"""
+    """获取所有节点信息 - 修复版：使用新版API"""
     try:
+        # 先尝试新版API
+        response = requests.get(f"{SCHEDULER_URL}/api/nodes", timeout=5)
+        if response.status_code == 200:
+            data = response.json()
+            # 转换数据结构以兼容原有界面
+            nodes = []
+            for node in data.get("nodes", []):
+                nodes.append({
+                    "node_id": node.get("node_id", "unknown"),
+                    "status": "online" if node.get("is_online", True) else "offline",
+                    "platform": node.get("platform", "unknown"),
+                    "idle_since": None,  # 新版API暂无此字段
+                    "resources": {
+                        "cpu_cores": node.get("capacity", {}).get("cpu", "N/A"),
+                        "memory_mb": node.get("capacity", {}).get("memory", "N/A")
+                    },
+                    "completed_tasks": 0,  # 新版API暂无此字段
+                    "total_compute_time": 0  # 新版API暂无此字段
+                })
+            return True, {
+                "nodes": nodes,
+                "total_nodes": len(nodes),
+                "total_idle": sum(1 for n in nodes if n.get("status") == "online")
+            }
+        
+        # 如果新版API失败，尝试旧端点（兼容性）
         response = requests.get(f"{SCHEDULER_URL}/nodes", timeout=5)
-        return response.status_code == 200, response.json() if response.status_code == 200 else None
-    except:
-        return False, None
+        if response.status_code == 200:
+            return True, response.json()
+        
+        return False, {"error": f"HTTP {response.status_code}"}
+    except requests.exceptions.ConnectionError:
+        return False, {"error": "无法连接到调度中心"}
+    except Exception as e:
+        return False, {"error": str(e)}
 
 def get_system_stats():
     """获取系统统计"""
     try:
         response = requests.get(f"{SCHEDULER_URL}/stats", timeout=5)
-        return response.status_code == 200, response.json() if response.status_code == 200 else None
+        if response.status_code == 200:
+            data = response.json()
+            
+            # 转换数据结构以兼容原有界面
+            tasks_info = data.get("tasks", {})
+            nodes_info = data.get("nodes", {})
+            
+            return True, {
+                "tasks": {
+                    "total": tasks_info.get("total", 0),
+                    "completed": tasks_info.get("completed", 0),
+                    "failed": tasks_info.get("failed", 0),
+                    "avg_time": tasks_info.get("avg_completion_time", 0)
+                },
+                "nodes": {
+                    "idle": nodes_info.get("idle", 0),
+                    "busy": nodes_info.get("online", 0) - nodes_info.get("idle", 0),
+                    "offline": nodes_info.get("offline", 0),
+                    "total": nodes_info.get("total", 0)
+                },
+                "throughput": {
+                    "compute_hours": tasks_info.get("total", 0) * tasks_info.get("avg_completion_time", 0) / 3600
+                },
+                "scheduler": data.get("scheduler", {})
+            }
+        else:
+            return False, {"error": f"HTTP {response.status_code}"}
+    except requests.exceptions.ConnectionError:
+        return False, {"error": "无法连接到调度中心"}
+    except Exception as e:
+        return False, {"error": str(e)}
+
+def get_all_results():
+    """获取所有任务结果"""
+    try:
+        response = requests.get(f"{SCHEDULER_URL}/results", timeout=5)
+        if response.status_code == 200:
+            return True, response.json()
+        else:
+            return False, {"error": f"HTTP {response.status_code}"}
     except:
-        return False, None
+        return False, {"error": "请求失败"}
 
 # 页面标题
 st.title("⚡ 闲置计算加速器")
@@ -100,10 +190,20 @@ with st.sidebar:
     
     if health_ok:
         st.success(f"✅ 在线 (v{health_info.get('version', '1.0.0')})")
-        st.caption(f"队列任务: {health_info.get('queue_size', 0)}")
-        st.caption(f"运行时间: {health_info.get('uptime', 0)}秒")
+        # 显示任务队列信息
+        try:
+            # 获取统计信息显示队列状态
+            stats_ok, stats = get_system_stats()
+            if stats_ok:
+                pending = stats.get("tasks", {}).get("total", 0) - stats.get("tasks", {}).get("completed", 0)
+                st.caption(f"待处理任务: {pending}")
+                st.caption(f"在线节点: {stats.get('nodes', {}).get('online', 0)}")
+        except:
+            st.caption("状态: 运行中")
     else:
         st.error("❌ 离线")
+        if "error" in health_info:
+            st.caption(f"错误: {health_info['error']}")
         st.caption("请确保调度中心正在运行")
     
     st.divider()
@@ -177,6 +277,22 @@ print(f"与真实π的误差: {abs(pi_estimate - math.pi):.6f}")"""
     
     if example_code != "自定义":
         st.code(examples[example_code], language="python")
+    
+    st.divider()
+    
+    # 快速操作
+    st.subheader("快速操作")
+    if st.button("🔄 手动刷新", use_container_width=True):
+        st.session_state.last_refresh = datetime.now()
+        st.rerun()
+    
+    if st.button("📋 查看所有结果", use_container_width=True):
+        success, results = get_all_results()
+        if success and results.get("results"):
+            st.session_state.results_data = results
+            # 切换到任务监控标签页的逻辑可以在这里添加
+        elif not success:
+            st.error(f"获取结果失败: {results.get('error', '未知错误')}")
 
 # 主界面 - 标签页布局
 tab1, tab2, tab3, tab4 = st.tabs(["📝 提交任务", "📊 任务监控", "🖥️ 节点管理", "📈 系统统计"])
@@ -258,9 +374,60 @@ print(f"斐波那契数列第20项: {result}")"""
 with tab2:
     st.header("任务监控")
     
-    # 任务历史
+    # 获取并显示所有结果
+    if st.button("🔄 刷新任务列表", key="refresh_tasks"):
+        st.rerun()
+    
+    success, results = get_all_results()
+    if success and results.get("results"):
+        results_list = results["results"]
+        
+        if results_list:
+            st.subheader("已完成的任务")
+            
+            # 创建结果表格
+            results_data = []
+            for result in results_list:
+                results_data.append({
+                    "任务ID": result.get("task_id", "N/A"),
+                    "完成时间": datetime.fromtimestamp(result.get("completed_at", time.time())).strftime("%H:%M:%S") if result.get("completed_at") else "N/A",
+                    "执行节点": result.get("assigned_node", "未知"),
+                    "结果预览": (result.get("result", "无结果")[:50] + "...") if result.get("result") and len(result.get("result", "")) > 50 else (result.get("result", "无结果") or "无结果")
+                })
+            
+            if results_data:
+                results_df = pd.DataFrame(results_data)
+                st.dataframe(
+                    results_df,
+                    use_container_width=True,
+                    hide_index=True
+                )
+                
+                # 选择任务查看详情
+                selected_task_id = st.selectbox(
+                    "选择任务查看完整结果",
+                    [r["任务ID"] for r in results_data]
+                )
+                
+                if selected_task_id:
+                    # 找到完整结果
+                    full_result = None
+                    for result in results_list:
+                        if str(result.get("task_id")) == str(selected_task_id):
+                            full_result = result
+                            break
+                    
+                    if full_result and full_result.get("result"):
+                        st.subheader(f"任务 {selected_task_id} 的完整结果")
+                        st.code(full_result["result"], language="text")
+        else:
+            st.info("暂无已完成的任务")
+    elif not success:
+        st.warning(f"获取任务结果失败: {results.get('error', '未知错误')}")
+    
+    # 任务历史（已提交但可能未完成）
     if st.session_state.task_history:
-        st.subheader("任务历史")
+        st.subheader("任务历史记录")
         
         # 转换为DataFrame显示
         history_df = pd.DataFrame(st.session_state.task_history)
@@ -276,27 +443,30 @@ with tab2:
             hide_index=True
         )
         
-        # 选择任务查看详情
+        # 选择任务查看实时状态
         if not history_df.empty:
             selected_task = st.selectbox(
-                "选择任务查看详情",
-                history_df["task_id"].tolist()
+                "查看任务实时状态",
+                history_df["task_id"].tolist(),
+                key="task_status_select"
             )
             
             if selected_task:
-                with st.spinner("获取任务状态..."):
+                with st.spinner("获取任务状态中..."):
                     success, task_info = get_task_status(selected_task)
                     
                     if success:
-                        col1, col2, col3 = st.columns(3)
+                        col1, col2, col3, col4 = st.columns(4)
                         with col1:
+                            status = task_info.get("status", "unknown")
                             status_color = {
                                 "pending": "🟡",
                                 "running": "🔵", 
                                 "completed": "🟢",
-                                "failed": "🔴"
-                            }.get(task_info.get("status", "pending"), "⚪")
-                            st.metric("状态", f"{status_color} {task_info.get('status', 'unknown')}")
+                                "failed": "🔴",
+                                "assigned": "🟠"
+                            }.get(status, "⚪")
+                            st.metric("状态", f"{status_color} {status}")
                         
                         with col2:
                             if task_info.get("created_at"):
@@ -304,6 +474,10 @@ with tab2:
                                 st.metric("创建时间", created.strftime("%H:%M:%S"))
                         
                         with col3:
+                            if task_info.get("assigned_node"):
+                                st.metric("分配节点", task_info["assigned_node"])
+                        
+                        with col4:
                             if task_info.get("completed_at"):
                                 completed = datetime.fromtimestamp(task_info["completed_at"])
                                 duration = task_info["completed_at"] - task_info["created_at"]
@@ -314,11 +488,12 @@ with tab2:
                             st.subheader("执行结果")
                             st.code(task_info["result"], language="text")
                         
-                        # 执行节点信息
-                        if task_info.get("executed_on"):
-                            st.info(f"执行节点: {task_info['executed_on']}")
+                        # 资源需求信息
+                        if task_info.get("required_resources"):
+                            st.info(f"资源需求: CPU={task_info['required_resources'].get('cpu', 1.0)}核心, "
+                                  f"内存={task_info['required_resources'].get('memory', 512)}MB")
                     else:
-                        st.warning("无法获取任务详情")
+                        st.warning(f"无法获取任务详情: {task_info.get('error', '未知错误')}")
     else:
         st.info("暂无任务历史，请先提交任务")
 
@@ -338,25 +513,37 @@ with tab3:
         with col1:
             st.metric("总节点数", total_nodes)
         with col2:
-            st.metric("闲置节点", idle_nodes)
+            st.metric("在线节点", idle_nodes)
         with col3:
-            st.metric("忙碌节点", total_nodes - idle_nodes)
+            st.metric("离线节点", total_nodes - idle_nodes)
         
         # 节点列表
         st.subheader("节点列表")
         
-        for node in nodes:
-            with st.expander(f"{node.get('node_id', '未知节点')} - {node.get('status', 'unknown')}", expanded=False):
+        for i, node in enumerate(nodes):
+            node_id = node.get("node_id", f"node_{i}")
+            node_status = node.get("status", "unknown")
+            
+            # 状态颜色
+            status_color = {
+                "online": "🟢",
+                "offline": "🔴",
+                "busy": "🟡"
+            }.get(node_status, "⚪")
+            
+            with st.expander(f"{status_color} {node_id} - {node_status}", expanded=False):
                 col1, col2 = st.columns(2)
                 
                 with col1:
                     st.write("**基本信息**")
-                    st.write(f"状态: `{node.get('status', 'N/A')}`")
+                    st.write(f"状态: `{node_status}`")
                     st.write(f"平台: `{node.get('platform', 'N/A')}`")
                     
                     if node.get("idle_since"):
                         idle_since = datetime.fromisoformat(node["idle_since"].replace('Z', '+00:00'))
                         st.write(f"闲置开始: `{idle_since.strftime('%H:%M:%S')}`")
+                    else:
+                        st.write(f"最后活跃: `刚刚`")
                 
                 with col2:
                     st.write("**资源配置**")
@@ -364,12 +551,15 @@ with tab3:
                     st.write(f"CPU核心: `{resources.get('cpu_cores', 'N/A')}`")
                     st.write(f"内存: `{resources.get('memory_mb', 'N/A')} MB`")
                 
-                # 节点贡献
+                # 节点贡献（新版API暂无此信息）
                 if node.get("completed_tasks"):
                     st.write(f"已完成任务: `{node.get('completed_tasks', 0)}`")
                     st.write(f"总计算时间: `{node.get('total_compute_time', 0)}` 秒")
     else:
-        st.warning("暂无节点信息或调度中心离线")
+        if not success:
+            st.error(f"获取节点信息失败: {nodes_info.get('error', '未知错误')}")
+        else:
+            st.info("暂无节点在线，请启动节点客户端")
 
 # 标签页4: 系统统计
 with tab4:
@@ -386,14 +576,37 @@ with tab4:
             st.metric("总任务数", tasks.get("total", 0))
         
         with col2:
-            st.metric("成功率", f"{tasks.get('completed', 0) / max(tasks.get('total', 1), 1) * 100:.1f}%")
+            completed = tasks.get("completed", 0)
+            total = tasks.get("total", 1)
+            success_rate = (completed / total * 100) if total > 0 else 0
+            st.metric("成功率", f"{success_rate:.1f}%")
         
         with col3:
-            st.metric("平均用时", f"{tasks.get('avg_time', 0):.1f}秒")
+            avg_time = tasks.get("avg_time", 0)
+            st.metric("平均用时", f"{avg_time:.1f}秒")
         
         with col4:
             throughput = stats.get("throughput", {})
-            st.metric("计算时数", f"{throughput.get('compute_hours', 0):.1f}")
+            compute_hours = throughput.get("compute_hours", 0)
+            st.metric("计算时数", f"{compute_hours:.1f}")
+        
+        # 调度器统计
+        scheduler_stats = stats.get("scheduler", {})
+        if scheduler_stats:
+            st.subheader("调度器统计")
+            col1, col2, col3, col4 = st.columns(4)
+            
+            with col1:
+                st.metric("已处理任务", scheduler_stats.get("tasks_processed", 0))
+            
+            with col2:
+                st.metric("失败任务", scheduler_stats.get("tasks_failed", 0))
+            
+            with col3:
+                st.metric("注册节点", scheduler_stats.get("nodes_registered", 0))
+            
+            with col4:
+                st.metric("失效节点", scheduler_stats.get("nodes_dropped", 0))
         
         # 可视化图表
         st.subheader("性能图表")
@@ -401,36 +614,54 @@ with tab4:
         # 创建图表
         fig = make_subplots(
             rows=2, cols=2,
-            subplot_titles=("任务状态分布", "节点状态分布", "任务完成时间趋势", "资源利用率"),
+            subplot_titles=("任务状态分布", "节点状态分布", "调度器统计", "资源利用率"),
             specs=[[{"type": "pie"}, {"type": "pie"}],
                    [{"type": "bar"}, {"type": "scatter"}]]
         )
         
         # 任务状态饼图
         if tasks:
-            task_labels = ["完成", "失败", "进行中"]
-            task_values = [
-                tasks.get("completed", 0),
-                tasks.get("failed", 0),
-                max(tasks.get("total", 0) - tasks.get("completed", 0) - tasks.get("failed", 0), 0)
-            ]
-            fig.add_trace(
-                go.Pie(labels=task_labels, values=task_values, hole=.3),
-                row=1, col=1
-            )
+            completed_tasks = tasks.get("completed", 0)
+            failed_tasks = tasks.get("failed", 0)
+            total_tasks = tasks.get("total", 0)
+            pending_tasks = max(0, total_tasks - completed_tasks - failed_tasks)
+            
+            if total_tasks > 0:
+                task_labels = ["完成", "失败", "进行中"]
+                task_values = [completed_tasks, failed_tasks, pending_tasks]
+                fig.add_trace(
+                    go.Pie(labels=task_labels, values=task_values, hole=.3),
+                    row=1, col=1
+                )
         
         # 节点状态饼图
         nodes_info = stats.get("nodes", {})
         if nodes_info:
-            node_labels = ["闲置", "忙碌", "离线"]
-            node_values = [
-                nodes_info.get("idle", 0),
-                nodes_info.get("busy", 0),
-                nodes_info.get("offline", 0)
+            idle_nodes = nodes_info.get("idle", 0)
+            busy_nodes = nodes_info.get("busy", 0)
+            offline_nodes = nodes_info.get("offline", 0)
+            total_nodes = idle_nodes + busy_nodes + offline_nodes
+            
+            if total_nodes > 0:
+                node_labels = ["闲置", "忙碌", "离线"]
+                node_values = [idle_nodes, busy_nodes, offline_nodes]
+                fig.add_trace(
+                    go.Pie(labels=node_labels, values=node_values, hole=.3),
+                    row=1, col=2
+                )
+        
+        # 调度器统计柱状图
+        if scheduler_stats:
+            scheduler_labels = ["处理任务", "失败任务", "注册节点", "失效节点"]
+            scheduler_values = [
+                scheduler_stats.get("tasks_processed", 0),
+                scheduler_stats.get("tasks_failed", 0),
+                scheduler_stats.get("nodes_registered", 0),
+                scheduler_stats.get("nodes_dropped", 0)
             ]
             fig.add_trace(
-                go.Pie(labels=node_labels, values=node_values, hole=.3),
-                row=1, col=2
+                go.Bar(x=scheduler_labels, y=scheduler_values),
+                row=2, col=1
             )
         
         # 更新布局
@@ -447,19 +678,16 @@ with tab4:
         with st.expander("查看原始数据"):
             st.json(stats)
     else:
-        st.info("等待系统运行数据...")
+        st.error(f"获取统计信息失败: {stats.get('error', '未知错误')}")
 
 # 页脚
 st.divider()
-st.caption("闲置计算加速器 v1.0.0 | 开源免费项目")
-✨ 界面特点 1.  四标签页布局： ◦  📝 提交任务：代码编辑器+资源配置  ◦  📊 任务监控：实时状态+历史记录  ◦  🖥️ 节点管理：节点列表+状态监控  ◦  📈 系统统计：可视化图表+性能指标  
-2.  交互功能： ◦  示例代码选择  ◦  自动刷新控制  ◦  任务历史记录  ◦  实时状态监控  ◦  可视化图表   
-3.  用户体验： ◦  响应式布局  ◦  暗色主题  ◦  实时反馈  ◦  错误处理
-🚀 启动方法 创建完成后，运行： bash 复制   下载    # 1. 安装streamlit（如果还没安装）
-pip install streamlit
+st.caption("闲置计算加速器 v2.0.0 | 开源免费项目 | 适配新版调度中心API")
 
-# 2. 确保调度中心正在运行
-python scheduler/simple_server.py
-
-# 3. 启动网页界面
-streamlit run web_interface.py
+# 自动刷新逻辑
+if st.session_state.auto_refresh:
+    time_since_refresh = (datetime.now() - st.session_state.last_refresh).seconds
+    if time_since_refresh >= REFRESH_INTERVAL:
+        # 在后台触发刷新
+        st.session_state.last_refresh = datetime.now()
+        st.rerun()
