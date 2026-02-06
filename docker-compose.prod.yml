@@ -1,0 +1,18 @@
+version: '3.8'
+
+services:
+  scheduler:
+    build: .
+    container_name: idle-accelerator-scheduler
+    ports:
+      - "8000:8000"
+    environment:
+      - SCHEDULER_HOST=0.0.0.0
+      - SCHEDULER_PORT=8000
+    restart: unless-stopped
+    networks:
+      - idle-network
+
+networks:
+  idle-network:
+    driver: bridge
