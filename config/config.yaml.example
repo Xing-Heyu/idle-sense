@@ -1,0 +1,205 @@
+# 闲置计算加速器 - 配置文件模板
+# 复制为 config.yaml 并修改相应配置
+
+# ==================== 调度中心配置 ====================
+scheduler:
+  # 网络绑定配置
+  host: "0.0.0.0"          # 绑定地址 (0.0.0.0 允许所有IP访问)
+  port: 8000               # 服务端口
+  
+  # 日志配置
+  log_level: "INFO"        # 日志级别: DEBUG, INFO, WARNING, ERROR
+  log_file: "logs/scheduler.log"  # 日志文件路径
+  log_rotation: "daily"    # 日志轮转: daily, weekly, 或文件大小如 "10MB"
+  
+  # 任务队列配置
+  tasks:
+    max_queue_size: 1000           # 最大排队任务数
+    result_ttl: 3600               # 结果保留时间(秒)
+    cleanup_interval: 60           # 清理间隔(秒)
+    
+    # 公平调度算法配置
+    scheduling:
+      policy: "fair_priority"      # 调度策略: fifo, priority, fair_priority
+      fair_priority:
+        weights:
+          wait_time: 0.6           # 等待时间权重 (60%)
+          contribution: 0.3        # 贡献度权重 (30%)
+          newcomer: 0.1            # 新人加成权重 (10%)
+        contribution_cap: 10.0     # 贡献度奖励上限
+        newcomer_threshold: 10     # 前N个任务视为新人
+        newcomer_base_bonus: 20    # 新人基础加成
+        starvation_threshold: 300  # 防饥饿阈值(秒)，等待超过此时间自动最高优先级
+        cooldown_period: 1800      # 冷却时间(秒)，刚执行过的节点暂时降低优先级
+  
+  # 节点管理
+  nodes:
+    heartbeat_interval: 30         # 节点心跳间隔(秒)
+    timeout_threshold: 90          # 节点超时阈值(秒)，超过此时间无心跳视为离线
+    max_nodes: 100                 # 最大支持节点数
+    
+  # Redis缓存（可选，生产环境推荐）
+  redis:
+    enabled: false                 # 是否启用Redis
+    url: "redis://localhost:6379/0"  # Redis连接URL
+    pool_size: 10                  # 连接池大小
+
+# ==================== 节点客户端配置 ====================
+node:
+  # 调度中心连接
+  scheduler_url: "http://localhost:8000"  # 调度中心地址
+  node_name: "${HOSTNAME}"                # 节点名称，可使用环境变量
+  
+  # 闲置检测配置
+  idle_detection:
+    enabled: true                 # 是否启用闲置检测
+    check_interval: 30            # 检测间隔(秒)
+    idle_threshold: 300           # 闲置判定阈值(秒)
+    
+    # 资源阈值
+    cpu_threshold: 30.0           # CPU使用率阈值(%)，低于此值才视为闲置
+    memory_threshold: 70.0        # 内存使用率阈值(%)，低于此值才视为闲置
+    disk_threshold: 85.0          # 磁盘使用率阈值(%)，低于此值才视为闲置
+    
+    # 平台特定配置
+    windows:
+      check_screen_lock: true     # 是否检测屏幕锁定
+      check_foreground_app: true  # 是否检测前台应用
+      
+    macos:
+      use_ioreg: true             # 是否使用ioreg命令检测空闲
+      check_screensaver: true     # 是否检测屏幕保护
+    
+    linux:
+      check_xscreensaver: true    # 是否检测XScreenSaver
+      check_gnome_screensaver: true  # 是否检测GNOME屏幕保护
+  
+  # 安全执行配置
+  security:
+    enabled: true                 # 是否启用安全限制
+    max_task_time: 300            # 任务最大执行时间(秒)
+    max_memory_mb: 1024           # 任务最大内存使用(MB)
+    max_disk_mb: 100              # 任务最大磁盘使用(MB)
+    network_access: false         # 是否允许网络访问
+    auto_cleanup: true            # 是否自动清理临时文件
+    cleanup_timeout: 10           # 清理超时时间(秒)
+    
+    # 沙箱配置
+    sandbox:
+      type: "tempdir"             # 沙箱类型: tempdir(临时目录), docker(容器), none(无)
+      temp_dir: "/tmp/idle_tasks" # 临时目录路径
+      isolate_process: true       # 是否进程隔离
+      drop_privileges: true       # 是否降权运行
+    
+    # 允许的Python模块（如果network_access为false）
+    allowed_modules:
+      - "math"
+      - "random"
+      - "datetime"
+      - "collections"
+      - "itertools"
+      - "json"
+      - "re"
+      - "statistics"
+  
+  # 资源限制
+  resources:
+    max_cpu_cores: 2.0            # 最大可使用的CPU核心数
+    max_memory_mb: 4096           # 最大可使用的内存(MB)
+    max_disk_mb: 1024             # 最大可使用的磁盘空间(MB)
+    reserve_cpu: 0.5              # 保留的CPU核心数（不用于计算）
+    reserve_memory_mb: 1024       # 保留的内存(MB)（不用于计算）
+  
+  # 心跳和报告
+  heartbeat:
+    enabled: true                 # 是否发送心跳
+    interval: 30                  # 心跳间隔(秒)
+    include_resources: true       # 心跳是否包含资源信息
+    
+  # 日志配置
+  logging:
+    level: "INFO"
+    file: "logs/node.log"
+    max_size_mb: 10               # 日志文件最大大小(MB)
+    backup_count: 5               # 保留的备份文件数
+
+# ==================== 网页界面配置 ====================
+web:
+  # Streamlit界面配置
+  streamlit:
+    enabled: true                 # 是否启用Streamlit界面
+    port: 8501                    # Streamlit端口
+    host: "0.0.0.0"               # 绑定地址
+    theme: "dark"                 # 界面主题: light, dark
+    browser: true                 # 是否自动打开浏览器
+    
+    # 界面定制
+    title: "闲置计算加速器"       # 页面标题
+    description: "利用个人电脑闲置算力的分布式计算平台"
+    
+    # 功能配置
+    auto_refresh: true            # 是否自动刷新
+    refresh_interval: 10          # 自动刷新间隔(秒)
+    max_history: 50               # 最大显示历史任务数
+    
+  # 传统Web界面（如果不用Streamlit）
+  traditional:
+    enabled: false                # 是否启用传统Web界面
+    port: 8080
+    static_dir: "static"
+    template_dir: "templates"
+
+# ==================== 监控和统计 ====================
+monitoring:
+  enabled: true                   # 是否启用监控
+  metrics_port: 9090              # 监控指标端口
+  
+  # Prometheus指标
+  prometheus:
+    enabled: false                # 是否暴露Prometheus指标
+    endpoint: "/metrics"          # 指标端点
+    
+  # 健康检查
+  health_check:
+    enabled: true
+    endpoint: "/health"
+    check_interval: 30
+    
+  # 性能统计
+  statistics:
+    retention_days: 7             # 统计数据保留天数
+    aggregation_interval: 300     # 聚合间隔(秒)
+
+# ==================== 高级功能配置 ====================
+advanced:
+  # 任务检查点（长任务支持）
+  checkpoint:
+    enabled: false                # 是否支持检查点
+    interval: 60                  # 检查点间隔(秒)
+    
+  # 任务重试
+  retry:
+    enabled: true                 # 是否启用重试
+    max_attempts: 3               # 最大重试次数
+    backoff_factor: 1.5           # 退避因子
+    
+  # 结果验证
+  validation:
+    enabled: false                # 是否验证结果（冗余计算）
+    replication_factor: 1         # 复制因子，>1表示冗余计算
+    
+  # 加密和安全性
+  security:
+    enable_ssl: false             # 是否启用SSL/TLS
+    require_auth: false           # 是否要求认证
+    allowed_origins: ["*"]        # CORS允许的来源
+
+# ==================== 环境覆盖说明 ====================
+# 以下配置可通过环境变量覆盖：
+# SCHEDULER_HOST=0.0.0.0
+# SCHEDULER_PORT=8000
+# SCHEDULER_LOG_LEVEL=INFO
+# NODE_SCHEDULER_URL=http://localhost:8000
+# NODE_NAME=my-computer
+# NODE_CHECK_INTERVAL=30
+# WEB_STREAMLIT_PORT=8501
