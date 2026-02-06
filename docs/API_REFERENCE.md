@@ -1,16 +1,18 @@
+markdown
 # API 参考文档
+
 ## 📋 基础信息
 
 ### 服务器信息
 - **基础URL**: `http://localhost:8000`（开发环境）
-- **API版本**: v1（通过路径前缀）
+- **API版本**: v1.0.0
 - **数据格式**: JSON
 - **认证**: 开发阶段无需认证
 
-### 服务状态
-GET http://localhost:8000/
+### 服务状态端点
 
-text
+#### GET /
+**描述**: 获取服务基本信息
 
 **响应示例**:
 ```json
@@ -24,9 +26,9 @@ text
 }
 🎯 任务管理 API
 提交新任务
-text
-POST http://localhost:8000/submit
-Content-Type: application/json
+POST /submit
+描述: 提交新的计算任务
+
 请求体:
 
 json
@@ -40,7 +42,7 @@ json
 }
 参数说明:
 
-code: 必需，要执行的Python代码
+code: 必需，要执行的Python代码（字符串）
 
 timeout: 可选，超时时间（秒），默认300
 
@@ -56,8 +58,9 @@ json
   "message": "Task 1 has been queued"
 }
 获取待处理任务
-text
-GET http://localhost:8000/get_task
+GET /get_task
+描述: 获取一个待处理的任务
+
 响应示例（有任务时）:
 
 json
@@ -78,9 +81,9 @@ json
   "message": "No pending tasks available"
 }
 提交任务结果
-text
-POST http://localhost:8000/submit_result
-Content-Type: application/json
+POST /submit_result
+描述: 提交任务执行结果
+
 请求体:
 
 json
@@ -97,8 +100,9 @@ json
   "message": "Result for task 1 recorded"
 }
 查询任务状态
-text
-GET http://localhost:8000/status/{task_id}
+GET /status/{task_id}
+描述: 查询指定任务的状态
+
 路径参数:
 
 task_id: 任务ID（整数）
@@ -113,7 +117,7 @@ json
   "created_at": 1640995200.123,
   "completed_at": 1640995205.456
 }
-可能的状态值:
+任务状态说明:
 
 pending: 等待中
 
@@ -124,8 +128,9 @@ completed: 已完成
 failed: 失败
 
 获取所有结果
-text
-GET http://localhost:8000/results
+GET /results
+描述: 获取所有已完成任务的结果
+
 响应示例:
 
 json
@@ -147,8 +152,9 @@ json
 }
 🖥️ 系统管理 API
 健康检查
-text
-GET http://localhost:8000/health
+GET /health
+描述: 检查服务健康状况
+
 响应示例:
 
 json
@@ -162,8 +168,9 @@ json
   }
 }
 系统统计
-text
-GET http://localhost:8000/stats
+GET /stats
+描述: 获取系统统计信息
+
 响应示例:
 
 json
@@ -187,81 +194,105 @@ json
     "compute_hours": 0
   }
 }
-🔌 客户端节点 API（内部使用）
-节点心跳（计划功能）
-text
-POST http://localhost:8000/internal/heartbeat
-Content-Type: application/json
-请求体:
-
-json
-{
-  "node_id": "node-001",
-  "status": "idle",
-  "resources": {
-    "cpu_cores": 8,
-    "memory_mb": 16384
-  },
-  "current_load": {
-    "cpu_percent": 15.5,
-    "memory_percent": 45.2
-  }
-}
-节点获取任务（计划功能）
-text
-GET http://localhost:8000/internal/task
-节点提交结果（计划功能）
-text
-POST http://localhost:8000/internal/result
-Content-Type: application/json
-🌐 网页界面
-网页控制台
-text
-GET http://localhost:8501
-通过 Streamlit 提供的 Web 界面，包含：
-
-任务提交表单
-
-实时任务监控
-
-节点状态显示
-
-系统统计图表
-
 ⚠️ 错误处理
 错误响应格式
+所有错误都返回以下格式：
+
 json
 {
   "detail": "错误描述信息"
 }
-常见 HTTP 状态码
+HTTP 状态码对照表
 状态码	含义	常见原因
 200	成功	请求成功完成
 400	错误请求	参数缺失或格式错误
 404	未找到	任务或资源不存在
-422	无法处理	数据验证失败
 500	服务器错误	服务器内部错误
-具体错误示例
-任务不存在:
+常见错误示例
+任务不存在 (404):
 
 json
 {
   "detail": "Task 999 not found"
 }
-代码过长:
+代码过长 (400):
 
 json
 {
   "detail": "Code too long (max 10000 characters)"
 }
-空代码:
+空代码 (400):
 
 json
 {
   "detail": "Code cannot be empty"
 }
+📡 使用示例
+Python 客户端示例
+python
+import requests
+import time
+
+class IdleClient:
+    def __init__(self, base_url="http://localhost:8000"):
+        self.base_url = base_url
+    
+    def submit_task(self, code, timeout=300):
+        """提交任务"""
+        payload = {
+            "code": code,
+            "timeout": timeout
+        }
+        response = requests.post(f"{self.base_url}/submit", json=payload)
+        return response.json()
+    
+    def get_task_status(self, task_id):
+        """获取任务状态"""
+        response = requests.get(f"{self.base_url}/status/{task_id}")
+        return response.json()
+    
+    def wait_for_completion(self, task_id, poll_interval=1):
+        """等待任务完成"""
+        while True:
+            status = self.get_task_status(task_id)
+            if status["status"] == "completed":
+                return status["result"]
+            elif status["status"] == "failed":
+                raise Exception(f"Task failed: {status}")
+            time.sleep(poll_interval)
+
+# 使用示例
+if __name__ == "__main__":
+    client = IdleClient()
+    
+    # 提交任务
+    result = client.submit_task("print(1 + 1)")
+    task_id = result["task_id"]
+    print(f"Task submitted: {task_id}")
+    
+    # 等待结果
+    try:
+        result = client.wait_for_completion(task_id)
+        print(f"Task result: {result}")
+    except Exception as e:
+        print(f"Error: {e}")
+cURL 示例
+bash
+# 检查服务状态
+curl http://localhost:8000/
+
+# 提交任务
+curl -X POST http://localhost:8000/submit \
+  -H "Content-Type: application/json" \
+  -d '{"code": "print(1 + 1)"}'
+
+# 查询任务状态
+curl http://localhost:8000/status/1
+
+# 获取系统统计
+curl http://localhost:8000/stats
 🔐 安全说明
-开发环境
+开发环境配置
 无认证机制
 
 CORS 允许所有来源 (*)
@@ -269,104 +300,18 @@ CORS 允许所有来源 (*)
 仅限本地网络访问
 
 生产环境建议
-启用认证: 添加 API 密钥或 OAuth
+启用 HTTPS
 
-限制 CORS: 只允许可信域名
+配置 API 密钥认证
 
-启用 HTTPS: 使用 SSL/TLS 加密
+限制 CORS 域名
 
-设置防火墙: 限制访问 IP
+设置请求频率限制
 
-添加限流: 防止滥用
+启用请求日志
 
-📡 WebSocket 支持（计划功能）
-实时更新
-text
-WS ws://localhost:8000/ws/updates
-消息类型:
-
-json
-{
-  "event": "task_updated",
-  "data": {
-    "task_id": 1,
-    "status": "running",
-    "node_id": "node-001"
-  }
-}
-支持的事件:
-
-task_created: 新任务创建
-
-task_started: 任务开始执行
-
-task_completed: 任务完成
-
-task_failed: 任务失败
-
-node_joined: 新节点加入
-
-node_left: 节点离线
-
-📊 API 使用示例
-Python 客户端示例
-python
-import requests
-
-# 1. 提交任务
-def submit_task(code, timeout=300):
-    url = "http://localhost:8000/submit"
-    payload = {
-        "code": code,
-        "timeout": timeout
-    }
-    response = requests.post(url, json=payload)
-    return response.json()
-
-# 2. 查询状态
-def get_task_status(task_id):
-    url = f"http://localhost:8000/status/{task_id}"
-    response = requests.get(url)
-    return response.json()
-
-# 3. 获取系统状态
-def get_system_stats():
-    url = "http://localhost:8000/stats"
-    response = requests.get(url)
-    return response.json()
-
-# 使用示例
-if __name__ == "__main__":
-    # 提交计算任务
-    result = submit_task("print(1 + 1)")
-    task_id = result["task_id"]
-    print(f"任务提交成功，ID: {task_id}")
-    
-    # 等待并检查结果
-    import time
-    while True:
-        status = get_task_status(task_id)
-        if status["status"] == "completed":
-            print(f"任务完成，结果: {status['result']}")
-            break
-        time.sleep(1)
-cURL 示例
-bash
-# 1. 检查服务状态
-curl http://localhost:8000/
-
-# 2. 提交任务
-curl -X POST http://localhost:8000/submit \
-  -H "Content-Type: application/json" \
-  -d '{"code": "print(\"Hello from cURL\")"}'
-
-# 3. 查询任务状态
-curl http://localhost:8000/status/1
-
-# 4. 获取系统统计
-curl http://localhost:8000/stats
-📈 API 版本历史
-v1.0.0 (当前)
+📊 API 版本历史
+v1.0.0 (当前版本)
 基本任务提交和获取
 
 任务状态查询
@@ -376,14 +321,3 @@ v1.0.0 (当前)
 系统健康检查
 
 基础统计信息
-
-计划功能
-RESTful API 端点 (/api/v1/)
-
-节点注册和管理
-
-高级调度算法
-
-WebSocket 实时更新
-
-用户认证和授权
