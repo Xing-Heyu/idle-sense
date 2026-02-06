@@ -8,173 +8,207 @@
 | 网页界面 | `http://localhost:8501` | 用户交互、状态展示 |
 | 节点客户端 | 内部通信 | 任务执行、心跳报告 |
 
-## 🔧 调度中心API
+markdown
+# API 参考文档
 
-### 基础端点
+## 📋 基础信息
 
-#### `GET /`
-**描述**: 服务健康检查  
-**响应**:
+### 服务器信息
+- **基础URL**: `http://localhost:8000`（开发环境）
+- **API版本**: v1（通过路径前缀）
+- **数据格式**: JSON
+- **认证**: 开发阶段无需认证
+
+### 服务状态
+GET http://localhost:8000/
+
+text
+
+**响应示例**:
 ```json
 {
-  "service": "闲置计算调度中心",
+  "service": "Idle Computing Scheduler",
   "status": "running",
   "version": "1.0.0",
-  "queue_size": 3,
-  "idle_nodes": 2
+  "server_id": "a1b2c3d4",
+  "task_count": 5,
+  "pending_tasks": 2
 }
-GET /health  描述: 详细健康状态
-响应: json 复制   下载    {
-  "status": "healthy",
-  "timestamp": "2024-01-01T00:00:00Z",
-  "components": {
-    "task_queue": "healthy",
-    "node_tracker": "healthy",
-    "result_store": "healthy"
-  }
-}
-任务管理
-POST /tasks
-描述: 提交新计算任务
-请求:
+🎯 任务管理 API
+提交新任务
+text
+POST http://localhost:8000/submit
+Content-Type: application/json
+请求体:
 
 json
 {
-  "code": "print(1+1)",
+  "code": "print('Hello World')",
   "timeout": 300,
   "resources": {
     "cpu": 1.0,
     "memory": 512
   }
 }
-响应:
+参数说明:
+
+code: 必需，要执行的Python代码
+
+timeout: 可选，超时时间（秒），默认300
+
+resources: 可选，资源需求，默认 {"cpu": 1.0, "memory": 512}
+
+成功响应:
 
 json
 {
-  "task_id": "task_001",
-  "status": "queued",
-  "estimated_wait": 30
+  "task_id": 1,
+  "status": "submitted",
+  "server_id": "a1b2c3d4",
+  "message": "Task 1 has been queued"
 }
-GET /tasks/{task_id}
-描述: 查询任务状态
-响应:
+获取待处理任务
+text
+GET http://localhost:8000/get_task
+响应示例（有任务时）:
 
 json
 {
-  "task_id": "task_001",
+  "task_id": 1,
+  "code": "print('Hello World')",
+  "status": "assigned",
+  "created_at": 1640995200.123,
+  "message": "Task 1 assigned for execution"
+}
+响应示例（无任务时）:
+
+json
+{
+  "task_id": null,
+  "code": null,
+  "status": "no_tasks",
+  "message": "No pending tasks available"
+}
+提交任务结果
+text
+POST http://localhost:8000/submit_result
+Content-Type: application/json
+请求体:
+
+json
+{
+  "task_id": 1,
+  "result": "Hello World"
+}
+成功响应:
+
+json
+{
+  "status": "ok",
+  "task_id": 1,
+  "message": "Result for task 1 recorded"
+}
+查询任务状态
+text
+GET http://localhost:8000/status/{task_id}
+路径参数:
+
+task_id: 任务ID（整数）
+
+响应示例:
+
+json
+{
+  "task_id": 1,
   "status": "completed",
-  "result": "2",
-  "created_at": "2024-01-01T00:00:00Z",
-  "completed_at": "2024-01-01T00:00:30Z",
-  "executed_on": "node_macbook_001"
+  "result": "Hello World",
+  "created_at": 1640995200.123,
+  "completed_at": 1640995205.456
 }
-GET /tasks
-描述: 查看所有任务
-查询参数: ?status=pending (可选)
-响应:
+可能的状态值:
+
+pending: 等待中
+
+running: 执行中
+
+completed: 已完成
+
+failed: 失败
+
+获取所有结果
+text
+GET http://localhost:8000/results
+响应示例:
 
 json
 {
-  "tasks": [
+  "count": 3,
+  "results": [
     {
-      "task_id": "task_001",
-      "status": "completed",
-      "created_at": "2024-01-01T00:00:00Z"
+      "task_id": 1,
+      "result": "Hello World",
+      "completed_at": 1640995205.456
+    },
+    {
+      "task_id": 2,
+      "result": "42",
+      "completed_at": 1640995210.789
     }
   ],
-  "total": 1
+  "server_id": "a1b2c3d4"
 }
-节点管理
-GET /nodes
-描述: 查看所有注册节点
-响应:
+🖥️ 系统管理 API
+健康检查
+text
+GET http://localhost:8000/health
+响应示例:
 
 json
 {
-  "nodes": [
-    {
-      "node_id": "node_macbook_001",
-      "status": "idle",
-      "resources": {
-        "cpu_cores": 8,
-        "memory_mb": 16384
-      },
-      "last_heartbeat": "2024-01-01T00:00:00Z"
-    }
-  ],
-  "total_idle": 1,
-  "total_nodes": 1
-}
-GET /nodes/{node_id}
-描述: 查看节点详情
-响应:
-
-json
-{
-  "node_id": "node_macbook_001",
-  "status": "idle",
-  "platform": "macOS",
-  "idle_since": "2024-01-01T00:00:00Z",
-  "completed_tasks": 5,
-  "total_compute_time": 150
-}
-🖥️ 网页界面API
-网页端点
-GET /web
-描述: 主控制台页面（HTML）
-内容: 任务提交表单 + 实时监控面板
-
-GET /web/submit
-描述: 任务提交页面
-表单字段:
-
-code (textarea, 必需): Python代码
-
-timeout (number, 可选): 超时时间，默认300秒
-
-cpu (number, 可选): CPU需求，默认1.0
-
-memory (number, 可选): 内存需求(MB)，默认512
-
-GET /web/monitor
-描述: 实时监控面板
-内容: 节点状态、任务队列、系统负载可视化
-
-WebSocket实时更新
-GET /ws/updates
-描述: WebSocket连接获取实时事件
-消息格式:
-
-json
-{
-  "event": "task_updated",
-  "data": {
-    "task_id": "task_001",
-    "status": "running",
-    "node_id": "node_macbook_001"
+  "status": "healthy",
+  "timestamp": 1640995200.123,
+  "server_id": "a1b2c3d4",
+  "components": {
+    "task_queue": "healthy",
+    "memory_storage": "healthy"
   }
 }
-事件类型:
-
-node_joined: 新节点加入
-
-node_left: 节点离线
-
-task_created: 新任务创建
-
-task_started: 任务开始执行
-
-task_completed: 任务完成
-
-task_failed: 任务失败
-
-
-描述: 节点定期报告状态
-请求:
+系统统计
+text
+GET http://localhost:8000/stats
+响应示例:
 
 json
 {
-  "node_id": "node_macbook_001",
+  "time_period": "all_time",
+  "tasks": {
+    "total": 10,
+    "completed": 7,
+    "pending": 2,
+    "failed": 1,
+    "avg_time": 12.34
+  },
+  "nodes": {
+    "total": 0,
+    "idle": 0,
+    "busy": 0,
+    "offline": 0
+  },
+  "throughput": {
+    "tasks_per_hour": 0,
+    "compute_hours": 0
+  }
+}
+🔌 客户端节点 API（内部使用）
+节点心跳（计划功能）
+text
+POST http://localhost:8000/internal/heartbeat
+Content-Type: application/json
+请求体:
+
+json
+{
+  "node_id": "node-001",
   "status": "idle",
   "resources": {
     "cpu_cores": 8,
@@ -185,218 +219,183 @@ json
     "memory_percent": 45.2
   }
 }
-响应:
+节点获取任务（计划功能）
+text
+GET http://localhost:8000/internal/task
+节点提交结果（计划功能）
+text
+POST http://localhost:8000/internal/result
+Content-Type: application/json
+🌐 网页界面
+网页控制台
+text
+GET http://localhost:8501
+通过 Streamlit 提供的 Web 界面，包含：
 
-json
-{
-  "status": "ok",
-  "timestamp": "2024-01-01T00:00:00Z"
-}
-任务获取与提交
-GET /internal/task/request
-描述: 节点请求任务（闲置时调用）
-响应:
+任务提交表单
 
-json
-{
-  "has_task": true,
-  "task": {
-    "task_id": "task_001",
-    "code": "print(1+1)",
-    "timeout": 300
-  }
-}
-或（无任务时）:
+实时任务监控
 
-json
-{
-  "has_task": false,
-  "wait_time": 30
-}
-POST /internal/task/result
-描述: 节点提交任务结果
-请求:
+节点状态显示
 
-json
-{
-  "task_id": "task_001",
-  "status": "success",
-  "result": "2",
-  "execution_time": 1.5,
-  "error_message": null
-}
-📊 监控统计API
-GET /stats
-描述: 系统统计信息
-响应:
+系统统计图表
 
-json
-{
-  "time_period": "last_hour",
-  "tasks": {
-    "total": 100,
-    "completed": 95,
-    "failed": 5,
-    "avg_time": 45.2
-  },
-  "nodes": {
-    "total": 10,
-    "idle": 3,
-    "busy": 5,
-    "offline": 2
-  },
-  "throughput": {
-    "tasks_per_hour": 100,
-    "compute_hours": 125.5
-  }
-}
-GET /stats/nodes/top
-描述: 贡献度最高的节点
-查询参数: ?limit=10 (默认5)
-响应:
-
-markdown
-## 📊 监控统计API
-
-#### `GET /stats`
-**描述**: 系统统计信息  
-**响应**:
-```json
-{
-  "time_period": "last_hour",
-  "tasks": {
-    "total": 100,
-    "completed": 95,
-    "failed": 5,
-    "avg_time": 45.2
-  },
-  "nodes": {
-    "total": 10,
-    "idle": 3,
-    "busy": 5,
-    "offline": 2
-  },
-  "throughput": {
-    "tasks_per_hour": 100,
-    "compute_hours": 125.5
-  }
-}
-GET /stats/nodes/queue
-描述: 节点排队状态（公平调度）
-查询参数: ?limit=20 (默认显示前20个)
-响应:
-
-json
-{
-  "scheduling_policy": "fair_queue_with_priority",
-  "total_nodes_in_queue": 10,
-  "nodes": [
-    {
-      "node_id": "node_new_001",
-      "status": "idle",
-      "waiting_since": "2024-01-01T00:00:00Z",
-      "wait_time_seconds": 300,
-      "priority": "high",  // 新节点或等待时间长的节点优先级高
-      "completed_tasks": 0,
-      "reason": "new_node_priority"
-    },
-    {
-      "node_id": "node_mid_001",
-      "status": "idle",
-      "waiting_since": "2024-01-01T00:04:00Z",
-      "wait_time_seconds": 60,
-      "priority": "medium",
-      "completed_tasks": 15,
-      "reason": "fair_rotation"
-    },
-    {
-      "node_id": "node_high_001",
-      "status": "idle",
-      "waiting_since": "2024-01-01T00:04:30Z",
-      "wait_time_seconds": 30,
-      "priority": "low",
-      "completed_tasks": 50,
-      "reason": "recently_served"
-    }
-  ]
-}
-⚖️ 公平调度算法说明
-在 docs/DESIGN_DECISIONS.md 中添加：
-
-公平调度策略
-为了平衡 贡献奖励 和 新人机会，我们采用混合调度算法：
-
-python
-def calculate_node_priority(node):
-    """计算节点优先级分数（分数越低优先级越高）"""
-    
-    # 基础等待时间（等待越久优先级越高）
-    wait_score = -node.waiting_time_seconds
-    
-    # 贡献度奖励（但有限制）
-    contribution_bonus = min(node.completed_tasks * 0.1, 10)  # 最多+10分
-    
-    # 新人加成（前10个任务有额外加成）
-    newcomer_bonus = 0
-    if node.completed_tasks < 10:
-        newcomer_bonus = 20 - node.completed_tasks * 2
-    
-    # 最终优先级分数
-    priority_score = wait_score + contribution_bonus + newcomer_bonus
-    
-    return priority_score
-
-# 调度时选择优先级分数最低的节点
-def select_next_node(available_nodes):
-    return min(available_nodes, key=calculate_node_priority)
-算法特点：
-
-等待时间为主：等待时间占60%权重
-
-贡献度有限奖励：完成任务可获奖励，但上限10分
-
-新人保护：新节点前10个任务有额外加成
-
-防饥饿机制：等待超过5分钟的节点自动升为最高优先级
-
-优先级规则：
-
-高优先级：等待>5分钟 或 新节点（任务数<5）
-
-中优先级：等待1-5分钟 且 有一定贡献
-
-低优先级：最近刚执行过任务（30分钟内）
-
-这样既奖励了贡献者，又保证了新节点有机会，避免了"马太效应"。
 ⚠️ 错误处理
 错误响应格式
 json
 {
-  "error": {
-    "code": "TASK_NOT_FOUND",
-    "message": "任务不存在",
-    "details": "任务ID: task_999 不存在于系统中"
+  "detail": "错误描述信息"
+}
+常见 HTTP 状态码
+状态码	含义	常见原因
+200	成功	请求成功完成
+400	错误请求	参数缺失或格式错误
+404	未找到	任务或资源不存在
+422	无法处理	数据验证失败
+500	服务器错误	服务器内部错误
+具体错误示例
+任务不存在:
+
+json
+{
+  "detail": "Task 999 not found"
+}
+代码过长:
+
+json
+{
+  "detail": "Code too long (max 10000 characters)"
+}
+空代码:
+
+json
+{
+  "detail": "Code cannot be empty"
+}
+🔐 安全说明
+开发环境
+无认证机制
+
+CORS 允许所有来源 (*)
+
+仅限本地网络访问
+
+生产环境建议
+启用认证: 添加 API 密钥或 OAuth
+
+限制 CORS: 只允许可信域名
+
+启用 HTTPS: 使用 SSL/TLS 加密
+
+设置防火墙: 限制访问 IP
+
+添加限流: 防止滥用
+
+📡 WebSocket 支持（计划功能）
+实时更新
+text
+WS ws://localhost:8000/ws/updates
+消息类型:
+
+json
+{
+  "event": "task_updated",
+  "data": {
+    "task_id": 1,
+    "status": "running",
+    "node_id": "node-001"
   }
 }
-常见错误码
-错误码	HTTP状态	说明
-INVALID_REQUEST	400	请求参数无效
-TASK_NOT_FOUND	404	任务不存在
-NODE_NOT_FOUND	404	节点不存在
-TASK_TIMEOUT	408	任务执行超时
-RESOURCE_UNAVAILABLE	503	无可用计算资源
-INTERNAL_ERROR	500	服务器内部错误
-🔐 安全说明
-当前实现
-开发阶段：无认证，仅限本地网络访问
+支持的事件:
 
-生产部署：建议配置防火墙、启用HTTPS
+task_created: 新任务创建
 
-安全建议
-网络隔离：调度中心部署在内网，通过反向代理对外
+task_started: 任务开始执行
 
-访问控制：基于IP白名单或API密钥
+task_completed: 任务完成
 
-数据加密：启用HTTPS传输加密
+task_failed: 任务失败
 
-输入验证：对任务代码进行基本安全检查
+node_joined: 新节点加入
+
+node_left: 节点离线
+
+📊 API 使用示例
+Python 客户端示例
+python
+import requests
+
+# 1. 提交任务
+def submit_task(code, timeout=300):
+    url = "http://localhost:8000/submit"
+    payload = {
+        "code": code,
+        "timeout": timeout
+    }
+    response = requests.post(url, json=payload)
+    return response.json()
+
+# 2. 查询状态
+def get_task_status(task_id):
+    url = f"http://localhost:8000/status/{task_id}"
+    response = requests.get(url)
+    return response.json()
+
+# 3. 获取系统状态
+def get_system_stats():
+    url = "http://localhost:8000/stats"
+    response = requests.get(url)
+    return response.json()
+
+# 使用示例
+if __name__ == "__main__":
+    # 提交计算任务
+    result = submit_task("print(1 + 1)")
+    task_id = result["task_id"]
+    print(f"任务提交成功，ID: {task_id}")
+    
+    # 等待并检查结果
+    import time
+    while True:
+        status = get_task_status(task_id)
+        if status["status"] == "completed":
+            print(f"任务完成，结果: {status['result']}")
+            break
+        time.sleep(1)
+cURL 示例
+bash
+# 1. 检查服务状态
+curl http://localhost:8000/
+
+# 2. 提交任务
+curl -X POST http://localhost:8000/submit \
+  -H "Content-Type: application/json" \
+  -d '{"code": "print(\"Hello from cURL\")"}'
+
+# 3. 查询任务状态
+curl http://localhost:8000/status/1
+
+# 4. 获取系统统计
+curl http://localhost:8000/stats
+📈 API 版本历史
+v1.0.0 (当前)
+基本任务提交和获取
+
+任务状态查询
+
+结果提交和查看
+
+系统健康检查
+
+基础统计信息
+
+计划功能
+RESTful API 端点 (/api/v1/)
+
+节点注册和管理
+
+高级调度算法
+
+WebSocket 实时更新
+
+用户认证和授权
