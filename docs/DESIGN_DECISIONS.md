@@ -31,3 +31,22 @@ def is_truly_idle() -> bool:
         is_charging or has_no_battery(),  # 条件5: 不消耗用户电量
     ])
 设计理由 1.  300秒阈值：避免短暂离开的误判（接电话、上厕所）  2.  CPU<30%：保留足够资源保证系统流畅  3.  内存<70%：防止内存压力影响用户体验  4.  屏幕锁定：物理层面确保用户不在使用  5.  充电状态：不消耗用户电池，只用电网电源
+🛡️ 安全边界设计 执行环境隔离
+# [待抄部分] 需要找现成的临时目录+进程隔离方案
+# GitHub搜索关键词: "python subprocess chroot jail" 或 "python safe code execution sandbox"
+
+# 伪代码 - 实际需要抄现成实现
+def execute_safely(code: str):
+    # 1. 创建临时工作目录
+    temp_dir = create_temp_dir()
+    
+    # 2. 设置资源限制（CPU时间、内存、文件大小）
+    set_resource_limits(max_cpu_seconds=300, max_memory_mb=1024)
+    
+    # 3. 在受限环境中执行
+    result = run_in_restricted_env(code, temp_dir)
+    
+    # 4. 强制清理（即使异常）
+    force_cleanup(temp_dir)
+    
+    return result
