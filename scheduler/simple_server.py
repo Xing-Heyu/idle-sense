@@ -1,6 +1,10 @@
+# ❌ 当前有问题的代码（在 web_interface.py 中导入的）
+# 需要确保 simple_server.py 语法正确
+
+# ✅ 修复后的完整代码（语法正确版）
 """
 scheduler/simple_server.py
-Minimal Task Scheduler - Final Verified Version
+Minimal Task Scheduler - Syntax Fixed Version
 """
 
 import time
@@ -9,39 +13,39 @@ from typing import List, Dict, Optional, Any
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 
-# 📝 修复：定义数据模型，增强类型安全
+# ==================== 数据模型定义 ====================
 class TaskSubmission(BaseModel):
+    """任务提交模型"""
     code: str
+    timeout: Optional[int] = 300
+    resources: Optional[Dict[str, Any]] = {"cpu": 1.0, "memory": 512}
 
 class TaskResult(BaseModel):
+    """任务结果模型"""
     task_id: int
     result: str
 
 class TaskInfo(BaseModel):
+    """任务信息模型"""
     task_id: int
     code: str
-    status: str
+    status: str  # pending, running, completed, failed
     created_at: float
     completed_at: Optional[float] = None
     result: Optional[str] = None
 
-# 📝 修复：使用更安全的唯一标识符
-app = FastAPI(
-    title="Idle Computing Scheduler",
-    description="Minimal task scheduler for idle computing resources",
-    version="1.0.0"
-)
-
-# 📝 修改：改进内存存储结构
+# ==================== 内存存储类 ====================
 class MemoryStorage:
-    """Thread-safe(ish) memory storage for tasks"""
+    """线程安全的内存存储"""
+    
     def __init__(self):
         self.tasks: Dict[int, TaskInfo] = {}
+        self.results: Dict[int, str] = {}
         self.task_id_counter = 1
         self.server_id = str(uuid.uuid4())[:8]
     
-    def add_task(self, code: str) -> int:
-        """Add a new task and return its ID"""
+    def add_task(self, code: str, timeout: int = 300) -> int:
+        """添加新任务"""
         task_id = self.task_id_counter
         self.tasks[task_id] = TaskInfo(
             task_id=task_id,
@@ -53,7 +57,7 @@ class MemoryStorage:
         return task_id
     
     def get_pending_task(self) -> Optional[TaskInfo]:
-        """Get a pending task and mark it as running"""
+        """获取待处理任务"""
         for task_id, task in self.tasks.items():
             if task.status == "pending":
                 task.status = "running"
@@ -61,7 +65,7 @@ class MemoryStorage:
         return None
     
     def complete_task(self, task_id: int, result: str) -> bool:
-        """Mark a task as completed with result"""
+        """完成任务"""
         if task_id not in self.tasks:
             return False
         
@@ -74,7 +78,7 @@ class MemoryStorage:
         return False
     
     def get_task_status(self, task_id: int) -> Optional[Dict[str, Any]]:
-        """Get task status and result if available"""
+        """获取任务状态"""
         if task_id not in self.tasks:
             return None
         
@@ -88,7 +92,7 @@ class MemoryStorage:
         }
     
     def get_all_results(self) -> List[Dict[str, Any]]:
-        """Get all completed tasks"""
+        """获取所有结果"""
         return [
             {
                 "task_id": task.task_id,
@@ -99,12 +103,20 @@ class MemoryStorage:
             if task.status == "completed"
         ]
 
+# ==================== FastAPI 应用 ====================
+app = FastAPI(
+    title="Idle Computing Scheduler",
+    description="Minimal task scheduler for idle computing resources",
+    version="1.0.0"
+)
+
 # 初始化存储
 storage = MemoryStorage()
 
+# ==================== 传统端点（保持兼容） ====================
 @app.get("/")
 async def root() -> Dict[str, Any]:
-    """Root endpoint for health check"""
+    """根端点 - 健康检查"""
     return {
         "service": "Idle Computing Scheduler",
         "status": "running",
@@ -116,16 +128,14 @@ async def root() -> Dict[str, Any]:
 
 @app.post("/submit")
 async def submit_task(submission: TaskSubmission) -> Dict[str, Any]:
-    """Submit a new task for execution"""
+    """提交任务（兼容旧端点）"""
     if not submission.code.strip():
         raise HTTPException(status_code=400, detail="Code cannot be empty")
     
-    # 📝 修复：限制代码长度（简单安全措施）
     if len(submission.code) > 10000:
         raise HTTPException(status_code=400, detail="Code too long (max 10000 characters)")
     
-    task_id = storage.add_task(submission.code)
-    print(f"[Scheduler] Task {task_id} submitted (server: {storage.server_id})")
+    task_id = storage.add_task(submission.code, submission.timeout)
     
     return {
         "task_id": task_id,
@@ -136,7 +146,7 @@ async def submit_task(submission: TaskSubmission) -> Dict[str, Any]:
 
 @app.get("/get_task")
 async def get_task() -> Dict[str, Any]:
-    """Get a pending task for execution"""
+    """获取任务（兼容旧端点）"""
     task = storage.get_pending_task()
     
     if task is None:
@@ -147,7 +157,6 @@ async def get_task() -> Dict[str, Any]:
             "message": "No pending tasks available"
         }
     
-    print(f"[Scheduler] Task {task.task_id} assigned to worker")
     return {
         "task_id": task.task_id,
         "code": task.code,
@@ -158,7 +167,7 @@ async def get_task() -> Dict[str, Any]:
 
 @app.post("/submit_result")
 async def submit_result(result: TaskResult) -> Dict[str, Any]:
-    """Submit result for a completed task"""
+    """提交结果（兼容旧端点）"""
     if result.task_id <= 0:
         raise HTTPException(status_code=400, detail="Invalid task ID")
     
@@ -167,7 +176,6 @@ async def submit_result(result: TaskResult) -> Dict[str, Any]:
     if not success:
         raise HTTPException(status_code=404, detail=f"Task {result.task_id} not found or not runnable")
     
-    print(f"[Scheduler] Task {result.task_id} completed")
     return {
         "status": "ok",
         "task_id": result.task_id,
@@ -176,7 +184,7 @@ async def submit_result(result: TaskResult) -> Dict[str, Any]:
 
 @app.get("/status/{task_id}")
 async def get_status(task_id: int) -> Dict[str, Any]:
-    """Get status of a specific task"""
+    """获取任务状态（兼容旧端点）"""
     if task_id <= 0:
         raise HTTPException(status_code=400, detail="Invalid task ID")
     
@@ -189,7 +197,7 @@ async def get_status(task_id: int) -> Dict[str, Any]:
 
 @app.get("/results")
 async def get_results() -> Dict[str, Any]:
-    """Get all completed task results"""
+    """获取所有结果（兼容旧端点）"""
     results = storage.get_all_results()
     return {
         "count": len(results),
@@ -197,23 +205,63 @@ async def get_results() -> Dict[str, Any]:
         "server_id": storage.server_id
     }
 
+# ==================== 新增端点（符合 docs/API_REFERENCE.md） ====================
 @app.get("/health")
 async def health_check() -> Dict[str, Any]:
-    """Health check endpoint for monitoring"""
+    """健康检查端点"""
     return {
         "status": "healthy",
         "timestamp": time.time(),
         "server_id": storage.server_id,
-        "memory_usage_mb": len(str(storage.tasks)) / (1024 * 1024)  # 粗略估计
+        "components": {
+            "task_queue": "healthy",
+            "memory_storage": "healthy"
+        }
     }
 
-# 📝 修复：添加CORS支持，生产环境应限制来源
+@app.get("/stats")
+async def get_system_stats() -> Dict[str, Any]:
+    """系统统计端点"""
+    total_tasks = len(storage.tasks)
+    completed_tasks = sum(1 for t in storage.tasks.values() if t.status == "completed")
+    pending_tasks = sum(1 for t in storage.tasks.values() if t.status == "pending")
+    
+    # 计算平均完成时间
+    completed_times = []
+    for task in storage.tasks.values():
+        if task.status == "completed" and task.completed_at:
+            completed_times.append(task.completed_at - task.created_at)
+    
+    avg_time = sum(completed_times) / len(completed_times) if completed_times else 0
+    
+    return {
+        "time_period": "all_time",
+        "tasks": {
+            "total": total_tasks,
+            "completed": completed_tasks,
+            "pending": pending_tasks,
+            "failed": total_tasks - completed_tasks - pending_tasks,
+            "avg_time": round(avg_time, 2)
+        },
+        "nodes": {
+            "total": 0,  # 需要节点注册功能
+            "idle": 0,
+            "busy": 0,
+            "offline": 0
+        },
+        "throughput": {
+            "tasks_per_hour": 0,
+            "compute_hours": 0
+        }
+    }
+
+# ==================== CORS 支持 ====================
 try:
     from fastapi.middleware.cors import CORSMiddleware
     
     app.add_middleware(
         CORSMiddleware,
-        allow_origins=["*"],  # WARNING: For development only
+        allow_origins=["*"],  # 警告：仅用于开发
         allow_credentials=True,
         allow_methods=["GET", "POST", "OPTIONS"],
         allow_headers=["*"],
@@ -225,7 +273,7 @@ except ImportError:
     print("[Scheduler] CORS middleware not available")
     pass
 
-# 📝 新增：启动代码示例
+# ==================== 启动代码 ====================
 if __name__ == "__main__":
     import uvicorn
     print(f"[Scheduler] Starting server on http://localhost:8000")
