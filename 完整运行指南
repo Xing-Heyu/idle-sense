@@ -1,0 +1,125 @@
+🚀 闲置计算加速器 - 完整运行指南
+1. 安装必备工具
+￼
+bash
+￼
+￼
+￼
+# 安装 Python (3.8+)
+# 下载地址: https://www.python.org/downloads/
+
+# 安装 Git
+# 下载地址: https://git-scm.com/downloads
+
+# 验证安装
+python --version
+git
+ --version
+2. 克隆项目
+￼
+bash
+￼
+￼
+￼
+# 克隆项目到本地
+git
+ clone https://github.com/your-repo/idle-sense.git
+cd
+ idle-sense
+3. 配置环境
+￼
+bash
+￼
+￼
+￼
+# 创建虚拟环境（推荐）
+python -m venv venv
+
+# 激活虚拟环境
+# Windows:
+venv\Scripts\
+activate
+# macOS/Linux:
+source
+ venv/bin/activate
+4. 安装依赖
+￼
+bash
+￼
+￼
+￼
+# 安装项目依赖
+pip install
+ -r requirements.txt
+
+# 如果没有requirements.txt，安装核心依赖
+pip install
+ fastapi uvicorn streamlit requests
+5. 启动系统
+￼
+bash
+￼
+￼
+￼
+# 方式1: 使用自动启动脚本（推荐）
+python auto_start.py
+
+# 方式2: 手动启动各组件
+# 终端1 - 启动调度中心
+python scheduler/simple_server.py
+
+# 终端2 - 启动节点客户端  
+python node/simple_client.py
+
+# 终端3 - 启动网页界面
+streamlit run web_interface.py
+6. 访问网页
+• 网页界面: http://localhost:8501
+• 调度中心API: http://localhost:8000
+🔧 常见问题解决
+端口占用
+￼
+bash
+￼
+￼
+￼
+# 检查端口占用
+netstat -ano |
+ findstr :8501
+netstat -ano |
+ findstr :8000
+
+# 杀死占用进程（Windows）
+taskkill /PID <进程ID>
+ /F
+依赖安装失败
+￼
+bash
+￼
+￼
+￼
+# 使用国内镜像源
+pip install
+ -r requirements.txt -i https://pypi.tuna.tsinghua.edu.cn/simple
+节点客户端无法启动
+• 检查Python版本兼容性
+• 确保所有依赖正确安装
+• 检查网络连接
+📋 项目结构说明
+￼
+plainText
+￼
+￼
+￼
+idle-sense/
+├── scheduler/          # 调度中心
+├── node/              # 节点客户端
+├── examples/          # 示例任务
+├── web_interface.py   # 网页界面
+├── requirements.txt   # 依赖列表
+└── auto_start.py     # 自动启动脚本
+🎯 快速开始
+1. 克隆项目 → 安装依赖 → 运行 auto_start.py
+2. 打开浏览器访问 http://localhost:8501
+3. 在网页界面提交计算任务
+这个指南覆盖了从零开始运行项目的完整流程，适合任何新手使用。
