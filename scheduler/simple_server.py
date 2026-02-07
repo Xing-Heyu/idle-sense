@@ -684,3 +684,22 @@ if __name__ == "__main__":
         port=8000,
         log_level="info"
     )
+# 在文件最后添加：
+if __name__ == "__main__":
+    import uvicorn
+    print(f"[Enhanced Scheduler] Starting server on http://localhost:8000")
+    print(f"[Enhanced Scheduler] Server ID: {storage.server_id}")
+    print(f"[Enhanced Scheduler] Features: Node Management, Fair Scheduling, Health Checks")
+    
+    # 修复：添加try-except防止快速退出
+    try:
+        uvicorn.run(
+            app,
+            host="0.0.0.0",
+            port=8000,
+            log_level="info"
+        )
+    except KeyboardInterrupt:
+        print("\n[Enhanced Scheduler] Server stopped by user")
+    except Exception as e:
+        print(f"[Enhanced Scheduler] Error: {e}")
