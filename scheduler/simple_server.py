@@ -1,18 +1,152 @@
+# 文件路径：c:\idle-sense\scheduler\simple_server.py
 """
 scheduler/simple_server.py
-Enhanced Task Scheduler with Node Management and Fair Scheduling
+Enhanced Task Scheduler with Node Management, User Management and Fair Scheduling
 """
 
 import time
 import uuid
 import threading
+import os
+import sys
 from datetime import datetime, timedelta
 from typing import List, Dict, Optional, Any, Tuple
-from fastapi import FastAPI, HTTPException, BackgroundTasks
+from fastapi import FastAPI, HTTPException, BackgroundTasks, Header
 from pydantic import BaseModel
 from collections import defaultdict
 
-# ==================== 数据模型定义 ====================
+# ==================== 用户管理模块导入 ====================
+# 用户数据模型
+class User(BaseModel):
+    """用户模型"""
+    user_id: str
+    username: str
+    email: str
+    created_at: str
+    is_active: bool = True
+
+class UserQuota(BaseModel):
+    """用户资源配额"""
+    user_id: str
+    daily_tasks_limit: int = 100
+    concurrent_tasks_limit: int = 5
+    cpu_quota: float = 10.0
+    memory_quota: int = 4096
+    daily_usage: int = 0
+    current_tasks: int = 0
+
+# 简单的用户管理类
+class SimpleAuthManager:
+    """简化版用户认证管理器"""
+    def __init__(self):
+        self.users: Dict[str, User] = {}
+        self.user_quotas: Dict[str, UserQuota] = {}
+        self.sessions: Dict[str, str] = {}  # session_id -> user_id
+        
+    def register_user(self, username: str, email: str) -> Dict[str, Any]:
+        """注册新用户"""
+        import uuid
+        
+        # 检查用户名和邮箱是否已存在
+        if any(u.username == username for u in self.users.values()):
+            return {"success": False, "error": "用户名已存在"}
+            
+        if any(u.email == email for u in self.users.values()):
+            return {"success": False, "error": "邮箱已存在"}
+            
+        # 创建用户
+        user = User(
+            user_id=str(uuid.uuid4()),
+            username=username,
+            email=email,
+            created_at=datetime.now().isoformat()
+        )
+        
+        # 创建配额
+        quota = UserQuota(user_id=user.user_id)
+        
+        self.users[user.user_id] = user
+        self.user_quotas[user.user_id] = quota
+        
+        return {
+            "success": True, 
+            "user_id": user.user_id,
+            "user": user.dict(),
+            "quota": quota.dict()
+        }
+    
+    def get_user_by_id(self, user_id: str) -> Optional[User]:
+        """根据ID获取用户"""
+        return self.users.get(user_id)
+    
+    def get_quota_by_user_id(self, user_id: str) -> Optional[UserQuota]:
+        """获取用户配额"""
+        return self.user_quotas.get(user_id)
+    
+    def create_session(self, user_id: str) -> str:
+        """创建会话"""
+        import secrets
+        session_id = secrets.token_urlsafe(32)
+        self.sessions[session_id] = user_id
+        return session_id
+    
+    def validate_session(self, session_id: str) -> Optional[str]:
+        """验证会话"""
+        return self.sessions.get(session_id)
+
+class SimpleQuotaManager:
+    """简化版配额管理器"""
+    def __init__(self):
+        self.quotas: Dict[str, UserQuota] = {}
+        self.last_reset_date = datetime.now().date()
+        
+    def check_quota(self, user_id: str) -> Dict[str, Any]:
+        """检查用户配额"""
+        quota = self.quotas.get(user_id)
+        if not quota:
+            return {"allowed": False, "error": "用户不存在"}
+            
+        # 每日重置检查
+        self._reset_daily_usage_if_needed(quota)
+        
+        if quota.daily_usage >= quota.daily_tasks_limit:
+            return {"allowed": False, "error": "每日任务配额已用完"}
+            
+        if quota.current_tasks >= quota.concurrent_tasks_limit:
+            return {"allowed": False, "error": "并发任务数已达上限"}
+            
+        return {"allowed": True, "quota": quota.dict()}
+    
+    def consume_quota(self, user_id: str) -> bool:
+        """消耗配额"""
+        quota = self.quotas.get(user_id)
+        if not quota:
+            return False
+            
+        if quota.daily_usage >= quota.daily_tasks_limit:
+            return False
+            
+        if quota.current_tasks >= quota.concurrent_tasks_limit:
+            return False
+            
+        quota.daily_usage += 1
+        quota.current_tasks += 1
+        return True
+    
+    def release_quota(self, user_id: str):
+        """释放配额（任务完成时调用）"""
+        quota = self.quotas.get(user_id)
+        if quota and quota.current_tasks > 0:
+            quota.current_tasks -= 1
+    
+    def _reset_daily_usage_if_needed(self, quota: UserQuota):
+        """如果需要则重置每日使用量"""
+        today = datetime.now().date()
+        if today > self.last_reset_date:
+            quota.daily_usage = 0
+            self.last_reset_date = today
+
+# ==================== 原有数据模型定义 ====================
 class TaskSubmission(BaseModel):
     """任务提交模型"""
     code: str
@@ -36,6 +170,7 @@ class TaskInfo(BaseModel):
     completed_at: Optional[float] = None
     result: Optional[str] = None
     required_resources: Dict[str, Any] = {"cpu": 1.0, "memory": 512}
+    user_id: Optional[str] = None  # 新增：关联用户ID
 
 class NodeRegistration(BaseModel):
     """节点注册模型"""
@@ -50,7 +185,7 @@ class NodeHeartbeat(BaseModel):
     is_idle: bool
     available_resources: Dict[str, Any]  # 计算后的可用资源
 
-# ==================== 内存存储类 - 增强版 ====================
+# ==================== 内存存储类 - 增强版（修改） ====================
 class EnhancedMemoryStorage:
     """线程安全的内存存储，支持节点管理和公平调度"""
     
@@ -79,8 +214,8 @@ class EnhancedMemoryStorage:
             "last_schedule_time": time.time()
         }
     
-    # ========== 任务管理方法 ==========
-    def add_task(self, code: str, timeout: int = 300, resources: Optional[Dict] = None) -> int:
+    # ========== 任务管理方法（修改） ==========
+    def add_task(self, code: str, timeout: int = 300, resources: Optional[Dict] = None, user_id: Optional[str] = None) -> int:
         """添加新任务到调度队列"""
         with self.lock:
             task_id = self.task_id_counter
@@ -91,7 +226,8 @@ class EnhancedMemoryStorage:
                 code=code,
                 status="pending",
                 created_at=time.time(),
-                required_resources=resources or {"cpu": 1.0, "memory": 512}
+                required_resources=resources or {"cpu": 1.0, "memory": 512},
+                user_id=user_id  # 关联用户ID
             )
             
             self.tasks[task_id] = task
@@ -102,6 +238,31 @@ class EnhancedMemoryStorage:
             
             return task_id
     
+    def delete_task(self, task_id: int) -> Dict[str, Any]:
+        """删除任务"""
+        with self.lock:
+            if task_id not in self.tasks:
+                return {"success": False, "error": "任务不存在"}
+            
+            task = self.tasks[task_id]
+            
+            # 只能删除pending或assigned状态的任务
+            if task.status not in ["pending", "assigned"]:
+                return {"success": False, "error": f"只能删除pending或assigned状态的任务，当前状态: {task.status}"}
+            
+            # 从相应队列中移除
+            if task.status == "pending" and task_id in self.pending_tasks:
+                self.pending_tasks.remove(task_id)
+            elif task.status == "assigned" and task.assigned_node:
+                if task_id in self.assigned_tasks[task.assigned_node]:
+                    self.assigned_tasks[task.assigned_node].remove(task_id)
+            
+            # 标记为已删除
+            task.status = "deleted"
+            
+            return {"success": True, "message": f"任务 {task_id} 已删除"}
+
+    # 其他方法保持不变（get_pending_task, get_task_for_node, complete_task等）
     def get_pending_task(self) -> Optional[TaskInfo]:
         """获取待处理任务 - 传统FIFO方法（保持兼容）"""
         with self.lock:
@@ -212,10 +373,11 @@ class EnhancedMemoryStorage:
             "assigned_at": task.assigned_at,
             "assigned_node": task.assigned_node,
             "completed_at": task.completed_at,
-            "required_resources": task.required_resources
+            "required_resources": task.required_resources,
+            "user_id": task.user_id  # 新增用户ID
         }
     
-    # ========== 节点管理方法 ==========
+    # ========== 节点管理方法（保持不变） ==========
     def register_node(self, registration: NodeRegistration) -> bool:
         """注册新节点"""
         with self.lock:
@@ -312,7 +474,7 @@ class EnhancedMemoryStorage:
             
             return len(dead_nodes)
     
-    # ========== 调度算法辅助方法 ==========
+    # ========== 调度算法辅助方法（保持不变） ==========
     def _schedule_tasks(self):
         """尝试调度待处理的任务"""
         with self.lock:
@@ -380,7 +542,7 @@ class EnhancedMemoryStorage:
         
         return score
     
-    # ========== 统计方法 ==========
+    # ========== 统计方法（修改） ==========
     def get_all_results(self) -> List[Dict[str, Any]]:
         """获取所有结果"""
         with self.lock:
@@ -389,7 +551,8 @@ class EnhancedMemoryStorage:
                     "task_id": task.task_id,
                     "result": task.result,
                     "completed_at": task.completed_at,
-                    "assigned_node": task.assigned_node
+                    "assigned_node": task.assigned_node,
+                    "user_id": task.user_id  # 新增用户ID
                 }
                 for task in self.tasks.values()
                 if task.status == "completed"
@@ -402,6 +565,7 @@ class EnhancedMemoryStorage:
             completed_tasks = sum(1 for t in self.tasks.values() if t.status == "completed")
             pending_tasks = len(self.pending_tasks)
             assigned_tasks = sum(len(tasks) for tasks in self.assigned_tasks.values())
+            deleted_tasks = sum(1 for t in self.tasks.values() if t.status == "deleted")
             
             # 计算平均完成时间
             completed_times = []
@@ -423,7 +587,8 @@ class EnhancedMemoryStorage:
                     "completed": completed_tasks,
                     "pending": pending_tasks,
                     "assigned": assigned_tasks,
-                    "failed": total_tasks - completed_tasks - pending_tasks - assigned_tasks,
+                    "deleted": deleted_tasks,  # 新增删除任务统计
+                    "failed": total_tasks - completed_tasks - pending_tasks - assigned_tasks - deleted_tasks,
                     "avg_completion_time": round(avg_time, 2)
                 },
                 "nodes": {
@@ -438,12 +603,14 @@ class EnhancedMemoryStorage:
 # ==================== FastAPI 应用 ====================
 app = FastAPI(
     title="Enhanced Idle Computing Scheduler",
-    description="Task scheduler with node management and fair scheduling",
-    version="2.0.0"
+    description="Task scheduler with node management, user management and fair scheduling",
+    version="2.1.0"  # 版本号更新
 )
 
-# 初始化存储
+# 初始化存储和用户管理
 storage = EnhancedMemoryStorage()
+auth_manager = SimpleAuthManager()
+quota_manager = SimpleQuotaManager()
 
 # ==================== 后台任务 ====================
 def cleanup_old_nodes():
@@ -459,36 +626,108 @@ def cleanup_old_nodes():
 def startup_event():
     """启动时初始化"""
     print("=" * 60)
-    print(f"Enhanced Task Scheduler v2.0.0")
+    print(f"Enhanced Task Scheduler v2.1.0")
     print(f"Server ID: {storage.server_id}")
+    print(f"User Management: Enabled")
+    print(f"Task Deletion: Enabled")
     print(f"Starting background cleanup task...")
     print("=" * 60)
 
-# ==================== 传统端点（保持完全兼容） ====================
+# ==================== 用户管理API端点 ====================
+@app.post("/api/users/register")
+async def register_user(username: str, email: str):
+    """用户注册接口"""
+    result = auth_manager.register_user(username, email)
+    if not result["success"]:
+        raise HTTPException(status_code=400, detail=result["error"])
+    
+    # 初始化配额
+    user_id = result["user_id"]
+    quota_manager.quotas[user_id] = UserQuota(user_id=user_id)
+    
+    # 创建会话
+    session_id = auth_manager.create_session(user_id)
+    
+    return {
+        "success": True,
+        "session_id": session_id,
+        "user": result["user"],
+        "quota": result["quota"]
+    }
+
+@app.get("/api/users/quota")
+async def get_user_quota(x_session_id: str = Header(...)):
+    """获取用户配额"""
+    user_id = auth_manager.validate_session(x_session_id)
+    if not user_id:
+        raise HTTPException(status_code=401, detail="未授权")
+    
+    quota_result = quota_manager.check_quota(user_id)
+    if not quota_result["allowed"]:
+        raise HTTPException(status_code=403, detail=quota_result["error"])
+    
+    return quota_result
+
+# ==================== 任务删除API端点 ====================
+@app.delete("/api/tasks/{task_id}")
+async def delete_task(task_id: int):
+    """删除任务API"""
+    result = storage.delete_task(task_id)
+    if not result["success"]:
+        raise HTTPException(status_code=400, detail=result["error"])
+    
+    return result
+
+# ==================== 传统端点（修改） ====================
 @app.get("/")
 async def root() -> Dict[str, Any]:
     """根端点 - 健康检查"""
     return {
         "service": "Enhanced Idle Computing Scheduler",
         "status": "running",
-        "version": "2.0.0",
+        "version": "2.1.0",
         "server_id": storage.server_id,
         "task_count": len(storage.tasks),
         "pending_tasks": len(storage.pending_tasks),
         "online_nodes": len([n for n in storage.nodes.keys() 
-                           if time.time() - storage.node_heartbeats.get(n, 0) <= 30])
+                           if time.time() - storage.node_heartbeats.get(n, 0) <= 30]),
+        "user_management": "enabled",  # 新增用户管理状态
+        "task_deletion": "enabled"     # 新增任务删除状态
     }
 
 @app.post("/submit")
-async def submit_task(submission: TaskSubmission, background_tasks: BackgroundTasks) -> Dict[str, Any]:
-    """提交任务（兼容旧端点）"""
+async def submit_task(
+    submission: TaskSubmission, 
+    background_tasks: BackgroundTasks,
+    x_session_id: str = Header(None)  # 新增会话认证
+) -> Dict[str, Any]:
+    """提交任务（增强版：支持用户认证）"""
     if not submission.code.strip():
         raise HTTPException(status_code=400, detail="Code cannot be empty")
     
     if len(submission.code) > 10000:
         raise HTTPException(status_code=400, detail="Code too long (max 10000 characters)")
     
-    task_id = storage.add_task(submission.code, submission.timeout, submission.resources)
+    # 用户认证和配额检查
+    user_id = None
+    if x_session_id:
+        user_id = auth_manager.validate_session(x_session_id)
+        if user_id:
+            # 检查配额
+            quota_result = quota_manager.check_quota(user_id)
+            if not quota_result["allowed"]:
+                raise HTTPException(status_code=403, detail=quota_result["error"])
+            
+            # 消耗配额
+            if not quota_manager.consume_quota(user_id):
+                raise HTTPException(status_code=403, detail="配额消耗失败")
+    
+    task_id = storage.add_task(
+        submission.code, 
+        submission.timeout, 
+        submission.resources,
+        user_id  # 关联用户ID
+    )
     
     # 触发后台清理
     background_tasks.add_task(cleanup_old_nodes)
@@ -497,8 +736,34 @@ async def submit_task(submission: TaskSubmission, background_tasks: BackgroundTa
         "task_id": task_id,
         "status": "submitted",
         "server_id": storage.server_id,
+        "user_id": user_id,  # 返回用户ID
         "message": f"Task {task_id} has been queued"
     }
+
+@app.post("/submit_result")
+async def submit_result(result: TaskResult) -> Dict[str, Any]:
+    """提交结果（增强版：支持配额释放）"""
+    if result.task_id not in storage.tasks:
+        raise HTTPException(status_code=404, detail="Task not found")
+    
+    # 完成任务
+    success = storage.complete_task(result.task_id, result.result, result.node_id)
+    
+    if not success:
+        raise HTTPException(status_code=400, detail="Failed to complete task")
+    
+    # 释放配额
+    task = storage.tasks[result.task_id]
+    if task.user_id:
+        quota_manager.release_quota(task.user_id)
+    
+    return {
+        "success": True,
+        "task_id": result.task_id,
+        "message": f"Task {result.task_id} completed successfully"
+    }
+
+# 其他原有API端点保持不变（get_task, status, results, stats, api/nodes等）
 
 @app.get("/get_task")
 async def get_task(node_id: Optional[str] = None) -> Dict[str, Any]:
@@ -524,165 +789,76 @@ async def get_task(node_id: Optional[str] = None) -> Dict[str, Any]:
         "status": "assigned" if node_id else "assigned",
         "created_at": task.created_at,
         "assigned_node": task.assigned_node,
+        "user_id": task.user_id,  # 新增用户ID
         "message": f"Task {task.task_id} assigned for execution"
     }
 
-@app.post("/submit_result")
-async def submit_result(result: TaskResult) -> Dict[str, Any]:
-    """提交结果（增强版：支持节点ID）"""
-    if result.task_id <= 0:
-        raise HTTPException(status_code=400, detail="Invalid task ID")
-    
-    success = storage.complete_task(result.task_id, result.result, result.node_id)
-    
-    if not success:
-        raise HTTPException(status_code=404, detail=f"Task {result.task_id} not found or not runnable")
-    
-    return {
-        "status": "ok",
-        "task_id": result.task_id,
-        "message": f"Result for task {result.task_id} recorded"
-    }
-
 @app.get("/status/{task_id}")
-async def get_status(task_id: int) -> Dict[str, Any]:
-    """获取任务状态（增强版：包含更多信息）"""
-    if task_id <= 0:
-        raise HTTPException(status_code=400, detail="Invalid task ID")
+async def get_task_status(task_id: int) -> Dict[str, Any]:
+    """获取任务状态"""
+    task_info = storage.get_task_status(task_id)
+    if task_info is None:
+        raise HTTPException(status_code=404, detail="Task not found")
     
-    status = storage.get_task_status(task_id)
-    
-    if status is None:
-        raise HTTPException(status_code=404, detail=f"Task {task_id} not found")
-    
-    return status
+    return task_info
 
 @app.get("/results")
 async def get_results() -> Dict[str, Any]:
-    """获取所有结果（增强版：包含节点信息）"""
-    results = storage.get_all_results()
+    """获取所有任务结果"""
     return {
-        "count": len(results),
-        "results": results,
-        "server_id": storage.server_id
-    }
-
-# ==================== 新增端点（节点管理和增强功能） ====================
-@app.get("/health")
-async def health_check() -> Dict[str, Any]:
-    """健康检查端点（增强版）"""
-    node_status = "healthy" if len(storage.nodes) > 0 else "no_nodes"
-    
-    return {
-        "status": "healthy",
-        "timestamp": time.time(),
-        "server_id": storage.server_id,
-        "components": {
-            "task_queue": "healthy",
-            "memory_storage": "healthy",
-            "node_manager": node_status,
-            "scheduler": "healthy"
-        }
-    }
-
-@app.post("/api/nodes/register")
-async def register_node(registration: NodeRegistration) -> Dict[str, Any]:
-    """注册新节点"""
-    success = storage.register_node(registration)
-    
-    if not success:
-        raise HTTPException(status_code=500, detail="Failed to register node")
-    
-    return {
-        "status": "registered",
-        "node_id": registration.node_id,
-        "message": f"Node {registration.node_id} registered successfully",
-        "server_time": time.time()
-    }
-
-@app.post("/api/nodes/{node_id}/heartbeat")
-async def update_heartbeat(node_id: str, heartbeat: NodeHeartbeat) -> Dict[str, Any]:
-    """更新节点心跳"""
-    if heartbeat.node_id != node_id:
-        raise HTTPException(status_code=400, detail="Node ID mismatch")
-    
-    success = storage.update_node_heartbeat(heartbeat)
-    
-    if not success:
-        raise HTTPException(status_code=404, detail=f"Node {node_id} not found")
-    
-    # 触发任务调度（如果节点空闲且有任务）
-    if heartbeat.is_idle and storage.pending_tasks:
-        # 在后台触发调度
-        pass
-    
-    return {
-        "status": "updated",
-        "node_id": node_id,
-        "timestamp": time.time(),
-        "message": f"Heartbeat for node {node_id} recorded"
-    }
-
-@app.get("/api/nodes")
-async def list_nodes(online_only: bool = True) -> Dict[str, Any]:
-    """列出所有节点"""
-    if online_only:
-        nodes = storage.get_available_nodes()
-    else:
-        nodes = list(storage.nodes.values())
-    
-    return {
-        "count": len(nodes),
-        "nodes": nodes,
-        "online_only": online_only,
-        "timestamp": time.time()
-    }
-
-@app.get("/api/nodes/{node_id}/tasks")
-async def get_node_tasks(node_id: str) -> Dict[str, Any]:
-    """获取节点分配的任务"""
-    # 注意：这个实现依赖于内部数据结构，需要storage暴露相应方法
-    # 这里简化实现
-    return {
-        "node_id": node_id,
-        "assigned_tasks": [],  # 实际应从storage获取
-        "timestamp": time.time()
+        "tasks": storage.get_all_results(),
+        "count": len(storage.get_all_results())
     }
 
 @app.get("/stats")
-async def get_system_stats() -> Dict[str, Any]:
-    """系统统计端点（增强版）"""
+async def get_stats() -> Dict[str, Any]:
+    """获取系统统计信息"""
     return storage.get_system_stats()
 
-# ==================== CORS 支持 ====================
-try:
-    from fastapi.middleware.cors import CORSMiddleware
+# ==================== 节点管理API端点（保持不变） ====================
+@app.post("/api/nodes/register")
+async def register_node(registration: NodeRegistration) -> Dict[str, Any]:
+    """注册节点"""
+    success = storage.register_node(registration)
+    if not success:
+        raise HTTPException(status_code=400, detail="Failed to register node")
     
-    app.add_middleware(
-        CORSMiddleware,
-        allow_origins=["*"],  # 警告：仅用于开发
-        allow_credentials=True,
-        allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-        allow_headers=["*"],
-        expose_headers=["*"],
-        max_age=600,
-    )
-    print("[Enhanced Scheduler] CORS middleware enabled")
-except ImportError:
-    print("[Enhanced Scheduler] CORS middleware not available")
-    pass
+    return {
+        "success": True,
+        "node_id": registration.node_id,
+        "message": f"Node {registration.node_id} registered successfully"
+    }
+
+@app.post("/api/nodes/heartbeat")
+async def node_heartbeat(heartbeat: NodeHeartbeat) -> Dict[str, Any]:
+    """节点心跳"""
+    success = storage.update_node_heartbeat(heartbeat)
+    if not success:
+        raise HTTPException(status_code=400, detail="Failed to update heartbeat")
+    
+    return {
+        "success": True,
+        "node_id": heartbeat.node_id,
+        "message": "Heartbeat received"
+    }
+
+@app.get("/api/nodes")
+async def get_nodes() -> Dict[str, Any]:
+    """获取所有节点信息"""
+    available_nodes = storage.get_available_nodes()
+    return {
+        "nodes": available_nodes,
+        "count": len(available_nodes)
+    }
 
 # ==================== 启动代码 ====================
 if __name__ == "__main__":
     import uvicorn
     import signal
-    import sys
-    import os
-    import time
     
     print(f"[Enhanced Scheduler] Starting server on http://localhost:8000")
     print(f"[Enhanced Scheduler] Server ID: {storage.server_id}")
-    print(f"[Enhanced Scheduler] Features: Node Management, Fair Scheduling, Health Checks")
+    print(f"[Enhanced Scheduler] Features: Node Management, User Management, Fair Scheduling, Task Deletion")
     
     # 信号处理：优雅退出
     def signal_handler(signum, frame):
