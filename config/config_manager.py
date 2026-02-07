@@ -107,7 +107,9 @@ class ConfigManager:
                         current = current[path_part]
                     
                     # 设置最终值
-                    current[config_path[-1]][config_key] = converted_value
+                    if config_path[-1] not in current:
+                        current[config_path[-1]] = {}
+                        current[config_path[-1]][config_key] = converted_value
         
         return env_config
     
