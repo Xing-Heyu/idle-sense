@@ -63,13 +63,21 @@ pip install -r requirements.txt -i https://pypi.tuna.tsinghua.edu.cn/simple
 • 确保所有依赖正确安装
 • 检查网络连接
 📋 项目结构说明
-idle-sense/
-├── scheduler/          # 调度中心
-├── node/              # 节点客户端
-├── examples/          # 示例任务
-├── web_interface.py   # 网页界面
-├── requirements.txt   # 依赖列表
-└── auto_start.py     # 自动启动脚本
+idle-sense
+├── user_management/                    # 用户管理模块
+│   ├── __init__.py
+│   ├── models.py                      # 数据模型
+│   ├── auth.py                        # 认证授权
+│   ├── quota.py                       # 资源配额管理
+│   └── api.py                         # API接口
+├── config/
+│   ├── __init__.py
+│   ├── settings.py                    # 配置文件
+│   └── quotas.json                    # 配额配置
+├── scheduler/
+│   ├── simple_server.py               # 原有调度中心
+│   └── task_manager.py                # 任务管理
+└── web_interface.py                   # 网页界面
 🎯 快速开始
 1. 克隆项目 → 安装依赖 → 运行 auto_start.py
 2. 打开浏览器访问 http://localhost:8501
