@@ -90,6 +90,19 @@ def get_task_status(task_id):
     except:
         return False, {"error": "请求失败"}
 
+def delete_task(task_id):
+    """删除任务"""
+    try:
+        response = requests.delete(f"{SCHEDULER_URL}/api/tasks/{task_id}", timeout=5)
+        if response.status_code == 200:
+            return True, response.json()
+        else:
+            return False, {"error": f"HTTP {response.status_code}: {response.text}"}
+    except requests.exceptions.ConnectionError:
+        return False, {"error": "无法连接到调度中心"}
+    except Exception as e:
+        return False, {"error": str(e)}
+
 def get_all_nodes():
     """获取所有节点信息 - 修复版：使用新版API"""
     try:
@@ -443,6 +456,46 @@ with tab2:
             hide_index=True
         )
         
+        # 任务删除功能
+        st.subheader("🗑️ 任务删除")
+        
+        # 获取所有任务状态以确定哪些可以删除
+        deletable_tasks = []
+        for task_id in history_df["task_id"].tolist():
+            success, task_info = get_task_status(task_id)
+            if success and task_info.get("status") in ["pending", "assigned", "running"]:
+                deletable_tasks.append({
+                    "task_id": task_id,
+                    "status": task_info.get("status", "unknown")
+                })
+        
+        if deletable_tasks:
+            # 创建选择框
+            task_options = {f"任务{task['task_id']} (状态: {task['status']})": task['task_id'] 
+                          for task in deletable_tasks}
+            selected_task_label = st.selectbox("选择要删除的任务", list(task_options.keys()))
+            selected_task_id = task_options[selected_task_label]
+            
+            # 删除确认
+            if st.button("🗑️ 删除选中任务", type="secondary"):
+                with st.spinner("删除中..."):
+                    delete_response = delete_task(selected_task_id)
+                    
+                    if delete_response[0]:  # success
+                        st.success("✅ 任务删除成功！")
+                        # 从历史记录中移除已删除的任务
+                        st.session_state.task_history = [
+                            task for task in st.session_state.task_history 
+                            if task["task_id"] != selected_task_id
+                        ]
+                        st.rerun()  # 刷新页面
+                    else:
+                        st.error(f"❌ 删除失败: {delete_response[1].get('error', '未知错误')}")
+        else:
+            st.info("暂无可以删除的任务（只有待处理、已分配或运行中的任务可以删除）")
+        
+        st.divider()
+        
         # 选择任务查看实时状态
         if not history_df.empty:
             selected_task = st.selectbox(
@@ -464,7 +517,8 @@ with tab2:
                                 "running": "🔵", 
                                 "completed": "🟢",
                                 "failed": "🔴",
-                                "assigned": "🟠"
+                                "assigned": "🟠",
+                                "deleted": "🔘"
                             }.get(status, "⚪")
                             st.metric("状态", f"{status_color} {status}")
                         
