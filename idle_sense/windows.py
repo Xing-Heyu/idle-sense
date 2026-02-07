@@ -45,11 +45,11 @@ class WindowsIdleDetector:
     def _get_tick_count(self) -> int:
         """Get system tick count in milliseconds"""
         # 优先使用 GetTickCount64（Windows Vista+）
-        if hasattr(self.user32, 'GetTickCount64'):
-            return self.user32.GetTickCount64()
+        if hasattr(ctypes.windll.kernel32, 'GetTickCount64'):
+            return ctypes.windll.kernel32.GetTickCount64()
         else:
             # 备用：GetTickCount（所有Windows版本）
-            return self.user32.GetTickCount()
+            return ctypes.windll.kernel32.GetTickCount()
     
     def get_user_idle_time_ms(self) -> int:
         """

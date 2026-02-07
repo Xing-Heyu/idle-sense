@@ -11,6 +11,7 @@ import signal
 import threading
 import json
 import traceback
+import platform  # 添加platform导入
 from typing import Optional, Dict, Any, Tuple
 from pathlib import Path
 from datetime import datetime
@@ -201,14 +202,14 @@ class NodeClient:
             
             if response.status_code == 200:
                 self.is_registered = True
-                print(f"✓ Registered with scheduler as node: {self.node_id}")
+                print(f"[SUCCESS] Registered with scheduler as node: {self.node_id}")
                 return True
             else:
-                print(f"✗ Registration failed: {response.status_code} - {response.text}")
+                print(f"[ERROR] Registration failed: {response.status_code} - {response.text}")
                 return False
                 
         except Exception as e:
-            print(f"✗ Registration error: {e}")
+            print(f"[ERROR] Registration error: {e}")
             return False
     
     def send_heartbeat(self) -> bool:
@@ -449,13 +450,13 @@ class NodeClient:
                             
                             # 提交结果
                             if self.submit_result(task_id, result):
-                                print(f"  ✓ Completed in {execution_time:.1f}s")
+                                print(f"  [SUCCESS] Completed in {execution_time:.1f}s")
                                 # 显示结果摘要
                                 result_preview = result[:80] + "..." if len(result) > 80 else result
                                 print(f"  Result: {result_preview}")
                             else:
                                 self.error_count += 1
-                                print(f"  ✗ Failed to submit result")
+                                print(f"  [ERROR] Failed to submit result")
                         else:
                             if task_data and task_data.get("status") == "no_tasks":
                                 print(f"  No tasks available in scheduler")

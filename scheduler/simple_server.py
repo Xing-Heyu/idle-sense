@@ -675,12 +675,38 @@ except ImportError:
 # ==================== 启动代码 ====================
 if __name__ == "__main__":
     import uvicorn
+    import signal
+    import sys
+    import os
+    import time
+    
     print(f"[Enhanced Scheduler] Starting server on http://localhost:8000")
     print(f"[Enhanced Scheduler] Server ID: {storage.server_id}")
     print(f"[Enhanced Scheduler] Features: Node Management, Fair Scheduling, Health Checks")
-    uvicorn.run(
-        app,
-        host="0.0.0.0",
-        port=8000,
-        log_level="info"
-    )
+    
+    # 信号处理：优雅退出
+    def signal_handler(signum, frame):
+        print("\n[Enhanced Scheduler] Received shutdown signal")
+        sys.exit(0)
+    
+    signal.signal(signal.SIGINT, signal_handler)
+    signal.signal(signal.SIGTERM, signal_handler)
+    
+    # 修复：确保服务器持续运行
+    try:
+        uvicorn.run(
+            app,
+            host="0.0.0.0",
+            port=8000,
+            log_level="info",
+            access_log=True,
+            timeout_keep_alive=5
+        )
+    except KeyboardInterrupt:
+        print("\n[Enhanced Scheduler] Server stopped by user")
+    except Exception as e:
+        print(f"[Enhanced Scheduler] Error: {e}")
+        print("[Enhanced Scheduler] Server will restart in 5 seconds...")
+        time.sleep(5)
+        # 重新启动服务器
+        os.execv(sys.executable, ['python'] + sys.argv)

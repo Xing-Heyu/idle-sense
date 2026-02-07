@@ -150,6 +150,7 @@ def get_platform() -> str:
         >>> from idle_sense import get_platform
         >>> print(f"当前平台: {get_platform()}")
     """
+    global _PLATFORM_NAME_CACHE
     if _PLATFORM_NAME_CACHE is None:
         _PLATFORM_NAME_CACHE = _detect_platform()
     return _PLATFORM_NAME_CACHE
