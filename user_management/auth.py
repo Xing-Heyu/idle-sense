@@ -10,7 +10,7 @@ class AuthManager:
         self.user_quotas: Dict[str, UserQuota] = {}
         self.sessions: Dict[str, str] = {}  # session_id -> user_id
         
-    def register_user(self, username: str, email: str) -> Dict[str, Any]:
+    def register_user(self, username: str, email: str, agree_folder_usage: bool = False) -> Dict[str, Any]:
         """注册新用户"""
         if any(u.username == username for u in self.users.values()):
             return {"success": False, "error": "用户名已存在"}
@@ -21,6 +21,10 @@ class AuthManager:
         user = User(username, email)
         quota = UserQuota(user.user_id)
         
+        # 如果用户同意文件夹使用规则，则创建文件夹
+        if agree_folder_usage:
+            user.agree_folder_usage()
+        
         self.users[user.user_id] = user
         self.user_quotas[user.user_id] = quota
         
@@ -28,7 +32,8 @@ class AuthManager:
             "success": True, 
             "user_id": user.user_id,
             "user": user.to_dict(),
-            "quota": quota.to_dict()
+            "quota": quota.to_dict(),
+            "folder_agreement": agree_folder_usage
         }
     
     def get_user_by_id(self, user_id: str) -> Optional[User]:

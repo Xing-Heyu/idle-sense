@@ -10,9 +10,14 @@ import os
 import sys
 from datetime import datetime, timedelta
 from typing import List, Dict, Optional, Any, Tuple
-from fastapi import FastAPI, HTTPException, BackgroundTasks, Header
+from fastapi import FastAPI, HTTPException, BackgroundTasks, Header, Body
 from pydantic import BaseModel
 from collections import defaultdict
+
+# 导入安全沙箱
+sys.path.append(os.path.dirname(os.path.abspath(__file__)) + '/..')
+from sandbox import CodeSandbox
+from user_management.local_authorization import authorization_manager
 
 # ==================== 用户管理数据模型 ====================
 class User(BaseModel):
@@ -39,6 +44,7 @@ class TaskSubmission(BaseModel):
     code: str
     timeout: Optional[int] = 300
     resources: Optional[Dict[str, Any]] = {"cpu": 1.0, "memory": 512}
+    user_id: Optional[str] = None  # 新增用户ID参数
 
 class TaskResult(BaseModel):
     """任务结果模型"""
@@ -606,6 +612,7 @@ app = FastAPI(
 storage = EnhancedMemoryStorage()
 auth_manager = SimpleAuthManager()
 quota_manager = SimpleQuotaManager()
+sandbox = CodeSandbox()  # 安全沙箱实例
 
 # ==================== 后台任务 ====================
 def cleanup_old_nodes():
@@ -630,14 +637,38 @@ def startup_event():
 
 # ==================== 用户管理API端点 ====================
 @app.post("/api/users/register")
-async def register_user(username: str, email: str):
-    """用户注册接口"""
-    result = auth_manager.register_user(username, email)
+async def register_user(username: str, email: str, agree_folder_usage: bool, user_confirmed_authorization: bool = False):
+    """用户注册接口 - 必须同意文件夹使用协议并确认授权"""
+    
+    # 强制要求用户同意文件夹使用协议
+    if not agree_folder_usage:
+        raise HTTPException(status_code=400, detail="【本地操作授权】必须同意文件夹使用协议才能使用本系统")
+    
+    # 强制要求用户确认授权（合规要求）
+    if not user_confirmed_authorization:
+        raise HTTPException(status_code=400, detail="【本地操作授权】必须确认本地操作授权才能使用本系统")
+    
+    # 先进行用户注册
+    result = auth_manager.register_user(username, email, agree_folder_usage)
     if not result["success"]:
         raise HTTPException(status_code=400, detail=result["error"])
     
-    # 初始化配额
     user_id = result["user_id"]
+    
+    # 构建文件夹路径信息
+    target_paths = {
+        "user_data": f"node_data/user_data/{user_id}",
+        "temp_data": f"node_data/temp_data/{user_id}"
+    }
+    
+    # 请求文件夹创建授权
+    authorization_request = authorization_manager.request_folder_creation_authorization(
+        user_id=user_id,
+        username=username,
+        target_paths=target_paths
+    )
+    
+    # 初始化配额
     quota_manager.quotas[user_id] = UserQuota(user_id=user_id)
     
     # 创建会话
@@ -647,7 +678,44 @@ async def register_user(username: str, email: str):
         "success": True,
         "session_id": session_id,
         "user": result["user"],
-        "quota": result["quota"]
+        "quota": result["quota"],
+        "folder_agreement": result["folder_agreement"],
+        "authorization_required": True,
+        "authorization_request": authorization_request,
+        "message": "注册成功！请确认本地文件夹创建授权。"
+    }
+
+
+@app.post("/api/users/confirm-authorization")
+async def confirm_authorization(
+    x_session_id: str = Header(...),
+    operation_details: Dict[str, Any] = Body(...),
+    user_agreed: bool = Body(...)
+):
+    """确认本地操作授权"""
+    user_id = auth_manager.validate_session(x_session_id)
+    if not user_id:
+        raise HTTPException(status_code=401, detail="未授权")
+    
+    # 确认授权
+    authorization_result = authorization_manager.confirm_authorization(
+        user_id=user_id,
+        operation_details=operation_details,
+        user_agreed=user_agreed
+    )
+    
+    if not authorization_result["authorized"]:
+        return {
+            "success": False,
+            "message": authorization_result["message"],
+            "authorization_log": authorization_result["log_entry"]
+        }
+    
+    return {
+        "success": True,
+        "message": authorization_result["message"],
+        "authorization_log": authorization_result["log_entry"],
+        "disclaimer": "【本地文件操作免责声明】所有本地操作均由您主动授权发起，操作结果由您自行负责。"
     }
 
 @app.get("/api/users/quota")
@@ -692,14 +760,19 @@ async def root() -> Dict[str, Any]:
 
 @app.post("/submit")
 async def submit_task(submission: TaskSubmission, background_tasks: BackgroundTasks) -> Dict[str, Any]:
-    """提交任务（开源版本无限制）"""
+    """提交任务（开源版本无限制 + 安全沙箱检查）"""
     if not submission.code.strip():
         raise HTTPException(status_code=400, detail="Code cannot be empty")
     
     if len(submission.code) > 10000:
         raise HTTPException(status_code=400, detail="Code too long (max 10000 characters)")
     
-    task_id = storage.add_task(submission.code, submission.timeout, submission.resources)
+    # 代码安全检查
+    safety_check = sandbox.check_code_safety(submission.code)
+    if not safety_check['safe']:
+        raise HTTPException(status_code=400, detail=f"代码安全检查失败: {safety_check['error']}")
+    
+    task_id = storage.add_task(submission.code, submission.timeout, submission.resources, submission.user_id)
     
     # 触发后台清理
     background_tasks.add_task(cleanup_old_nodes)
@@ -708,7 +781,8 @@ async def submit_task(submission: TaskSubmission, background_tasks: BackgroundTa
         "task_id": task_id,
         "status": "submitted",
         "server_id": storage.server_id,
-        "message": f"Task {task_id} has been queued"
+        "message": f"Task {task_id} has been queued",
+        "safety_check": "通过"
     }
 
 @app.get("/get_task")

@@ -10,6 +10,9 @@ class User:
         self.email = email
         self.created_at = datetime.now()
         self.is_active = True
+        self.folder_agreement = False  # 用户是否同意文件夹使用规则
+        self.user_folder_path = f"user_data/{self.user_id}"  # 用户文件夹路径
+        self.temp_folder_path = f"temp_data/{self.user_id}"  # 临时文件夹路径
         
     def to_dict(self) -> Dict[str, Any]:
         return {
@@ -17,8 +20,17 @@ class User:
             "username": self.username,
             "email": self.email,
             "created_at": self.created_at.isoformat(),
-            "is_active": self.is_active
+            "is_active": self.is_active,
+            "folder_agreement": self.folder_agreement,
+            "user_folder_path": self.user_folder_path,
+            "temp_folder_path": self.temp_folder_path
         }
+    
+    def agree_folder_usage(self):
+        """用户同意文件夹使用规则"""
+        self.folder_agreement = True
+        # 注意：文件夹创建应该在节点客户端进行，这里只记录同意状态
+        return True
 
 class UserQuota:
     """用户资源配额 - 开源版本无限制"""

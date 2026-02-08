@@ -197,6 +197,214 @@ st.markdown("利用个人电脑闲置算力的分布式计算平台")
 with st.sidebar:
     st.header("控制面板")
     
+    # 用户登录状态
+    st.subheader("用户状态")
+    
+    # 检查用户是否已登录
+    if 'user_session' not in st.session_state:
+        st.session_state.user_session = None
+    
+    if st.session_state.user_session:
+        st.success("✅ 已登录")
+        st.caption(f"用户: {st.session_state.user_session.get('username', '未知')}")
+        
+        if st.button("🚪 退出登录"):
+            st.session_state.user_session = None
+            st.rerun()
+    else:
+        st.warning("🔒 未登录")
+        st.caption("登录后可享受完整功能")
+        
+        # 用户注册/登录
+        with st.expander("用户管理", expanded=False):
+            tab_login, tab_register = st.tabs(["登录", "注册"])
+            
+            with tab_register:
+                st.markdown("### 新用户注册")
+                
+                reg_username = st.text_input("用户名", key="reg_username")
+                reg_email = st.text_input("邮箱", key="reg_email")
+                
+                # 文件夹使用协议
+                st.markdown("### 本地操作授权")
+                
+                # 强制用户阅读并同意
+                with st.container():
+                    st.markdown("#### 文件夹使用协议")
+                    st.markdown("""
+                    使用本系统需要同意在您的设备上创建以下文件夹：
+                    - **用户数据文件夹**: `node_data/user_data/{您的用户ID}`
+                    - **临时数据文件夹**: `node_data/temp_data/{您的用户ID}`
+                    
+                    所有操作均由您主动授权发起，操作结果由您自行负责。
+                    """)
+                    
+                    agree_folder = st.checkbox("□ 我已阅读并同意文件夹使用协议", key="agree_folder")
+                    
+                    st.markdown("#### 本地操作授权确认")
+                    st.markdown("""
+                    【本地文件操作免责声明】
+                    1. 所有本地文件夹/文件操作均需用户主动点击授权后执行
+                    2. 系统不会在后台进行任何未告知的本地文件操作
+                    3. 操作结果及后续风险由用户自行承担责任
+                    """)
+                    
+                    confirm_auth = st.checkbox("□ 我已确认本地操作授权", key="confirm_auth")
+                
+                # 显示具体的文件夹路径（增强用户体验）
+                import os
+                project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+                user_data_path = os.path.join(project_root, "node_data", "user_data", "{您的用户ID}")
+                temp_data_path = os.path.join(project_root, "node_data", "temp_data", "{您的用户ID}")
+                
+                st.markdown("#### 具体操作路径")
+                st.code(f"""
+用户数据文件夹: {user_data_path}
+临时数据文件夹: {temp_data_path}
+""", language="text")
+                
+                # 独立的授权确认弹窗（模拟实现）
+                show_authorization_modal = st.checkbox("🔒 点击此处查看并确认本地操作授权", key="show_auth_modal")
+                
+                if show_authorization_modal:
+                    with st.container():
+                        st.markdown("---")
+                        st.markdown("### 🔒 【本地操作授权确认】")
+                        st.markdown("**此操作需要您明确授权才能继续**")
+                        
+                        # 授权弹窗内容
+                        st.markdown(f"""
+#### 操作详情
+- **操作类型**: 文件夹创建
+- **目标路径**: 
+  - `{user_data_path}`
+  - `{temp_data_path}`
+- **操作设备**: 您的本地计算机
+
+#### 授权声明
+所有操作均由您主动授权发起，确认授权后系统将执行以下操作：
+1. 在您的设备上创建上述文件夹
+2. 仅在此次授权范围内执行操作
+3. 不会进行任何未告知的额外操作
+
+#### 风险提示
+操作结果及后续风险由您自行承担责任。
+""")
+                        
+                        # 强制用户手动确认
+                        auth_confirmed = st.checkbox("✅ 我已阅读并确认授权本次本地操作", key="final_auth_confirm")
+                        
+                        if not auth_confirmed:
+                            st.warning("⚠️ 请确认授权后才能继续注册")
+                        
+                        st.markdown("---")
+                
+                if st.button("📝 注册", type="primary", use_container_width=True):
+                    if not reg_username or not reg_email:
+                        st.error("请填写用户名和邮箱")
+                    elif not agree_folder:
+                        st.error("必须同意文件夹使用协议")
+                    elif not confirm_auth:
+                        st.error("必须确认本地操作授权")
+                    elif show_authorization_modal and not auth_confirmed:
+                        st.error("请完成本地操作授权确认")
+                    else:
+                        with st.spinner("注册中..."):
+                            # 调用注册API
+                            try:
+                                response = requests.post(
+                                    f"{SCHEDULER_URL}/api/users/register",
+                                    json={
+                                        "username": reg_username,
+                                        "email": reg_email,
+                                        "agree_folder_usage": True,
+                                        "user_confirmed_authorization": True
+                                    }
+                                )
+                                
+                                if response.status_code == 200:
+                                    result = response.json()
+                                    if result["success"]:
+                                        st.session_state.user_session = {
+                                            "session_id": result["session_id"],
+                                            "user": result["user"],
+                                            "username": reg_username
+                                        }
+                                        
+                                        # 显示详细的成功信息
+                                        st.success("✅ 注册成功！")
+                                        
+                                        # 显示文件夹创建确认
+                                        user_id = result["user"]["user_id"]
+                                        actual_user_path = os.path.join(project_root, "node_data", "user_data", user_id)
+                                        actual_temp_path = os.path.join(project_root, "node_data", "temp_data", user_id)
+                                        
+                                        st.markdown("### 📁 文件夹创建确认")
+                                        st.markdown(f"""
+**已根据您的授权创建以下文件夹：**
+- 用户数据文件夹: `{actual_user_path}`
+- 临时数据文件夹: `{actual_temp_path}`
+
+**操作记录已保存至本地日志，供您核查。**
+""")
+                                        
+                                        st.info("💡 您现在可以开始使用系统的完整功能了！")
+                                        
+                                        # 延迟跳转，让用户有时间阅读确认信息
+                                        time.sleep(3)
+                                        st.rerun()
+                                    else:
+                                        st.error(f"注册失败: {result.get('error', '未知错误')}")
+                                else:
+                                    st.error(f"注册失败: HTTP {response.status_code}")
+                            except Exception as e:
+                                st.error(f"注册请求失败: {e}")
+            
+            with tab_login:
+                st.info("当前版本暂只支持注册新用户")
+                st.markdown("请使用注册功能创建新账户")
+                
+                # 添加文件夹管理功能（已登录用户可见）
+                if st.session_state.user_session:
+                    st.markdown("---")
+                    st.markdown("### 📁 文件夹管理")
+                    
+                    user_id = st.session_state.user_session.get("user", {}).get("user_id")
+                    if user_id:
+                        user_data_path = os.path.join(project_root, "node_data", "user_data", user_id)
+                        temp_data_path = os.path.join(project_root, "node_data", "temp_data", user_id)
+                        
+                        st.markdown(f"""
+**您的文件夹路径：**
+- 用户数据文件夹: `{user_data_path}`
+- 临时数据文件夹: `{temp_data_path}`
+""")
+                        
+                        # 文件夹操作选项
+                        col1, col2 = st.columns(2)
+                        with col1:
+                            if st.button("🔍 查看文件夹", use_container_width=True):
+                                st.info(f"文件夹位置: {user_data_path}")
+                                st.info("您可以通过文件管理器手动访问这些文件夹")
+                        
+                        with col2:
+                            if st.button("🗑️ 删除文件夹", use_container_width=True, type="secondary"):
+                                st.warning("⚠️ 此操作将删除您的所有数据")
+                                delete_confirm = st.checkbox("确认删除所有用户数据")
+                                if delete_confirm:
+                                    st.error("删除功能暂未实现，请手动删除文件夹")
+                        
+                        # 操作日志查看
+                        if st.button("📋 查看操作日志", use_container_width=True):
+                            log_file = os.path.join(project_root, "node_data", "logs", "local_operations.log")
+                            if os.path.exists(log_file):
+                                st.success("操作日志文件存在")
+                                st.code(f"日志位置: {log_file}")
+                            else:
+                                st.info("暂无操作日志记录")
+    
+    st.divider()
+    
     # 调度中心状态
     st.subheader("调度中心状态")
     health_ok, health_info = check_scheduler_health()
@@ -242,7 +450,7 @@ with st.sidebar:
     st.subheader("示例代码")
     example_code = st.selectbox(
         "选择示例",
-        ["简单计算", "数据处理", "模拟计算", "自定义"]
+        ["简单计算", "数据处理", "模拟计算", "读取用户数据", "自定义"]
     )
     
     examples = {
@@ -285,7 +493,37 @@ for _ in range(num_points):
 
 pi_estimate = 4 * points_inside / num_points
 print(f"π的估计值: {pi_estimate}")
-print(f"与真实π的误差: {abs(pi_estimate - math.pi):.6f}")"""
+print(f"与真实π的误差: {abs(pi_estimate - math.pi):.6f}")""",
+        
+        "读取用户数据": """# 读取用户数据文件夹中的文件示例
+
+# 方法1：使用系统提供的函数读取文件
+try:
+    # 读取用户数据文件夹中的文件
+    file_content = read_user_file("my_data.txt")
+    print(f"成功读取文件内容:\n{file_content}")
+except Exception as e:
+    print(f"读取文件失败: {e}")
+    print("请确保在user_data文件夹中放置了my_data.txt文件")
+
+# 方法2：检查用户文件夹中的文件列表
+print("\\n用户文件夹中的文件:")
+user_files = list_user_files()
+for file in user_files:
+    print(f"- {file}")
+
+# 方法3：使用用户文件夹路径进行计算
+print(f"\\n用户文件夹路径: {USER_FOLDER}")
+print(f"临时文件夹路径: {TEMP_FOLDER}")
+
+# 示例：如果用户提供了数据文件，就使用用户数据
+if user_file_exists("dataset.csv"):
+    print("检测到用户数据文件，将使用用户数据进行计算")
+    # 这里可以添加处理用户数据的代码
+else:
+    print("未检测到用户数据文件，使用默认数据进行计算")
+    # 这里可以添加使用默认数据的代码
+"""
     }
     
     if example_code != "自定义":
