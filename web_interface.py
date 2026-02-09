@@ -1,7 +1,7 @@
 """
 web_interface.py
 闲置计算加速器 - 网页控制界面
-修复版：适配新版调度中心API
+修复版：适配新版调度中心API + 分布式任务处理
 """
 
 import streamlit as st
@@ -17,6 +17,14 @@ import pandas as pd
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 
+# 导入分布式任务处理模块
+try:
+    from distributed_task import DistributedTaskManager, DISTRIBUTED_TASK_TEMPLATES
+    DISTRIBUTED_TASK_AVAILABLE = True
+except ImportError:
+    DISTRIBUTED_TASK_AVAILABLE = False
+    print("Warning: distributed_task module not available, distributed tasks disabled")
+
 # 页面配置
 st.set_page_config(
     page_title="闲置计算加速器",
@@ -28,6 +36,12 @@ st.set_page_config(
 # 配置
 SCHEDULER_URL = "http://localhost:8000"
 REFRESH_INTERVAL = 30  # 降低自动刷新间隔（秒），减少闪烁
+
+# 初始化分布式任务管理器
+if DISTRIBUTED_TASK_AVAILABLE:
+    distributed_task_manager = DistributedTaskManager(SCHEDULER_URL)
+else:
+    distributed_task_manager = None
 
 # 初始化 session state
 if 'task_history' not in st.session_state:
@@ -852,6 +866,69 @@ def delete_task(task_id):
     except Exception as e:
         return False, {"error": str(e)}
 
+def submit_distributed_task(name, description, code_template, data, chunk_size=10, 
+                           max_parallel_chunks=5, merge_code=None):
+    """提交分布式任务"""
+    if not DISTRIBUTED_TASK_AVAILABLE:
+        return False, {"error": "分布式任务处理模块不可用"}
+    
+    try:
+        # 提交分布式任务
+        task_id = distributed_task_manager.submit_distributed_task(
+            name=name,
+            description=description,
+            code_template=code_template,
+            data=data,
+            chunk_size=chunk_size,
+            max_parallel_chunks=max_parallel_chunks,
+            merge_code=merge_code
+        )
+        
+        # 创建任务分片
+        if distributed_task_manager.create_task_chunks(task_id):
+            # 在后台线程中执行任务
+            import threading
+            def execute_task():
+                distributed_task_manager.execute_distributed_task(task_id)
+            
+            thread = threading.Thread(target=execute_task, daemon=True)
+            thread.start()
+            
+            return True, {"task_id": task_id, "message": "分布式任务已提交"}
+        else:
+            return False, {"error": "创建任务分片失败"}
+            
+    except Exception as e:
+        return False, {"error": str(e)}
+
+def get_distributed_task_status(task_id):
+    """获取分布式任务状态"""
+    if not DISTRIBUTED_TASK_AVAILABLE:
+        return False, {"error": "分布式任务处理模块不可用"}
+    
+    try:
+        status = distributed_task_manager.get_task_status(task_id)
+        if status:
+            return True, status
+        else:
+            return False, {"error": "任务不存在"}
+    except Exception as e:
+        return False, {"error": str(e)}
+
+def get_distributed_task_result(task_id):
+    """获取分布式任务结果"""
+    if not DISTRIBUTED_TASK_AVAILABLE:
+        return False, {"error": "分布式任务处理模块不可用"}
+    
+    try:
+        result = distributed_task_manager.get_task_result(task_id)
+        if result is not None:
+            return True, {"result": result}
+        else:
+            return False, {"error": "任务未完成或结果不可用"}
+    except Exception as e:
+        return False, {"error": str(e)}
+
 def get_all_nodes():
     """获取所有节点信息 - 优化版：减少API调用次数"""
     try:
@@ -1298,30 +1375,293 @@ tab1, tab2, tab3, tab4, tab5 = st.tabs(["📝 提交任务", "📊 任务监控"
 with tab1:
     st.header("提交计算任务")
     
-    # 任务配置
-    col1, col2 = st.columns(2)
-    
-    with col1:
-        timeout = st.number_input("超时时间(秒)", min_value=10, max_value=3600, value=300, step=10)
-        cpu_request = st.slider("CPU需求(核心)", 0.1, 8.0, 1.0, 0.1)
-    
-    with col2:
-        memory_request = st.number_input("内存需求(MB)", min_value=64, max_value=8192, value=512, step=64)
-    
-    # 代码编辑器
-    st.subheader("Python代码")
-    
-    # 示例代码选择
-    example_code = st.selectbox(
-        "选择示例代码",
-        ["自定义", "Hello World", "数学计算", "文件处理", "网络请求"],
-        index=0
+    # 任务类型选择
+    task_type = st.radio(
+        "选择任务类型",
+        ["分布式任务", "单节点任务"],
+        horizontal=True,
+        help="分布式任务由多个节点协作执行，充分利用闲置计算资源"
     )
     
-    # 预定义示例代码
-    examples = {
-        "Hello World": 'print("Hello, World!")',
-        "数学计算": '''
+    if task_type == "分布式任务":
+        if not DISTRIBUTED_TASK_AVAILABLE:
+            st.error("❌ 分布式任务处理模块不可用，请确保已安装distributed_task.py")
+        else:
+            st.info("🚀 **分布式任务** 可以利用多个节点的计算资源并行处理大型任务，大幅提升处理效率")
+        st.markdown("""
+        ### 🤔 什么是分布式任务？
+        
+        分布式任务就是将一个大任务拆分成多个小任务，让多台电脑同时处理，最后汇总结果。
+        
+        **简单比喻：**
+        - **单节点任务**：像一个人独自完成1000道数学题
+        - **分布式任务**：像10个人每人做100道题，最后汇总所有答案
+        
+        **优势：**
+        - 速度快：10台电脑并行处理，理论上速度提升10倍
+        - 能处理更大数据：单台电脑内存不够时，可以分散到多台处理
+        - 容错性：某台电脑出问题，其他电脑继续工作
+        """)
+        st.subheader("分布式任务配置")
+        
+        # 分布式任务模板选择
+        template_name = st.selectbox(
+            "选择任务类型",
+            options=list(DISTRIBUTED_TASK_TEMPLATES.keys()),
+            format_func=lambda x: DISTRIBUTED_TASK_TEMPLATES[x]["name"],
+            help="选择预定义的任务类型，或自定义任务"
+        )
+        
+        # 显示模板描述
+        if template_name in DISTRIBUTED_TASK_TEMPLATES:
+            st.info(DISTRIBUTED_TASK_TEMPLATES[template_name]["description"])
+        
+        # 任务配置
+        col1, col2 = st.columns(2)
+        
+        with col1:
+            task_name = st.text_input("任务名称", value=f"分布式任务_{int(time.time())}")
+            chunk_size = st.number_input(
+                "分片大小（每组数据数量）", 
+                min_value=1, 
+                max_value=1000, 
+                value=10, 
+                step=1, 
+                help="分片是指将大数据分成小块，每个节点处理一小块。例如：1000条数据，分片大小为100，则会分成10块，由10个节点并行处理"
+            )
+        
+        with col2:
+            task_description = st.text_input("任务描述", value="使用多节点协作处理大型任务")
+            max_parallel_chunks = st.number_input(
+                "最大并行节点数", 
+                min_value=1, 
+                max_value=50, 
+                value=5, 
+                step=1,
+                help="同时执行任务的节点数量。例如：设置为5表示最多5个节点同时处理数据分片"
+            )
+        
+        # 数据输入
+        st.subheader("任务数据")
+        data_input_method = st.radio(
+            "数据输入方式",
+            ["手动输入", "从文件上传"],
+            horizontal=True
+        )
+        
+        task_data = None
+        if data_input_method == "手动输入":
+            data_type = st.selectbox("数据类型", ["数字列表", "文本列表", "键值对"])
+            
+            if data_type == "数字列表":
+                data_input = st.text_area("输入数字列表，用逗号分隔", value="1,2,3,4,5,6,7,8,9,10")
+                try:
+                    task_data = [int(x.strip()) for x in data_input.split(",")]
+                except:
+                    st.error("输入格式错误，请输入数字并用逗号分隔")
+            
+            elif data_type == "文本列表":
+                data_input = st.text_area("输入文本列表，每行一项", value="苹果\n香蕉\n橙子\n葡萄\n西瓜")
+                task_data = [line.strip() for line in data_input.split("\n") if line.strip()]
+            
+            elif data_type == "键值对":
+                data_input = st.text_area("输入键值对，每行一个，用冒号分隔", 
+                                         value="名称:闲置计算加速器\n版本:2.0\n类型:分布式计算")
+                task_data = {}
+                for line in data_input.split("\n"):
+                    if ":" in line:
+                        key, value = line.split(":", 1)
+                        task_data[key.strip()] = value.strip()
+        
+        else:  # 从文件上传
+            uploaded_file = st.file_uploader("上传JSON文件", type=["json"])
+            if uploaded_file:
+                try:
+                    content = uploaded_file.read().decode("utf-8")
+                    task_data = json.loads(content)
+                    st.success(f"文件上传成功，包含 {len(task_data) if isinstance(task_data, (list, dict)) else 1} 项数据")
+                except Exception as e:
+                    st.error(f"文件解析失败: {e}")
+        
+        # 添加通用任务选项
+        st.markdown("---")
+        st.subheader("🎯 通用任务处理")
+        st.info("💡 **通用任务** 可以处理任何类型的计算任务，不限于预设模板")
+        
+        # 通用任务选项
+        use_custom_task = st.checkbox("使用通用任务（自定义处理逻辑）", help="不使用预设模板，完全自定义任务处理方式")
+        
+        if use_custom_task:
+            st.subheader("自定义任务配置")
+            
+            st.markdown("""
+            ### 📝 自定义任务说明
+            
+            自定义任务分为两部分：
+            1. **数据处理代码**：每个节点如何处理分配给它的数据
+            2. **结果合并代码**：如何将所有节点的处理结果合并
+            
+            ### 🔧 关键变量说明
+            - `__DATA__`：系统自动分配给当前节点的数据片段
+            - `__CHUNK_ID__`：当前数据片段的唯一标识符
+            - `__CHUNK_INDEX__`：当前数据片段的序号（从0开始）
+            - `__CHUNK_RESULTS__`：所有节点返回的结果列表（仅用于合并代码）
+            - `__result__`：当前节点的处理结果（必须设置）
+            - `__MERGED_RESULT__`：所有节点结果的最终合并结果（必须设置）
+            """)
+            
+            # 自定义处理代码
+            custom_map_code = st.text_area(
+                "数据处理代码（每个节点执行的代码）",
+                value="""
+# 在这里编写每个节点要执行的代码
+# __DATA__ 变量包含分配给这个节点的数据片段
+# __CHUNK_ID__ 变量是当前数据片段的ID
+# __CHUNK_INDEX__ 变量是当前数据片段的索引
+
+# 示例：处理数据
+results = []
+for item in __DATA__:
+    # 在这里处理每个数据项
+    processed_item = item * 2  # 示例：将每个数字乘以2
+    results.append(processed_item)
+
+# 设置结果（必须设置这个变量）
+__result__ = {
+    "chunk_id": __CHUNK_ID__,
+    "chunk_index": __CHUNK_INDEX__,
+    "processed_data": results,
+    "count": len(results)
+}
+print(f"处理了 {len(results)} 项数据")
+""",
+                height=200,
+                help="这段代码将在每个节点上运行，处理分配给该节点的数据片段"
+            )
+            
+            custom_merge_code = st.text_area(
+                "结果合并代码（合并所有节点的结果）",
+                value="""
+# 在这里编写合并所有节点结果的代码
+# __CHUNK_RESULTS__ 变量包含所有节点返回的结果列表
+
+# 示例：合并所有节点的处理结果
+all_results = []
+total_count = 0
+
+for chunk_result in __CHUNK_RESULTS__:
+    if isinstance(chunk_result, dict) and "processed_data" in chunk_result:
+        all_results.extend(chunk_result["processed_data"])
+        total_count += chunk_result["count"]
+
+# 设置最终合并结果（必须设置这个变量）
+__MERGED_RESULT__ = {
+    "total_processed": total_count,
+    "all_data": all_results
+}
+print(f"合并完成，总共处理了 {total_count} 项数据")
+""",
+                height=200,
+                help="这段代码将合并所有节点返回的结果"
+            )
+            
+            # 代码模板显示
+            if not use_custom_task and template_name in DISTRIBUTED_TASK_TEMPLATES:
+                with st.expander("查看任务代码模板", expanded=False):
+                    st.code(DISTRIBUTED_TASK_TEMPLATES[template_name]["code_template"], language="python")
+                    
+                    if "merge_code" in DISTRIBUTED_TASK_TEMPLATES[template_name]:
+                        st.subheader("合并代码模板")
+                        st.code(DISTRIBUTED_TASK_TEMPLATES[template_name]["merge_code"], language="python")
+            
+            # 提交按钮
+            if st.button("🚀 提交分布式任务", type="primary", use_container_width=True):
+                if not task_name or not task_description:
+                    st.error("请填写任务名称和描述")
+                elif task_data is None:
+                    st.error("请输入或上传任务数据")
+                else:
+                    with st.spinner("提交分布式任务中..."):
+                        # 根据是否使用自定义任务选择代码模板
+                        if use_custom_task:
+                            # 使用自定义代码
+                            code_template = custom_map_code
+                            merge_code = custom_merge_code
+                        else:
+                            # 使用预设模板
+                            code_template = DISTRIBUTED_TASK_TEMPLATES[template_name]["code_template"]
+                            merge_code = DISTRIBUTED_TASK_TEMPLATES[template_name].get("merge_code")
+                        
+                        # 提交分布式任务
+                        success, result = submit_distributed_task(
+                            name=task_name,
+                            description=task_description,
+                            code_template=code_template,
+                            data=task_data,
+                            chunk_size=chunk_size,
+                            max_parallel_chunks=max_parallel_chunks,
+                            merge_code=merge_code
+                        )
+                        
+                        if success:
+                            task_id = result.get("task_id")
+                            st.success(f"✅ 分布式任务提交成功！任务ID: `{task_id}`")
+                            
+                            # 添加到历史记录
+                            st.session_state.task_history.append({
+                                "task_id": task_id,
+                                "time": datetime.now().strftime("%H:%M:%S"),
+                                "status": "submitted",
+                                "code_preview": f"{task_name} (分布式任务)",
+                                "type": "分布式任务"
+                            })
+                            
+                            # 显示任务详情
+                            with st.expander("任务详情", expanded=True):
+                                col1, col2, col3 = st.columns(3)
+                                with col1:
+                                    st.metric("任务ID", task_id)
+                                with col2:
+                                    st.metric("分片大小", chunk_size)
+                                with col3:
+                                    st.metric("最大并行分片", max_parallel_chunks)
+                                
+                                st.metric("数据项数量", len(task_data) if isinstance(task_data, (list, dict)) else 1)
+                                
+                                # 添加任务类型说明
+                                task_type_desc = "自定义任务" if use_custom_task else template_name
+                                st.info(f"任务类型: {task_type_desc}")
+                        else:
+                            st.error(f"❌ 提交失败: {result.get('error', '未知错误')}")
+    
+    else:  # 单节点任务
+        st.info("💡 **提示**: 单节点任务也可以在本地IDE中运行，分布式任务更能发挥系统优势")
+        st.subheader("单节点任务配置")
+        
+        # 简化的任务配置
+        with st.expander("任务配置", expanded=True):
+            col1, col2 = st.columns(2)
+            
+            with col1:
+                timeout = st.number_input("超时时间(秒)", min_value=10, max_value=3600, value=300, step=10)
+                cpu_request = st.slider("CPU需求(核心)", 0.1, 8.0, 1.0, 0.1)
+            
+            with col2:
+                memory_request = st.number_input("内存需求(MB)", min_value=64, max_value=8192, value=512, step=64)
+        
+        # 代码编辑器
+        with st.expander("Python代码", expanded=True):
+            # 示例代码选择
+            example_code = st.selectbox(
+                "选择示例代码",
+                ["自定义", "Hello World", "数学计算", "文件处理", "网络请求"],
+                index=0
+            )
+            
+            # 预定义示例代码
+            examples = {
+                "Hello World": 'print("Hello, World!")',
+                "数学计算": '''
 # 计算圆的面积
 import math
 
@@ -1329,7 +1669,7 @@ radius = 5
 area = math.pi * radius ** 2
 print(f"半径为{radius}的圆的面积是: {area:.2f}")
 ''',
-        "文件处理": '''
+                "文件处理": '''
 # 读取并处理文件
 import os
 
@@ -1345,7 +1685,7 @@ with open("example.txt", "r") as f:
 print(f"文件共有{len(lines)}行")
 print(f"第一行: {lines[0]}")
 ''',
-        "网络请求": '''
+                "网络请求": '''
 # 发送HTTP请求
 import requests
 import json
@@ -1361,12 +1701,12 @@ try:
 except Exception as e:
     print(f"请求出错: {e}")
 '''
-    }
-    
-    if example_code != "自定义" and example_code in examples:
-        default_code = examples[example_code]
-    else:
-        default_code = """# 在这里输入你的Python代码
+            }
+            
+            if example_code != "自定义" and example_code in examples:
+                default_code = examples[example_code]
+            else:
+                default_code = """# 在这里输入你的Python代码
 # 任务执行结果将通过print()输出
 # 或者赋值给 __result__ 变量
 
@@ -1380,45 +1720,46 @@ def fibonacci(n):
 
 result = fibonacci(20)
 print(f"斐波那契数列第20项: {result}")"""
-    
-    code = st.text_area(
-        "输入Python代码",
-        value=default_code,
-        height=300,
-        label_visibility="collapsed"
-    )
-    
-    # 提交按钮
-    if st.button("🚀 提交任务", type="primary", use_container_width=True):
-        if not code.strip():
-            st.error("请输入Python代码")
-        else:
-            with st.spinner("提交任务中..."):
-                success, result = submit_task(code, timeout, cpu_request, memory_request)
-                
-                if success:
-                    task_id = result.get("task_id")
-                    st.success(f"✅ 任务提交成功！任务ID: `{task_id}`")
+            
+            code = st.text_area(
+                "输入Python代码",
+                value=default_code,
+                height=300,
+                label_visibility="collapsed"
+            )
+        
+        # 提交按钮
+        if st.button("🚀 提交单节点任务", use_container_width=True):
+            if not code.strip():
+                st.error("请输入Python代码")
+            else:
+                with st.spinner("提交任务中..."):
+                    success, result = submit_task(code, timeout, cpu_request, memory_request)
                     
-                    # 添加到历史记录
-                    st.session_state.task_history.append({
-                        "task_id": task_id,
-                        "time": datetime.now().strftime("%H:%M:%S"),
-                        "status": "submitted",
-                        "code_preview": code[:100] + ("..." if len(code) > 100 else "")
-                    })
-                    
-                    # 显示任务详情
-                    with st.expander("任务详情", expanded=True):
-                        col1, col2, col3 = st.columns(3)
-                        with col1:
-                            st.metric("任务ID", task_id)
-                        with col2:
-                            st.metric("超时时间", f"{timeout}秒")
-                        with col3:
-                            st.metric("资源需求", f"CPU: {cpu_request}, 内存: {memory_request}MB")
-                else:
-                    st.error(f"❌ 提交失败: {result.get('error', '未知错误')}")
+                    if success:
+                        task_id = result.get("task_id")
+                        st.success(f"✅ 任务提交成功！任务ID: `{task_id}`")
+                        
+                        # 添加到历史记录
+                        st.session_state.task_history.append({
+                            "task_id": task_id,
+                            "time": datetime.now().strftime("%H:%M:%S"),
+                            "status": "submitted",
+                            "code_preview": code[:100] + ("..." if len(code) > 100 else ""),
+                            "type": "单节点任务"
+                        })
+                        
+                        # 显示任务详情
+                        with st.expander("任务详情", expanded=True):
+                            col1, col2, col3 = st.columns(3)
+                            with col1:
+                                st.metric("任务ID", task_id)
+                            with col2:
+                                st.metric("超时时间", f"{timeout}秒")
+                            with col3:
+                                st.metric("资源需求", f"CPU: {cpu_request}, 内存: {memory_request}MB")
+                    else:
+                        st.error(f"❌ 提交失败: {result.get('error', '未知错误')}")
     
 
 
@@ -1431,6 +1772,13 @@ with tab2:
         # 清除缓存，强制刷新
         cleanup_cache()
         st.rerun()
+    
+    # 任务类型选择
+    task_monitor_type = st.radio(
+        "监控任务类型",
+        ["所有任务", "单节点任务", "分布式任务"],
+        horizontal=True
+    )
     
     success, results = get_all_results()
     if success and results.get("results"):
@@ -1451,12 +1799,29 @@ with tab2:
             # 创建结果表格
             results_data = []
             for result in results_list:
-                results_data.append({
-                    "任务ID": result.get("task_id", "N/A"),
-                    "完成时间": datetime.fromtimestamp(result.get("completed_at", time.time())).strftime("%H:%M:%S") if result.get("completed_at") else "N/A",
-                    "执行节点": result.get("assigned_node", "未知"),
-                    "结果预览": (result.get("result", "无结果")[:50] + "...") if result.get("result") and len(result.get("result", "")) > 50 else (result.get("result", "无结果") or "无结果")
-                })
+                # 获取任务类型
+                task_type = "单节点任务"
+                task_id = result.get("task_id", "N/A")
+                
+                # 检查是否是分布式任务
+                if st.session_state.task_history:
+                    for task in st.session_state.task_history:
+                        if task.get("task_id") == str(task_id) and task.get("type") == "分布式任务":
+                            task_type = "分布式任务"
+                            break
+                
+                # 根据选择的类型过滤
+                if task_monitor_type == "所有任务" or \
+                   (task_monitor_type == "单节点任务" and task_type == "单节点任务") or \
+                   (task_monitor_type == "分布式任务" and task_type == "分布式任务"):
+                    
+                    results_data.append({
+                        "任务ID": task_id,
+                        "任务类型": task_type,
+                        "完成时间": datetime.fromtimestamp(result.get("completed_at", time.time())).strftime("%H:%M:%S") if result.get("completed_at") else "N/A",
+                        "执行节点": result.get("assigned_node", "未知"),
+                        "结果预览": (result.get("result", "无结果")[:50] + "...") if result.get("result") and len(result.get("result", "")) > 50 else (result.get("result", "无结果") or "无结果")
+                    })
             
             if results_data:
                 results_df = pd.DataFrame(results_data)
@@ -1475,14 +1840,47 @@ with tab2:
                 if selected_task_id:
                     # 找到完整结果
                     full_result = None
+                    task_type = "单节点任务"
+                    
                     for result in results_list:
                         if str(result.get("task_id")) == str(selected_task_id):
                             full_result = result
                             break
                     
+                    # 检查任务类型
+                    if st.session_state.task_history:
+                        for task in st.session_state.task_history:
+                            if task.get("task_id") == str(selected_task_id):
+                                task_type = task.get("type", "单节点任务")
+                                break
+                    
                     if full_result and full_result.get("result"):
                         st.subheader(f"任务 {selected_task_id} 的完整结果")
                         st.code(full_result["result"], language="text")
+                        
+                        # 如果是分布式任务，显示额外信息
+                        if task_type == "分布式任务" and DISTRIBUTED_TASK_AVAILABLE:
+                            st.subheader("分布式任务详情")
+                            
+                            # 获取分布式任务状态
+                            status_success, status_info = get_distributed_task_status(selected_task_id)
+                            if status_success:
+                                col1, col2, col3 = st.columns(3)
+                                with col1:
+                                    st.metric("总分片数", status_info.get("total_chunks", 0))
+                                with col2:
+                                    st.metric("已完成分片", status_info.get("completed_chunks", 0))
+                                with col3:
+                                    st.metric("失败分片", status_info.get("failed_chunks", 0))
+                                
+                                # 显示进度条
+                                progress = status_info.get("progress", 0)
+                                st.progress(progress)
+                                st.write(f"任务进度: {progress:.1%}")
+                            else:
+                                st.warning(f"无法获取分布式任务状态: {status_info.get('error', '未知错误')}")
+            else:
+                st.info(f"没有找到{task_monitor_type}的已完成任务")
         else:
             st.info("暂无已完成的任务")
     elif not success:
@@ -1494,9 +1892,17 @@ with tab2:
         
         # 转换为DataFrame显示
         history_df = pd.DataFrame(st.session_state.task_history)
-        st.dataframe(
-            history_df,
-            column_config={
+        
+        # 根据选择的类型过滤
+        if task_monitor_type != "所有任务":
+            filtered_history = history_df[history_df["type"] == task_monitor_type]
+        else:
+            filtered_history = history_df
+        
+        if not filtered_history.empty:
+            st.dataframe(
+                filtered_history,
+                column_config={
                 "task_id": "任务ID",
                 "time": "提交时间",
                 "status": "状态",

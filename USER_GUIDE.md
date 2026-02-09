@@ -1,8 +1,12 @@
-# 闲置计算加速器 - 用户使用指南
+# 算力共享平台与闲置资源利用 - 本地部署用户指南
+
+> **面向有一定基础的用户**：本指南适用于熟悉基本电脑操作和命令行的用户
+
+---
 
 ## 🚀 快速开始
 
-### 第一步：系统激活（必须）
+### 第一步：本地部署启动（必须）
 ```bash
 # 方法1：使用批处理文件（推荐）
 双击运行 start_all.bat
@@ -13,16 +17,16 @@ python auto_start.py
 # 方法3：手动启动（按顺序）
 1. 启动调度中心：python scheduler/simple_server.py
 2. 启动节点客户端：python node/simple_client.py  
-3. 启动网页界面：streamlit run web_interface.py
+3. 启动网页界面：streamlit run web_interface.py --server.port 8502
 ```
 
-**激活状态检查**：
+**部署状态检查**：
 - 调度中心：http://localhost:8000 （显示版本信息）
-- 网页界面：http://localhost:8501 （显示控制面板）
+- 网页界面：http://localhost:8502 （显示控制面板）
 - 节点客户端：控制台显示"节点注册成功"
 
 ### 第二步：用户注册（首次使用）
-1. 打开网页界面 http://localhost:8501
+1. 打开网页界面 http://localhost:8502
 2. 在侧边栏点击"用户管理" → "注册"
 3. 填写用户名和邮箱
 4. **必须阅读并同意以下协议**：
@@ -30,23 +34,26 @@ python auto_start.py
    - ✅ 本地操作授权确认
 5. 完成注册，系统将在您的电脑创建专属文件夹
 
-### 第三步：使用数据文件（关键步骤）
+### 第三步：准备数据文件（关键步骤）
 1. **在本地文件管理器中**找到您的用户数据文件夹：
    ```
-   C:\\idle-sense\\node_data\\user_data\\{您的用户ID}
+   C:\idle-sense\node_data\user_data\{您的用户ID}
    ```
 2. **将您的数据文件**放入此文件夹（CSV、TXT、JSON等）
 3. **在网页界面编写脚本**读取您的数据文件
 
-### 第四步：提交计算任务
-1. 在"任务提交"标签页输入Python代码
-2. 使用系统提供的函数读取您的数据文件
-3. 设置资源需求（CPU、内存、超时时间）
-4. 点击"提交任务"
-5. 系统自动分配空闲节点执行
-6. 在"任务监控"标签页查看结果
+### 第四步：提交分布式计算任务
+1. 在"任务提交"标签页选择"分布式任务"
+2. 选择适合的任务类型或使用"通用任务"
+3. 配置任务参数（分片大小、并行节点数等）
+4. 输入或上传您的数据
+5. 点击"提交分布式任务"
+6. 系统自动分配多个节点并行执行
+7. 在"任务监控"标签页查看合并后的结果
 
-## 📁 文件夹管理说明
+---
+
+## 📁 本地文件夹结构说明
 
 ### 系统创建的文件夹结构
 ```
@@ -71,7 +78,13 @@ idle-sense/
   - **自动清理** - 系统自动管理，任务完成后清理
   - **不要存放重要数据** - 请不要在此存放需要长期保存的文件
 
-## 💻 如何在脚本中使用数据文件
+---
+
+## 💻 分布式任务开发
+
+### 分布式任务 vs 单节点任务
+- **单节点任务**：适合小规模计算，单个节点处理
+- **分布式任务**：适合大规模计算，多个节点并行处理，大幅提升效率
 
 ### 系统提供的文件操作函数
 ```python
@@ -97,39 +110,67 @@ if user_file_exists("config.json"):
     # 使用配置文件...
 ```
 
-### 完整的使用示例
+### 分布式任务开发示例
+
+#### 预设模板任务
 ```python
-# 完整的用户数据处理示例
+# 数据处理模板示例
+# 系统自动将大数据分片，每个节点处理一部分
+def process_data_chunk(data_chunk):
+    results = []
+    for item in data_chunk:
+        # 处理每个数据项
+        processed_item = item * 2  # 示例处理逻辑
+        results.append(processed_item)
+    return results
 
-# 1. 检查用户是否提供了数据文件
-if user_file_exists("sales_data.csv"):
-    print("使用用户提供的销售数据")
-    
-    # 读取用户数据文件
-    data_content = read_user_file("sales_data.csv")
-    
-    # 处理数据（示例：简单的数据分析）
-    lines = data_content.strip().split('\n')
-    total_sales = 0
-    
-    for line in lines[1:]:  # 跳过标题行
-        values = line.split(',')
-        if len(values) >= 2:
-            total_sales += float(values[1])
-    
-    print(f"总销售额: {total_sales:.2f}")
-    
-else:
-    print("未找到用户数据文件，使用示例数据")
-    # 使用默认数据进行计算...
-
-# 2. 使用用户配置文件（如果存在）
-if user_file_exists("settings.json"):
-    import json
-    settings_content = read_user_file("settings.json")
-    settings = json.loads(settings_content)
-    print(f"使用用户配置: {settings}")
+# 系统会自动合并所有节点的结果
 ```
+
+#### 自定义通用任务
+```python
+# 自定义数据处理代码（每个节点执行）
+# __DATA__ 变量包含分配给这个节点的数据片段
+# __CHUNK_ID__ 变量是当前数据片段的ID
+# __CHUNK_INDEX__ 变量是当前数据片段的索引
+
+results = []
+for item in __DATA__:
+    # 在这里处理每个数据项
+    processed_item = item * 2  # 示例：将每个数字乘以2
+    results.append(processed_item)
+
+# 设置结果（必须设置这个变量）
+__result__ = {
+    "chunk_id": __CHUNK_ID__,
+    "chunk_index": __CHUNK_INDEX__,
+    "processed_data": results,
+    "count": len(results)
+}
+print(f"处理了 {len(results)} 项数据")
+```
+
+```python
+# 自定义结果合并代码（合并所有节点的结果）
+# __CHUNK_RESULTS__ 变量包含所有节点返回的结果列表
+
+all_results = []
+total_count = 0
+
+for chunk_result in __CHUNK_RESULTS__:
+    if isinstance(chunk_result, dict) and "processed_data" in chunk_result:
+        all_results.extend(chunk_result["processed_data"])
+        total_count += chunk_result["count"]
+
+# 设置最终合并结果（必须设置这个变量）
+__MERGED_RESULT__ = {
+    "total_processed": total_count,
+    "all_data": all_results
+}
+print(f"合并完成，总共处理了 {total_count} 项数据")
+```
+
+---
 
 ## 🔒 安全与合规说明
 
@@ -145,6 +186,8 @@ if user_file_exists("settings.json"):
 3. 操作结果及风险由您**自行承担责任**
 4. 如发现未授权操作，请立即停止使用并反馈
 
+---
+
 ## ⚡ 功能特性
 
 ### 开源无限制版本
@@ -152,12 +195,15 @@ if user_file_exists("settings.json"):
 - ✅ **无任务数量限制** - 随意提交计算任务  
 - ✅ **无使用时间限制** - 24小时可用
 - ✅ **跨平台支持** - Windows/macOS/Linux
+- ✅ **本地部署** - 数据完全在本地处理，保护隐私
 
-### 智能调度系统
-- 🔍 **自动检测电脑闲置状态**
-- ⚖️ **公平任务分配算法**
-- 📊 **实时性能监控**
-- 🔄 **自动容错恢复**
+### 分布式计算系统
+- 🔍 **自动数据分片** - 大数据自动分割成小块
+- ⚖️ **智能任务分配** - 自动分配给多个节点并行处理
+- 📊 **实时性能监控** - 监控每个节点的处理状态
+- 🔄 **自动容错恢复** - 节点故障时自动重新分配任务
+
+---
 
 ## 🛠️ 故障排除
 
@@ -192,7 +238,7 @@ if user_file_exists("settings.json"):
    ```bash
    # Windows
    netstat -ano | findstr :8000
-   netstat -ano | findstr :8501
+   netstat -ano | findstr :8502
    
    # 如果端口被占用
    # 方法1：终止占用进程
@@ -200,12 +246,7 @@ if user_file_exists("settings.json"):
    # 方法2：修改配置文件中的端口号
    ```
 
-4. **代理和VPN影响**
-   - 临时关闭VPN和代理软件
-   - 检查系统代理设置
-   - 尝试使用127.0.0.1代替localhost
-
-#### 任务执行失败排查步骤
+#### 分布式任务执行失败排查步骤
 1. **检查代码语法**
    - 使用在线Python验证工具检查语法
    - 确保没有使用危险模块（os, sys等）
@@ -248,46 +289,53 @@ with open('your_file.csv', 'rb') as f:
 #### 文件大小建议
 - **小文件**: < 10MB - 直接读取处理
 - **中文件**: 10MB - 100MB - 建议分批处理
-- **大文件**: > 100MB - 强烈建议预处理和分批处理
+- **大文件**: > 100MB - 强烈建议使用分布式任务处理
 
-### 性能优化建议
+---
 
-#### 大数据集优化策略
-1. **数据预处理**
-   ```python
-   # 在提交任务前预处理数据
-   # 将大文件分割成小文件
-   def split_large_file(input_file, chunk_size=100000):
-       with open(input_file, 'r', encoding='utf-8') as f:
-           header = f.readline()  # 保存标题行
-           chunk_num = 0
-           while True:
-               lines = [header] + [f.readline() for _ in range(chunk_size)]
-               if not any(lines[1:]):  # 如果没有数据行
-                   break
-               
-               chunk_file = f"chunk_{chunk_num}.csv"
-               with open(chunk_file, 'w', encoding='utf-8') as chunk_f:
-                   chunk_f.writelines(lines)
-               chunk_num += 1
-   ```
+## 📈 性能优化建议
 
-2. **分批处理示例**
-   ```python
-   # 分批处理大数据集
-   chunk_files = list_user_files()
-   chunk_files = [f for f in chunk_files if f.startswith('chunk_')]
-   
-   results = []
-   for chunk_file in sorted(chunk_files):
-       # 处理每个数据块
-       data = read_user_file(chunk_file)
-       result = process_chunk(data)
-       results.append(result)
-   
-   # 合并结果
-   final_result = combine_results(results)
-   ```
+### 分布式计算优化策略
+
+#### 数据分片优化
+1. **合理设置分片大小**
+   - 小数据集：分片大小 10-50
+   - 中等数据集：分片大小 50-100
+   - 大数据集：分片大小 100-500
+
+2. **并行节点数设置**
+   - 小型任务：1-2个节点
+   - 中型任务：3-5个节点
+   - 大型任务：5-10个节点
+
+#### 大数据集分布式处理示例
+```python
+# 预处理：将大文件分割成适合分布式处理的格式
+def prepare_for_distributed_processing(input_file, output_prefix, chunk_size=1000):
+    with open(input_file, 'r', encoding='utf-8') as f:
+        header = f.readline()  # 保存标题行
+        chunk_num = 0
+        chunk_data = []
+        
+        for line in f:
+            chunk_data.append(line)
+            if len(chunk_data) >= chunk_size:
+                # 写入分片文件
+                chunk_file = f"{output_prefix}_chunk_{chunk_num}.csv"
+                with open(chunk_file, 'w', encoding='utf-8') as chunk_f:
+                    chunk_f.write(header)
+                    chunk_f.writelines(chunk_data)
+                
+                chunk_data = []
+                chunk_num += 1
+        
+        # 处理剩余数据
+        if chunk_data:
+            chunk_file = f"{output_prefix}_chunk_{chunk_num}.csv"
+            with open(chunk_file, 'w', encoding='utf-8') as chunk_f:
+                chunk_f.write(header)
+                chunk_f.writelines(chunk_data)
+```
 
 #### 资源设置详细指导
 
@@ -306,26 +354,7 @@ with open('your_file.csv', 'rb') as f:
 - **中等任务**: 300 - 1800秒（数据处理）
 - **长期任务**: 1800 - 7200秒（复杂计算）
 
-#### 性能监控和优化
-1. **任务执行时间监控**
-   ```python
-   import time
-   
-   start_time = time.time()
-   # 您的代码
-   execution_time = time.time() - start_time
-   print(f"任务执行时间: {execution_time:.2f}秒")
-   ```
-
-2. **内存使用优化**
-   - 及时释放不再使用的变量
-   - 使用生成器代替列表处理大数据
-   - 避免在循环中创建大量临时对象
-
-### 日志文件位置
-- 调度中心日志：`logs/scheduler.log`
-- 节点操作日志：`node_data/logs/local_operations.log`
-- 用户操作日志：`node_data/user_data/{用户ID}/操作记录.log`
+---
 
 ## 📞 技术支持
 
@@ -347,12 +376,24 @@ with open('your_file.csv', 'rb') as f:
 ### 最佳实践
 1. **数据文件命名规范**：使用有意义的文件名，如`sales_2024.csv`
 2. **文件编码**：确保数据文件使用UTF-8编码
-3. **文件大小**：大文件建议分割成多个小文件处理
+3. **合理选择任务类型**：小任务用单节点，大任务用分布式
 4. **备份重要数据**：定期备份用户数据文件夹中的重要文件
 
-### 性能优化
-1. **数据预处理**：在本地预处理数据，减少计算节点负担
-2. **分批处理**：大数据集可以分批提交任务
+### 分布式计算优化
+1. **数据预处理**：在本地预处理数据，优化分布式处理效率
+2. **合理分片**：根据数据量和节点数设置合适的分片大小
 3. **资源设置**：根据任务复杂度合理设置CPU和内存需求
 
-**开始使用吧！将您的数据文件放入用户数据文件夹，然后在网页界面编写脚本来处理它们。**
+---
+
+## 🌟 分布式计算优势
+
+1. **算力共享**：多台电脑并行处理，大幅提升计算效率
+2. **自动分片**：系统自动将大数据分割成适合并行处理的小块
+3. **智能调度**：自动分配任务给可用节点，实现负载均衡
+4. **容错机制**：节点故障时自动重新分配，确保任务完成
+5. **本地部署**：数据完全在本地处理，保护隐私和安全
+
+---
+
+**开始使用吧！将您的数据文件放入用户数据文件夹，然后选择合适的任务类型来处理它们。对于大规模数据，强烈推荐使用分布式任务来获得最佳性能。**
