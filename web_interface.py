@@ -348,17 +348,6 @@ def get_all_results():
     except:
         return False, {"error": "请求失败"}
 
-def pause_node(node_id: str):
-    """暂停指定节点"""
-    try:
-        response = requests.post(f"{SCHEDULER_URL}/api/nodes/{node_id}/pause", timeout=5)
-        if response.status_code == 200:
-            return True, response.json()
-        else:
-            return False, {"error": f"HTTP {response.status_code}"}
-    except:
-        return False, {"error": "请求失败"}
-
 def resume_node(node_id: str):
     """恢复指定节点"""
     try:
@@ -373,15 +362,14 @@ def resume_node(node_id: str):
 def stop_node(node_id: str):
     """停止指定节点"""
     try:
-        # 在当前架构下，停止节点可通过暂停节点实现
-        response = requests.post(f"{SCHEDULER_URL}/api/nodes/{node_id}/pause", timeout=5)
+        # 使用正确的停止节点API
+        response = requests.post(f"{SCHEDULER_URL}/api/nodes/{node_id}/stop", timeout=5)
         if response.status_code == 200:
             return True, response.json()
         else:
             return False, {"error": f"HTTP {response.status_code}"}
     except:
         return False, {"error": "请求失败"}
-
 # 页面标题
 st.title("⚡ 闲置计算加速器")
 st.markdown("利用个人电脑闲置算力的分布式计算平台")
@@ -749,6 +737,15 @@ with st.sidebar:
                                 "storage_limit": storage_limit
                             }
                         )
+                        response = requests.post(
+                            f"{SCHEDULER_URL}/api/nodes/activate-local",
+                            json={
+                                "cpu_limit": cpu_limit,
+                                "memory_limit": memory_limit,
+                                "storage_limit": storage_limit
+                            },
+                            timeout=10
+                        )
                         if response.status_code == 200:
                             result = response.json()
                             if result["success"]:
@@ -756,40 +753,41 @@ with st.sidebar:
                                 st.info(f"节点ID: {result['node_id']}")
                                 
                                 # 立即获取节点状态以验证激活
-                                time.sleep(1)  # 短暂等待以确保节点注册完成
+                                time.sleep(0.5)  # 短暂等待以确保节点注册完成
                                 
                                 # 立即刷新调度中心健康状态来验证节点是否在线
-                                # 短暂延迟让节点注册完成
-                                time.sleep(0.5)
-                                
                                 health_ok, health_info = check_scheduler_health()
                                 if health_ok:
                                     nodes_info = health_info.get("nodes", {})
                                     online_nodes = nodes_info.get("online", 0)
                                     total_nodes = nodes_info.get("total", 0)
-                                    st.session_state.last_refresh = datetime.now()
                                     
                                     # 立即更新session state中的节点状态
                                     st.session_state.last_node_status = {'online': online_nodes, 'total': total_nodes}
+                                    st.session_state.last_refresh = datetime.now()
                                     
                                     # 显示当前节点状态
                                     if online_nodes > 0:
                                         st.success(f"🎉 恭喜！节点激活成功 - 当前在线节点: {online_nodes}, 总计: {total_nodes}")
                                     else:
                                         st.info(f"ℹ️ 节点已激活，请稍候 - 当前在线节点: {online_nodes}, 总计: {total_nodes}")
-                                        # 再次检查
-                                        time.sleep(1)
-                                        retry_health_ok, retry_health_info = check_scheduler_health()
-                                        if retry_health_ok:
-                                            retry_nodes_info = retry_health_info.get("nodes", {})
-                                            retry_online = retry_nodes_info.get("online", 0)
-                                            if retry_online > 0:
-                                                st.session_state.last_node_status = {'online': retry_online, 'total': retry_nodes_info.get("total", 0)}
-                                                st.success(f"✅ 现在在线节点: {retry_online}")
+                                        
+                                        # 再次尝试获取状态，最多尝试3次
+                                        for i in range(3):
+                                            time.sleep(1)
+                                            retry_health_ok, retry_health_info = check_scheduler_health()
+                                            if retry_health_ok:
+                                                retry_nodes_info = retry_health_info.get("nodes", {})
+                                                retry_online = retry_nodes_info.get("online", 0)
+                                                retry_total = retry_nodes_info.get("total", 0)
+                                                if retry_online > 0:
+                                                    st.session_state.last_node_status = {'online': retry_online, 'total': retry_total}
+                                                    st.success(f"✅ 现在在线节点: {retry_online}, 总计: {retry_total}")
+                                                    break
                                 
-                                else:
-                                    st.warning("⚠️ 无法验证节点状态")
-                                
+                                # 强制页面刷新以更新所有UI组件
+                                time.sleep(1)
+                                st.rerun()
                             else:
                                 st.error(f"激活失败: {result.get('message', '未知错误')}")
                         else:
@@ -797,41 +795,27 @@ with st.sidebar:
                     except Exception as e:
                         st.error(f"激活请求失败: {str(e)}")
         
-        # 添加暂停和结束按钮
+        # 添加结束按钮
         st.subheader("节点控制")
-        col1, col2 = st.columns(2)
-        
+
         # 获取所有节点信息以确定有哪些激活的节点
         success, nodes_info = get_all_nodes()
         if success and nodes_info.get("nodes"):
             active_nodes = nodes_info["nodes"]
             if active_nodes:
-                # 创建节点选择器
+        # 创建节点选择器
                 node_options = {f"{node['node_id']} ({node['status']})": node['node_id'] 
-                               for node in active_nodes}
+                                for node in active_nodes}
                 selected_node = st.selectbox("选择要控制的节点", list(node_options.values()))
-                
-                col1, col2 = st.columns(2)
-                
-                with col1:
-                    if st.button("⏸️ 暂停节点", type="secondary"):
-                        pause_success, pause_result = pause_node(selected_node)
-                        if pause_success:
-                            st.success(f"✅ 节点 {selected_node} 已暂停")
-                            time.sleep(1)
-                            st.rerun()
-                        else:
-                            st.error(f"❌ 暂停失败: {pause_result.get('error', '未知错误')}")
-                
-                with col2:
-                    if st.button("⏹️ 停止节点", type="secondary"):
-                        stop_success, stop_result = stop_node(selected_node)
-                        if stop_success:
-                            st.success(f"✅ 节点 {selected_node} 已停止")
-                            time.sleep(1)
-                            st.rerun()
-                        else:
-                            st.error(f"❌ 停止失败: {stop_result.get('error', '未知错误')}")
+        
+                if st.button("⏹️ 停止节点", type="secondary"):
+                    stop_success, stop_result = stop_node(selected_node)
+                    if stop_success:
+                        st.success(f"✅ 节点 {selected_node} 已停止")
+                        time.sleep(1)
+                        st.rerun()
+                    else:
+                        st.error(f"❌ 停止失败: {stop_result.get('error', '未知错误')}")
             else:
                 st.info("当前没有可用节点")
         else:

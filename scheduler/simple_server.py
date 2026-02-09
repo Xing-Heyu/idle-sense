@@ -215,7 +215,32 @@ class EnhancedMemoryStorage:
             "nodes_dropped": 0,
             "last_schedule_time": time.time()
         }
-    
+    def stop_node(self, node_id: str) -> Dict[str, Any]:
+
+        with self.lock:
+            if node_id not in self.nodes:
+                return {"success": False, "error": "节点不存在"}
+        
+        # 重新分配该节点的任务
+            if node_id in self.assigned_tasks:
+                for task_id in self.assigned_tasks[node_id]:
+                    task = self.tasks.get(task_id)
+                    if task and task.status == "assigned":
+                        task.status = "pending"
+                        task.assigned_node = None
+                        task.assigned_at = None
+                        self.pending_tasks.append(task_id)
+            
+                del self.assigned_tasks[node_id]
+        
+        # 移除节点
+            del self.nodes[node_id]
+            if node_id in self.node_heartbeats:
+                del self.node_heartbeats[node_id]
+        
+            self.scheduler_stats["nodes_dropped"] += 1
+        
+            return {"success": True, "message": f"节点 {node_id} 已停止"}
     # ========== 任务管理方法 ==========
     def add_task(self, code: str, timeout: int = 300, resources: Optional[Dict] = None, user_id: Optional[str] = None) -> int:
         """添加新任务到调度队列"""
@@ -886,7 +911,12 @@ async def get_results() -> Dict[str, Any]:
 @app.get("/health")
 async def health_check() -> Dict[str, Any]:
     """健康检查端点（增强版）"""
-    node_status = "healthy" if len(storage.nodes) > 0 else "no_nodes"
+    # 计算节点统计信息
+    total_nodes = len(storage.nodes)
+    online_nodes = sum(1 for node_id in storage.nodes.keys() 
+                      if storage._is_node_online(node_id))
+    
+    node_status = "healthy" if total_nodes > 0 else "no_nodes"
     
     return {
         "status": "healthy",
@@ -897,6 +927,10 @@ async def health_check() -> Dict[str, Any]:
             "memory_storage": "healthy",
             "node_manager": node_status,
             "scheduler": "healthy"
+        },
+        "nodes": {
+            "online": online_nodes,
+            "total": total_nodes
         }
     }
 
@@ -1050,6 +1084,16 @@ async def activate_local_node(config: dict = Body(...)) -> Dict[str, Any]:
 async def get_system_stats() -> Dict[str, Any]:
     """系统统计端点（增强版）"""
     return storage.get_system_stats()
+
+@app.post("/api/nodes/{node_id}/stop")
+async def stop_node_api(node_id: str) -> Dict[str, Any]:
+    """停止指定节点"""
+    result = storage.stop_node(node_id)
+    if not result["success"]:
+        raise HTTPException(status_code=400, detail=result["error"])
+    return result
+
+
 
 # ==================== CORS 支持 ====================
 try:
