@@ -953,6 +953,64 @@ async def get_node_tasks(node_id: str) -> Dict[str, Any]:
         "timestamp": time.time()
     }
 
+@app.post("/api/nodes/activate-local")
+async def activate_local_node(config: dict = Body(...)) -> Dict[str, Any]:
+    """激活本地节点 - 为当前用户创建一个本地计算节点"""
+    try:
+        # 生成唯一的本地节点ID
+        import uuid
+        node_id = f"local-{uuid.uuid4().hex[:8]}-{int(time.time())}"
+        
+        # 使用传入的配置或者默认配置
+        cpu_limit = config.get("cpu_limit", 1.0)
+        memory_limit = config.get("memory_limit", 512)
+        storage_limit = config.get("storage_limit", 1024)
+        
+        # 创建节点容量信息
+        capacity = {
+            "cpu": cpu_limit,
+            "memory": memory_limit,
+            "disk": storage_limit
+        }
+        
+        # 注册节点
+        from pydantic import parse_obj_as
+        registration = NodeRegistration(
+            node_id=node_id,
+            capacity=capacity,
+            tags={
+                "type": "local",
+                "platform": "local-machine",
+                "owner": "user-local"
+            }
+        )
+        
+        success = storage.register_node(registration)
+        
+        if not success:
+            raise HTTPException(status_code=500, detail="Failed to register local node")
+        
+        # 立即发送心跳以确保节点在线
+        heartbeat = NodeHeartbeat(
+            node_id=node_id,
+            current_load={"cpu_usage": 0.0, "memory_usage": 0},
+            is_idle=True,
+            available_resources=capacity
+        )
+        
+        storage.update_node_heartbeat(heartbeat)
+        
+        return {
+            "success": True,
+            "node_id": node_id,
+            "message": "Local node activated successfully",
+            "capacity": capacity,
+            "timestamp": time.time()
+        }
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to activate local node: {str(e)}")
+
 @app.get("/stats")
 async def get_system_stats() -> Dict[str, Any]:
     """系统统计端点（增强版）"""

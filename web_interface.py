@@ -23,15 +23,104 @@ st.set_page_config(
 
 # 配置
 SCHEDULER_URL = "http://localhost:8000"
-REFRESH_INTERVAL = 10  # 自动刷新间隔（秒）
+REFRESH_INTERVAL = 30  # 降低自动刷新间隔（秒），减少闪烁
 
 # 初始化 session state
 if 'task_history' not in st.session_state:
     st.session_state.task_history = []
 if 'auto_refresh' not in st.session_state:
-    st.session_state.auto_refresh = True
+    st.session_state.auto_refresh = False  # 默认关闭自动刷新
 if 'last_refresh' not in st.session_state:
     st.session_state.last_refresh = datetime.now()
+if 'user_session' not in st.session_state:
+    st.session_state.user_session = None
+if 'is_logged_in' not in st.session_state:
+    st.session_state.is_logged_in = False
+
+# 自定义CSS样式，修复白屏问题
+st.markdown("""
+<style>
+    /* 主背景色 */
+    .stApp {
+        background-color: #0e1117 !important;
+        color: #ffffff !important;
+    }
+    
+    /* 主容器 */
+    .main .block-container {
+        padding-top: 2rem;
+        padding-bottom: 2rem;
+        background-color: #1f242d !important;
+        border-radius: 8px;
+        margin: 0.5rem;
+        padding: 1rem;
+    }
+    
+    /* 修复标签页背景色 */
+    .stTabs {
+        background-color: #1f242d !important;
+        border-radius: 8px;
+        padding: 1rem;
+    }
+    
+    .stTab {
+        background-color: #2d333d !important;
+        border-radius: 6px;
+        padding: 1rem;
+    }
+    
+    /* 按钮样式 */
+    .stButton>button {
+        width: 100%;
+        border-radius: 5px;
+        height: 3em;
+        font-size: 16px;
+        background-color: #2b2d30 !important;
+        color: white !important;
+        border: 1px solid #444746 !important;
+    }
+    
+    /* 输入框样式 */
+    .stTextInput>div>div>input {
+        border-radius: 5px;
+        background-color: #2b2d30 !important;
+        color: white !important;
+        border: 1px solid #444746 !important;
+    }
+    
+    /* 选择框样式 */
+    .stSelectbox>div>div>select {
+        border-radius: 5px;
+        background-color: #2b2d30 !important;
+        color: white !important;
+        border: 1px solid #444746 !important;
+    }
+    
+    /* 数据框样式 */
+    .stDataFrame {
+        background-color: #2d333d !important;
+        border-radius: 6px;
+    }
+    
+    /* 代码块样式 */
+    .stCodeBlock {
+        background-color: #0d1117 !important;
+        border-radius: 6px;
+    }
+    
+    /* 展开器样式 */
+    .streamlit-expanderHeader {
+        background-color: #2d333d !important;
+        border-radius: 6px;
+        margin-top: 0.5rem;
+    }
+    
+    /* 标题和文本样式 */
+    h1, h2, h3, h4, h5, h6, p, div, span, label {
+        color: #ffffff !important;
+    }
+</style>
+""", unsafe_allow_html=True)
 
 # 工具函数 - 增强错误处理
 def check_scheduler_health():
@@ -219,11 +308,74 @@ with st.sidebar:
         with st.expander("用户管理", expanded=False):
             tab_login, tab_register = st.tabs(["登录", "注册"])
             
+            with tab_login:
+                st.markdown("### 用户登录")
+                
+                login_username = st.text_input("用户名", key="login_username")
+                
+                if st.button("🔐 登录", key="login_button"):
+                    if not login_username:
+                        st.error("请输入用户名")
+                    else:
+                        try:
+                            response = requests.post(
+                                f"{SCHEDULER_URL}/api/users/login",
+                                json={"username": login_username}
+                            )
+                            if response.status_code == 200:
+                                result = response.json()
+                                st.session_state.user_session = {
+                                    "session_id": result["session_id"],
+                                    "username": login_username,
+                                    "user_id": result["user"]["user_id"]
+                                }
+                                st.session_state.is_logged_in = True
+                                st.success("✅ 登录成功！")
+                                st.rerun()
+                            else:
+                                st.error(f"登录失败: {response.text}")
+                        except Exception as e:
+                            st.error(f"登录请求失败: {str(e)}")
+            
             with tab_register:
                 st.markdown("### 新用户注册")
                 
                 reg_username = st.text_input("用户名", key="reg_username")
-                reg_email = st.text_input("邮箱", key="reg_email")
+                
+                # 文件夹位置选择
+                st.markdown("### 📁 文件夹位置设置")
+                
+                col1, col2 = st.columns(2)
+                
+                with col1:
+                    st.markdown("**选择文件夹安装位置：**")
+                    folder_location = st.radio(
+                        "文件夹位置",
+                        ["项目目录", "C盘", "D盘"],
+                        index=0,
+                        key="folder_location"
+                    )
+                    
+                    # 映射到API参数
+                    location_map = {
+                        "项目目录": "project",
+                        "C盘": "c", 
+                        "D盘": "d"
+                    }
+                    selected_location = location_map[folder_location]
+                
+                with col2:
+                    st.markdown("**文件夹路径预览：**")
+                    
+                    if folder_location == "项目目录":
+                        st.info("📁 项目目录\\node_data\\user_data\\{用户ID}")
+                        st.caption("推荐：数据与项目文件一起管理")
+                    elif folder_location == "C盘":
+                        st.info("📁 C:\\idle_sense_data\\user_data\\{用户ID}")
+                        st.caption("C盘空间充足时推荐")
+                    else:  # D盘
+                        st.info("📁 D:\\idle_sense_data\\user_data\\{用户ID}")
+                        st.caption("D盘空间充足时推荐")
                 
                 # 文件夹使用协议
                 st.markdown("### 本地操作授权")
@@ -300,8 +452,8 @@ with st.sidebar:
                         st.markdown("---")
                 
                 if st.button("📝 注册", type="primary", use_container_width=True):
-                    if not reg_username or not reg_email:
-                        st.error("请填写用户名和邮箱")
+                    if not reg_username:
+                        st.error("请填写用户名")
                     elif not agree_folder:
                         st.error("必须同意文件夹使用协议")
                     elif not confirm_auth:
@@ -316,8 +468,8 @@ with st.sidebar:
                                     f"{SCHEDULER_URL}/api/users/register",
                                     json={
                                         "username": reg_username,
-                                        "email": reg_email,
                                         "agree_folder_usage": True,
+                                        "folder_location": selected_location,
                                         "user_confirmed_authorization": True
                                     }
                                 )
@@ -336,14 +488,27 @@ with st.sidebar:
                                         
                                         # 显示文件夹创建确认
                                         user_id = result["user"]["user_id"]
-                                        actual_user_path = os.path.join(project_root, "node_data", "user_data", user_id)
-                                        actual_temp_path = os.path.join(project_root, "node_data", "temp_data", user_id)
+                                        folder_location = result["user"]["folder_location"]
+                                        
+                                        # 根据选择的文件夹位置构建路径
+                                        if folder_location == "project":
+                                            base_path = os.path.join(project_root, "node_data")
+                                        elif folder_location == "c":
+                                            base_path = "C:\\idle_sense_data"
+                                        elif folder_location == "d":
+                                            base_path = "D:\\idle_sense_data"
+                                        else:
+                                            base_path = os.path.join(project_root, "node_data")
+                                        
+                                        actual_user_path = os.path.join(base_path, "user_data", user_id)
+                                        actual_temp_path = os.path.join(base_path, "temp_data", user_id)
                                         
                                         st.markdown("### 📁 文件夹创建确认")
                                         st.markdown(f"""
 **已根据您的授权创建以下文件夹：**
 - 用户数据文件夹: `{actual_user_path}`
 - 临时数据文件夹: `{actual_temp_path}`
+- 文件夹位置: **{folder_location.upper()}盘**
 
 **操作记录已保存至本地日志，供您核查。**
 """)
@@ -369,13 +534,34 @@ with st.sidebar:
                     st.markdown("---")
                     st.markdown("### 📁 文件夹管理")
                     
-                    user_id = st.session_state.user_session.get("user", {}).get("user_id")
+                    user_info = st.session_state.user_session.get("user", {})
+                    user_id = user_info.get("user_id")
+                    folder_location = user_info.get("folder_location", "project")
+                    
                     if user_id:
-                        user_data_path = os.path.join(project_root, "node_data", "user_data", user_id)
-                        temp_data_path = os.path.join(project_root, "node_data", "temp_data", user_id)
+                        # 根据选择的文件夹位置构建路径
+                        if folder_location == "project":
+                            base_path = os.path.join(project_root, "node_data")
+                        elif folder_location == "c":
+                            base_path = "C:\\idle_sense_data"
+                        elif folder_location == "d":
+                            base_path = "D:\\idle_sense_data"
+                        else:
+                            base_path = os.path.join(project_root, "node_data")
+                        
+                        user_data_path = os.path.join(base_path, "user_data", user_id)
+                        temp_data_path = os.path.join(base_path, "temp_data", user_id)
+                        
+                        # 显示文件夹位置信息
+                        location_display = {
+                            "project": "项目目录",
+                            "c": "C盘",
+                            "d": "D盘"
+                        }.get(folder_location, "项目目录")
                         
                         st.markdown(f"""
-**您的文件夹路径：**
+**您的文件夹信息：**
+- **位置**: {location_display}
 - 用户数据文件夹: `{user_data_path}`
 - 临时数据文件夹: `{temp_data_path}`
 """)
@@ -411,16 +597,60 @@ with st.sidebar:
     
     if health_ok:
         st.success(f"✅ 在线 (v{health_info.get('version', '1.0.0')})")
+        
+        # 显示节点信息
+        nodes_info = health_info.get("nodes", {})
+        online_nodes = nodes_info.get("online", 0)
+        total_nodes = nodes_info.get("total", 0)
+        
+        st.metric("在线节点", online_nodes, f"总计: {total_nodes}")
+        
+        # 节点激活功能
+        if online_nodes == 0:
+            st.warning("⚠️ 没有在线节点，任务无法执行")
+            
+            with st.expander("🔧 激活本地节点", expanded=True):
+                st.markdown("激活您的本地计算机作为计算节点")
+                
+                col1, col2 = st.columns(2)
+                
+                with col1:
+                    cpu_limit = st.slider("CPU限制 (核心)", 0.1, 4.0, 1.0, 0.1)
+                    memory_limit = st.slider("内存限制 (MB)", 128, 4096, 512, 128)
+                
+                with col2:
+                    storage_limit = st.slider("存储限制 (MB)", 256, 8192, 1024, 256)
+                    
+                if st.button("⚡ 激活本地节点", type="primary"):
+                    with st.spinner("正在激活本地节点..."):
+                        try:
+                            response = requests.post(
+                                f"{SCHEDULER_URL}/api/nodes/activate-local",
+                                json={
+                                    "cpu_limit": cpu_limit,
+                                    "memory_limit": memory_limit,
+                                    "storage_limit": storage_limit
+                                }
+                            )
+                            if response.status_code == 200:
+                                result = response.json()
+                                if result["success"]:
+                                    st.success("✅ 本地节点激活成功！")
+                                    st.info(f"节点ID: {result['node_id']}")
+                                    st.rerun()
+                                else:
+                                    st.error(f"激活失败: {result.get('message', '未知错误')}")
+                            else:
+                                st.error(f"激活失败: HTTP {response.status_code}")
+                        except Exception as e:
+                            st.error(f"激活请求失败: {str(e)}")
+        
         # 显示任务队列信息
-        try:
-            # 获取统计信息显示队列状态
-            stats_ok, stats = get_system_stats()
-            if stats_ok:
-                pending = stats.get("tasks", {}).get("total", 0) - stats.get("tasks", {}).get("completed", 0)
-                st.caption(f"待处理任务: {pending}")
-                st.caption(f"在线节点: {stats.get('nodes', {}).get('online', 0)}")
-        except:
-            st.caption("状态: 运行中")
+        tasks_info = health_info.get("tasks", {})
+        pending_tasks = tasks_info.get("pending", 0)
+        running_tasks = tasks_info.get("running", 0)
+        
+        st.metric("待处理任务", pending_tasks, f"运行中: {running_tasks}")
     else:
         st.error("❌ 离线")
         if "error" in health_info:
