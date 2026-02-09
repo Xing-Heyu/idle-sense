@@ -1003,7 +1003,7 @@ else:
             st.error(f"获取结果失败: {results.get('error', '未知错误')}")
 
 # 主界面 - 标签页布局
-tab1, tab2, tab3, tab4 = st.tabs(["📝 提交任务", "📊 任务监控", "🖥️ 节点管理", "📈 系统统计"])
+tab1, tab2, tab3, tab4, tab5 = st.tabs(["📝 提交任务", "📊 任务监控", "🖥️ 节点管理", "📈 系统统计", "📋 任务结果"])
 
 # 标签页1: 提交任务
 with tab1:
@@ -1078,38 +1078,7 @@ print(f"斐波那契数列第20项: {result}")"""
                 else:
                     st.error(f"❌ 提交失败: {result.get('error', '未知错误')}")
     
-    # 任务结果展示区
-    st.subheader("任务结果")
-    if st.session_state.task_history:
-        latest_task = st.session_state.task_history[-1]  # 获取最新任务
-        latest_task_id = latest_task["task_id"]
-        
-        # 获取最新任务的状态
-        with st.spinner(f"获取任务 {latest_task_id} 的状态..."):
-            status_success, task_info = get_task_status(latest_task_id)
-            
-            if status_success and task_info:
-                status = task_info.get("status", "unknown")
-                if status == "completed":
-                    st.success(f"✅ 任务 {latest_task_id} 已完成")
-                    if task_info.get("result"):
-                        st.code(task_info["result"], language="text")
-                    else:
-                        st.info("任务已完成但暂无结果")
-                elif status in ["pending", "assigned", "running"]:
-                    st.info(f"⏳ 任务 {latest_task_id} 状态: {status}")
-                    if status == "running":
-                        st.progress(70)  # 假设进度为70%
-                elif status == "failed":
-                    st.error(f"❌ 任务 {latest_task_id} 执行失败")
-                    if task_info.get("result"):
-                        st.code(task_info["result"], language="text")
-                else:
-                    st.warning(f"⚠️ 任务 {latest_task_id} 状态: {status}")
-            else:
-                st.warning(f"⚠️ 无法获取任务 {latest_task_id} 的状态")
-    else:
-        st.info("暂无任务记录，请先提交任务")
+
 
 # 标签页2: 任务监控
 with tab2:
@@ -1461,6 +1430,43 @@ with tab4:
             st.json(stats)
     else:
         st.error(f"获取统计信息失败: {stats.get('error', '未知错误')}")
+
+# 标签页5: 任务结果
+with tab5:
+    st.header("任务结果")
+    
+    # 任务结果展示区
+    st.subheader("任务结果")
+    if st.session_state.task_history:
+        latest_task = st.session_state.task_history[-1]  # 获取最新任务
+        latest_task_id = latest_task["task_id"]
+        
+        # 获取最新任务的状态
+        with st.spinner(f"获取任务 {latest_task_id} 的状态..."):
+            status_success, task_info = get_task_status(latest_task_id)
+            
+            if status_success and task_info:
+                status = task_info.get("status", "unknown")
+                if status == "completed":
+                    st.success(f"✅ 任务 {latest_task_id} 已完成")
+                    if task_info.get("result"):
+                        st.code(task_info["result"], language="text")
+                    else:
+                        st.info("任务已完成但暂无结果")
+                elif status in ["pending", "assigned", "running"]:
+                    st.info(f"⏳ 任务 {latest_task_id} 状态: {status}")
+                    if status == "running":
+                        st.progress(70)  # 假设进度为70%
+                elif status == "failed":
+                    st.error(f"❌ 任务 {latest_task_id} 执行失败")
+                    if task_info.get("result"):
+                        st.code(task_info["result"], language="text")
+                else:
+                    st.warning(f"⚠️ 任务 {latest_task_id} 状态: {status}")
+            else:
+                st.warning(f"⚠️ 无法获取任务 {latest_task_id} 的状态")
+    else:
+        st.info("暂无任务记录，请先提交任务")
 
 # 页脚
 st.divider()
