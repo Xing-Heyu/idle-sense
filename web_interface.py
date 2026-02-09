@@ -36,6 +36,10 @@ if 'user_session' not in st.session_state:
     st.session_state.user_session = None
 if 'is_logged_in' not in st.session_state:
     st.session_state.is_logged_in = False
+if 'last_node_status' not in st.session_state:
+    st.session_state.last_node_status = {'online': 0, 'total': 0}
+if 'last_node_check_time' not in st.session_state:
+    st.session_state.last_node_check_time = datetime.now()
 
 # 自定义CSS样式，修复白屏问题
 st.markdown("""
@@ -124,20 +128,68 @@ st.markdown("""
 
 # 工具函数 - 增强错误处理
 def check_scheduler_health():
-    """检查调度中心是否在线"""
+    """检查调度中心是否在线，并获取节点状态"""
     try:
+        # 首先检查基本连接
         response = requests.get(f"{SCHEDULER_URL}/", timeout=5)
-        if response.status_code == 200:
-            return True, response.json()
-        else:
+        if response.status_code != 200:
             # 尝试获取健康端点
             try:
                 health_response = requests.get(f"{SCHEDULER_URL}/health", timeout=3)
-                if health_response.status_code == 200:
-                    return True, health_response.json()
+                if health_response.status_code != 200:
+                    return False, {"error": f"HTTP {health_response.status_code}"}
             except:
-                pass
-            return False, {"error": f"HTTP {response.status_code}"}
+                return False, {"error": "无法连接到调度中心"}
+        
+        # 获取节点统计信息
+        try:
+            nodes_response = requests.get(f"{SCHEDULER_URL}/api/nodes", params={"online_only": True}, timeout=5)
+            if nodes_response.status_code == 200:
+                nodes_data = nodes_response.json()
+                online_nodes = nodes_data.get("count", 0)
+                
+                # 获取所有节点以获取总数
+                all_nodes_response = requests.get(f"{SCHEDULER_URL}/api/nodes", params={"online_only": False}, timeout=5)
+                total_nodes = 0
+                if all_nodes_response.status_code == 200:
+                    all_nodes_data = all_nodes_response.json()
+                    total_nodes = all_nodes_data.get("count", 0)
+                else:
+                    # 如果无法获取所有节点，则假设总节点数等于在线节点数
+                    total_nodes = online_nodes
+                
+                # 合并健康信息和节点统计
+                health_response = requests.get(f"{SCHEDULER_URL}/health", timeout=3)
+                if health_response.status_code == 200:
+                    health_data = health_response.json()
+                else:
+                    health_data = {"status": "reachable"}
+                
+                # 添加节点统计信息
+                health_data["nodes"] = {
+                    "online": online_nodes,
+                    "total": total_nodes
+                }
+                
+                return True, health_data
+            else:
+                # 如果无法获取节点信息，仍返回基础健康信息
+                health_response = requests.get(f"{SCHEDULER_URL}/health", timeout=3)
+                if health_response.status_code == 200:
+                    health_data = health_response.json()
+                else:
+                    health_data = {"status": "reachable", "nodes": {"online": 0, "total": 0}}
+                
+                return True, health_data
+        except Exception as e:
+            # 如果节点统计获取失败，仍返回基本健康状态
+            health_response = requests.get(f"{SCHEDULER_URL}/health", timeout=3)
+            if health_response.status_code == 200:
+                health_data = health_response.json()
+            else:
+                health_data = {"status": "reachable", "nodes": {"online": 0, "total": 0}}
+            
+            return True, health_data
     except requests.exceptions.ConnectionError:
         return False, {"error": "无法连接到调度中心"}
     except Exception as e:
@@ -193,18 +245,35 @@ def delete_task(task_id):
         return False, {"error": str(e)}
 
 def get_all_nodes():
-    """获取所有节点信息 - 修复版：使用新版API"""
+    """获取所有节点信息 - 修复版：使用新版API并获取准确的在线状态"""
     try:
-        # 先尝试新版API
-        response = requests.get(f"{SCHEDULER_URL}/api/nodes", timeout=5)
+        # 首先获取所有节点的基本信息
+        response = requests.get(f"{SCHEDULER_URL}/api/nodes?online_only=false", timeout=5)  # 获取所有节点
         if response.status_code == 200:
             data = response.json()
-            # 转换数据结构以兼容原有界面
             nodes = []
+            online_count = 0
+            
+            # 为了准确获取在线状态，我们还需要获取在线节点列表
+            online_response = requests.get(f"{SCHEDULER_URL}/api/nodes?online_only=true", timeout=5)
+            online_nodes_set = set()
+            if online_response.status_code == 200:
+                online_data = online_response.json()
+                online_nodes_set = {node.get("node_id") for node in online_data.get("nodes", [])}
+            
+            # 转换数据结构以兼容原有界面
             for node in data.get("nodes", []):
+                node_id = node.get("node_id", "unknown")
+                # 根据在线节点列表确定状态
+                is_online = node_id in online_nodes_set
+                status = "online" if is_online else "offline"
+                
+                if is_online:
+                    online_count += 1
+                
                 nodes.append({
-                    "node_id": node.get("node_id", "unknown"),
-                    "status": "online" if node.get("is_online", True) else "offline",
+                    "node_id": node_id,
+                    "status": status,
                     "platform": node.get("platform", "unknown"),
                     "idle_since": None,  # 新版API暂无此字段
                     "resources": {
@@ -214,10 +283,11 @@ def get_all_nodes():
                     "completed_tasks": 0,  # 新版API暂无此字段
                     "total_compute_time": 0  # 新版API暂无此字段
                 })
+            
             return True, {
                 "nodes": nodes,
                 "total_nodes": len(nodes),
-                "total_idle": sum(1 for n in nodes if n.get("status") == "online")
+                "total_idle": online_count  # 实际在线节点数
             }
         
         # 如果新版API失败，尝试旧端点（兼容性）
@@ -271,6 +341,40 @@ def get_all_results():
     """获取所有任务结果"""
     try:
         response = requests.get(f"{SCHEDULER_URL}/results", timeout=5)
+        if response.status_code == 200:
+            return True, response.json()
+        else:
+            return False, {"error": f"HTTP {response.status_code}"}
+    except:
+        return False, {"error": "请求失败"}
+
+def pause_node(node_id: str):
+    """暂停指定节点"""
+    try:
+        response = requests.post(f"{SCHEDULER_URL}/api/nodes/{node_id}/pause", timeout=5)
+        if response.status_code == 200:
+            return True, response.json()
+        else:
+            return False, {"error": f"HTTP {response.status_code}"}
+    except:
+        return False, {"error": "请求失败"}
+
+def resume_node(node_id: str):
+    """恢复指定节点"""
+    try:
+        response = requests.post(f"{SCHEDULER_URL}/api/nodes/{node_id}/resume", timeout=5)
+        if response.status_code == 200:
+            return True, response.json()
+        else:
+            return False, {"error": f"HTTP {response.status_code}"}
+    except:
+        return False, {"error": "请求失败"}
+
+def stop_node(node_id: str):
+    """停止指定节点"""
+    try:
+        # 在当前架构下，停止节点可通过暂停节点实现
+        response = requests.post(f"{SCHEDULER_URL}/api/nodes/{node_id}/pause", timeout=5)
         if response.status_code == 200:
             return True, response.json()
         else:
@@ -603,47 +707,135 @@ with st.sidebar:
         online_nodes = nodes_info.get("online", 0)
         total_nodes = nodes_info.get("total", 0)
         
-        st.metric("在线节点", online_nodes, f"总计: {total_nodes}")
+        # 更新session state中的节点状态
+        if (st.session_state.last_node_status['online'] != online_nodes or 
+            st.session_state.last_node_status['total'] != total_nodes):
+            st.session_state.last_node_status = {'online': online_nodes, 'total': total_nodes}
+        
+        # 使用列布局显示节点状态
+        col1, col2 = st.columns(2)
+        with col1:
+            st.metric("在线节点", online_nodes)
+        with col2:
+            st.metric("总计节点", total_nodes)
         
         # 节点激活功能
         if online_nodes == 0:
             st.warning("⚠️ 没有在线节点，任务无法执行")
+        else:
+            st.info(f"✅ 有 {online_nodes} 个在线节点，任务可以正常执行")
+        
+        # 无论是否有在线节点，都提供激活本地节点的选项
+        with st.expander("🔧 激活本地节点", expanded=(online_nodes == 0)):
+            st.markdown("激活您的本地计算机作为计算节点")
             
-            with st.expander("🔧 激活本地节点", expanded=True):
-                st.markdown("激活您的本地计算机作为计算节点")
+            col1, col2 = st.columns(2)
+            
+            with col1:
+                cpu_limit = st.slider("CPU限制 (核心)", 0.1, 4.0, 1.0, 0.1)
+                memory_limit = st.slider("内存限制 (MB)", 128, 4096, 512, 128)
+            
+            with col2:
+                storage_limit = st.slider("存储限制 (MB)", 256, 8192, 1024, 256)
+                
+            if st.button("⚡ 激活本地节点", type="primary"):
+                with st.spinner("正在激活本地节点..."):
+                    try:
+                        response = requests.post(
+                            f"{SCHEDULER_URL}/api/nodes/activate-local",
+                            json={
+                                "cpu_limit": cpu_limit,
+                                "memory_limit": memory_limit,
+                                "storage_limit": storage_limit
+                            }
+                        )
+                        if response.status_code == 200:
+                            result = response.json()
+                            if result["success"]:
+                                st.success("✅ 本地节点激活成功！")
+                                st.info(f"节点ID: {result['node_id']}")
+                                
+                                # 立即获取节点状态以验证激活
+                                time.sleep(1)  # 短暂等待以确保节点注册完成
+                                
+                                # 立即刷新调度中心健康状态来验证节点是否在线
+                                # 短暂延迟让节点注册完成
+                                time.sleep(0.5)
+                                
+                                health_ok, health_info = check_scheduler_health()
+                                if health_ok:
+                                    nodes_info = health_info.get("nodes", {})
+                                    online_nodes = nodes_info.get("online", 0)
+                                    total_nodes = nodes_info.get("total", 0)
+                                    st.session_state.last_refresh = datetime.now()
+                                    
+                                    # 立即更新session state中的节点状态
+                                    st.session_state.last_node_status = {'online': online_nodes, 'total': total_nodes}
+                                    
+                                    # 显示当前节点状态
+                                    if online_nodes > 0:
+                                        st.success(f"🎉 恭喜！节点激活成功 - 当前在线节点: {online_nodes}, 总计: {total_nodes}")
+                                    else:
+                                        st.info(f"ℹ️ 节点已激活，请稍候 - 当前在线节点: {online_nodes}, 总计: {total_nodes}")
+                                        # 再次检查
+                                        time.sleep(1)
+                                        retry_health_ok, retry_health_info = check_scheduler_health()
+                                        if retry_health_ok:
+                                            retry_nodes_info = retry_health_info.get("nodes", {})
+                                            retry_online = retry_nodes_info.get("online", 0)
+                                            if retry_online > 0:
+                                                st.session_state.last_node_status = {'online': retry_online, 'total': retry_nodes_info.get("total", 0)}
+                                                st.success(f"✅ 现在在线节点: {retry_online}")
+                                
+                                else:
+                                    st.warning("⚠️ 无法验证节点状态")
+                                
+                            else:
+                                st.error(f"激活失败: {result.get('message', '未知错误')}")
+                        else:
+                            st.error(f"激活失败: HTTP {response.status_code}")
+                    except Exception as e:
+                        st.error(f"激活请求失败: {str(e)}")
+        
+        # 添加暂停和结束按钮
+        st.subheader("节点控制")
+        col1, col2 = st.columns(2)
+        
+        # 获取所有节点信息以确定有哪些激活的节点
+        success, nodes_info = get_all_nodes()
+        if success and nodes_info.get("nodes"):
+            active_nodes = nodes_info["nodes"]
+            if active_nodes:
+                # 创建节点选择器
+                node_options = {f"{node['node_id']} ({node['status']})": node['node_id'] 
+                               for node in active_nodes}
+                selected_node = st.selectbox("选择要控制的节点", list(node_options.values()))
                 
                 col1, col2 = st.columns(2)
                 
                 with col1:
-                    cpu_limit = st.slider("CPU限制 (核心)", 0.1, 4.0, 1.0, 0.1)
-                    memory_limit = st.slider("内存限制 (MB)", 128, 4096, 512, 128)
+                    if st.button("⏸️ 暂停节点", type="secondary"):
+                        pause_success, pause_result = pause_node(selected_node)
+                        if pause_success:
+                            st.success(f"✅ 节点 {selected_node} 已暂停")
+                            time.sleep(1)
+                            st.rerun()
+                        else:
+                            st.error(f"❌ 暂停失败: {pause_result.get('error', '未知错误')}")
                 
                 with col2:
-                    storage_limit = st.slider("存储限制 (MB)", 256, 8192, 1024, 256)
-                    
-                if st.button("⚡ 激活本地节点", type="primary"):
-                    with st.spinner("正在激活本地节点..."):
-                        try:
-                            response = requests.post(
-                                f"{SCHEDULER_URL}/api/nodes/activate-local",
-                                json={
-                                    "cpu_limit": cpu_limit,
-                                    "memory_limit": memory_limit,
-                                    "storage_limit": storage_limit
-                                }
-                            )
-                            if response.status_code == 200:
-                                result = response.json()
-                                if result["success"]:
-                                    st.success("✅ 本地节点激活成功！")
-                                    st.info(f"节点ID: {result['node_id']}")
-                                    st.rerun()
-                                else:
-                                    st.error(f"激活失败: {result.get('message', '未知错误')}")
-                            else:
-                                st.error(f"激活失败: HTTP {response.status_code}")
-                        except Exception as e:
-                            st.error(f"激活请求失败: {str(e)}")
+                    if st.button("⏹️ 停止节点", type="secondary"):
+                        stop_success, stop_result = stop_node(selected_node)
+                        if stop_success:
+                            st.success(f"✅ 节点 {selected_node} 已停止")
+                            time.sleep(1)
+                            st.rerun()
+                        else:
+                            st.error(f"❌ 停止失败: {stop_result.get('error', '未知错误')}")
+            else:
+                st.info("当前没有可用节点")
+        else:
+            st.info("无法获取节点信息")
         
         # 显示任务队列信息
         tasks_info = health_info.get("tasks", {})
@@ -664,15 +856,50 @@ with st.sidebar:
     auto_refresh = st.checkbox("启用自动刷新", value=st.session_state.auto_refresh)
     st.session_state.auto_refresh = auto_refresh
     
+    # 检查当前节点状态
+    health_ok, health_info = check_scheduler_health()
+    current_online = 0
+    current_total = 0
+    if health_ok:
+        nodes_info = health_info.get("nodes", {})
+        current_online = nodes_info.get("online", 0)
+        current_total = nodes_info.get("total", 0)
+    
+    # 检查节点状态是否发生变化
+    status_changed = (
+        st.session_state.last_node_status['online'] != current_online or
+        st.session_state.last_node_status['total'] != current_total
+    )
+    
+    if status_changed:
+        # 更新状态记录
+        st.session_state.last_node_status = {'online': current_online, 'total': current_total}
+        st.session_state.last_node_check_time = datetime.now()
+        
+        # 显示状态变化提醒（不刷新页面，只是显示信息）
+        st.success(f"🔄 节点状态更新: 在线 {current_online}, 总计 {current_total}")
+    
     if auto_refresh:
-        refresh_interval = st.slider("刷新间隔(秒)", 5, 60, REFRESH_INTERVAL)
+        refresh_interval = st.slider("刷新间隔(秒)", 30, 300, REFRESH_INTERVAL)  # 增加最小间隔到30秒，减少不必要的刷新
         REFRESH_INTERVAL = refresh_interval
         
-        # 自动刷新逻辑
+        # 自动刷新逻辑 - 仅在达到时间间隔时才刷新
         time_since_refresh = (datetime.now() - st.session_state.last_refresh).seconds
         if time_since_refresh >= REFRESH_INTERVAL:
             st.session_state.last_refresh = datetime.now()
+            # 只有在达到时间间隔时才刷新
             st.rerun()
+    else:
+        # 即使禁用自动刷新，也要检查是否刚激活了节点需要快速刷新
+        if hasattr(st.session_state, 'refresh_after_activation') and st.session_state.refresh_after_activation:
+            activation_elapsed = (datetime.now() - st.session_state.get('activation_time', datetime.now())).seconds
+            if activation_elapsed < 5:  # 激活后5秒内强制刷新
+                time.sleep(0.5)  # 短暂延迟确保系统状态同步
+                st.session_state.last_refresh = datetime.now()
+                st.rerun()
+            else:
+                # 重置激活标志
+                st.session_state.refresh_after_activation = False
     
     st.divider()
     
@@ -850,6 +1077,39 @@ print(f"斐波那契数列第20项: {result}")"""
                             st.metric("资源需求", f"CPU: {cpu_request}, 内存: {memory_request}MB")
                 else:
                     st.error(f"❌ 提交失败: {result.get('error', '未知错误')}")
+    
+    # 任务结果展示区
+    st.subheader("任务结果")
+    if st.session_state.task_history:
+        latest_task = st.session_state.task_history[-1]  # 获取最新任务
+        latest_task_id = latest_task["task_id"]
+        
+        # 获取最新任务的状态
+        with st.spinner(f"获取任务 {latest_task_id} 的状态..."):
+            status_success, task_info = get_task_status(latest_task_id)
+            
+            if status_success and task_info:
+                status = task_info.get("status", "unknown")
+                if status == "completed":
+                    st.success(f"✅ 任务 {latest_task_id} 已完成")
+                    if task_info.get("result"):
+                        st.code(task_info["result"], language="text")
+                    else:
+                        st.info("任务已完成但暂无结果")
+                elif status in ["pending", "assigned", "running"]:
+                    st.info(f"⏳ 任务 {latest_task_id} 状态: {status}")
+                    if status == "running":
+                        st.progress(70)  # 假设进度为70%
+                elif status == "failed":
+                    st.error(f"❌ 任务 {latest_task_id} 执行失败")
+                    if task_info.get("result"):
+                        st.code(task_info["result"], language="text")
+                else:
+                    st.warning(f"⚠️ 任务 {latest_task_id} 状态: {status}")
+            else:
+                st.warning(f"⚠️ 无法获取任务 {latest_task_id} 的状态")
+    else:
+        st.info("暂无任务记录，请先提交任务")
 
 # 标签页2: 任务监控
 with tab2:

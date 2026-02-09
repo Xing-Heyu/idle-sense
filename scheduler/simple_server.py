@@ -433,8 +433,8 @@ class EnhancedMemoryStorage:
             current_time = time.time()
             
             for node_id, node_info in self.nodes.items():
-                # 检查节点是否在线（最近30秒内有心跳）
-                if current_time - self.node_heartbeats.get(node_id, 0) <= 30:
+                # 检查节点是否在线（使用统一的在线判断逻辑）
+                if self._is_node_online(node_id):
                     available_nodes.append({
                         "node_id": node_id,
                         **node_info
@@ -495,7 +495,18 @@ class EnhancedMemoryStorage:
         """检查节点是否在线"""
         current_time = time.time()
         last_heartbeat = self.node_heartbeats.get(node_id, 0)
-        return current_time - last_heartbeat <= 30
+        
+        # 对于通过API激活的本地节点，可以给予稍微长一点的超时时间
+        # 因为它们可能不会像常规节点那样频繁发送心跳
+        node_info = self.nodes.get(node_id, {})
+        tags = node_info.get("tags", {})
+        
+        if tags.get("auto_activated"):
+            # API激活的节点允许最多60秒无心跳
+            return current_time - last_heartbeat <= 60
+        else:
+            # 常规节点30秒超时
+            return current_time - last_heartbeat <= 30
     
     def _can_node_handle_task(self, node_info: Dict, task: TaskInfo) -> bool:
         """检查节点是否能处理任务"""
@@ -753,7 +764,7 @@ async def root() -> Dict[str, Any]:
         "task_count": len(storage.tasks),
         "pending_tasks": len(storage.pending_tasks),
         "online_nodes": len([n for n in storage.nodes.keys() 
-                           if time.time() - storage.node_heartbeats.get(n, 0) <= 30]),
+                           if storage._is_node_online(n)]),
         "user_management": "enabled",  # 新增用户管理状态
         "task_deletion": "enabled"     # 新增任务删除状态
     }
@@ -932,8 +943,26 @@ async def list_nodes(online_only: bool = True) -> Dict[str, Any]:
     """列出所有节点"""
     if online_only:
         nodes = storage.get_available_nodes()
+        # 为在线节点添加在线状态标记
+        enhanced_nodes = []
+        for node in nodes:
+            node_copy = node.copy()
+            node_copy["is_online"] = True
+            enhanced_nodes.append(node_copy)
+        nodes = enhanced_nodes
     else:
-        nodes = list(storage.nodes.values())
+        # 返回所有节点，为每个节点添加在线状态
+        all_nodes = list(storage.nodes.values())
+        enhanced_nodes = []
+        for node in all_nodes:
+            node_copy = node.copy()
+            node_id = node.get("node_id")
+            if node_id:
+                node_copy["is_online"] = storage._is_node_online(node_id)
+            else:
+                node_copy["is_online"] = False
+            enhanced_nodes.append(node_copy)
+        nodes = enhanced_nodes
     
     return {
         "count": len(nodes),
@@ -974,14 +1003,14 @@ async def activate_local_node(config: dict = Body(...)) -> Dict[str, Any]:
         }
         
         # 注册节点
-        from pydantic import parse_obj_as
         registration = NodeRegistration(
             node_id=node_id,
             capacity=capacity,
             tags={
                 "type": "local",
-                "platform": "local-machine",
-                "owner": "user-local"
+                "platform": "local-web-activated",
+                "owner": "user-web",
+                "auto_activated": True  # 标记为自动激活的节点
             }
         )
         
@@ -990,15 +1019,21 @@ async def activate_local_node(config: dict = Body(...)) -> Dict[str, Any]:
         if not success:
             raise HTTPException(status_code=500, detail="Failed to register local node")
         
-        # 立即发送心跳以确保节点在线
+        # 立即发送心跳以确保节点在线（模拟节点行为）
         heartbeat = NodeHeartbeat(
             node_id=node_id,
             current_load={"cpu_usage": 0.0, "memory_usage": 0},
-            is_idle=True,
-            available_resources=capacity
+            is_idle=True,  # 标记为空闲状态，便于接收任务
+            available_resources=capacity  # 设置可用资源
         )
         
         storage.update_node_heartbeat(heartbeat)
+        
+        # 立即尝试调度任务，如果有待处理的任务
+        storage._schedule_tasks()
+        
+        # 确保节点立即变为在线状态
+        # 由于刚刚更新了心跳，节点应该立即在线
         
         return {
             "success": True,
