@@ -1,0 +1,13 @@
+{
+  "success": true,
+  "timestamp": "2026-02-09T19:52:10.061473",
+  "user_id": "test_user2",
+  "folder_location": "c",
+  "base_path": "C:\\idle-sense-system-data",
+  "user_system_dir": "C:\\idle-sense-system-data\\user_system\\test_user2",
+  "user_data_dir": "C:\\idle-sense-system-data\\user_data",
+  "temp_data_dir": "C:\\idle-sense-system-data\\temp_data",
+  "docs_dir": "C:\\idle-sense-system-data\\user_system\\test_user2\\docs",
+  "system_file": "C:\\idle-sense-system-data\\user_system\\test_user2\\system_info.json",
+  "message": "文件夹和系统信息文件创建成功"
+}

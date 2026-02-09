@@ -8,6 +8,10 @@ import streamlit as st
 import requests
 import time
 import json
+import os
+import hashlib
+import ctypes
+import sys
 from datetime import datetime
 import pandas as pd
 import plotly.graph_objects as go
@@ -40,6 +44,26 @@ if 'last_node_status' not in st.session_state:
     st.session_state.last_node_status = {'online': 0, 'total': 0}
 if 'last_node_check_time' not in st.session_state:
     st.session_state.last_node_check_time = datetime.now()
+# 添加缓存相关状态
+if 'cache_data' not in st.session_state:
+    st.session_state.cache_data = {}
+if 'last_cache_cleanup' not in st.session_state:
+    st.session_state.last_cache_cleanup = datetime.now()
+if "session_id" not in st.session_state:
+    # 生成唯一的会话ID
+    st.session_state.session_id = hashlib.md5(f"{datetime.now().isoformat()}_{os.getpid()}".encode()).hexdigest()[:16]
+
+# 页面关闭时清理缓存（通过JavaScript）
+st.markdown("""
+<script>
+window.addEventListener('beforeunload', function() {
+    // 通知服务器清理缓存
+    navigator.sendBeacon('/cleanup_cache', JSON.stringify({
+        session_id: window.location.search.split('session_id=')[1] || ''
+    }));
+});
+</script>
+""", unsafe_allow_html=True)
 
 # 自定义CSS样式，修复白屏问题
 st.markdown("""
@@ -126,70 +150,654 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
+# 本地用户管理
+def get_local_users_dir():
+    """获取本地用户目录路径"""
+    users_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "local_users")
+    os.makedirs(users_dir, exist_ok=True)
+    return users_dir
+
+def generate_local_user_id():
+    """生成本地用户ID"""
+    import hashlib
+    import time
+    timestamp = str(time.time())
+    user_id = f"local_{hashlib.md5(timestamp.encode()).hexdigest()[:8]}"
+    return user_id
+
+def validate_username(username):
+    """验证用户名格式"""
+    import re
+    
+    # 检查长度（20个字符以内）
+    if len(username) > 20:
+        return False, "用户名长度不能超过20个字符"
+    
+    # 检查是否只包含中文、英文、数字
+    pattern = r'^[\u4e00-\u9fa5a-zA-Z0-9]+$'
+    if not re.match(pattern, username):
+        return False, "用户名只能包含中文、英文和数字"
+    
+    return True, "用户名格式正确"
+
+def check_username_availability(username):
+    """检查用户名是否可用，如果不可用则生成可用用户名"""
+    users = list_local_users()
+    existing_usernames = [user['username'] for user in users]
+    
+    if username not in existing_usernames:
+        return username  # 用户名可用
+    
+    # 用户名已存在，添加后缀
+    counter = 1
+    while True:
+        new_username = f"{username}_{counter}"
+        if new_username not in existing_usernames:
+            return new_username
+        counter += 1
+        # 防止无限循环
+        if counter > 999:
+            import random
+            return f"{username}_{random.randint(1000, 9999)}"
+
+def save_local_user(user_id, username, folder_location="project"):
+    """保存本地用户信息"""
+    users_dir = get_local_users_dir()
+    user_file = os.path.join(users_dir, f"{user_id}.json")
+    
+    user_info = {
+        "user_id": user_id,
+        "username": username,
+        "created_at": datetime.now().isoformat(),
+        "folder_location": folder_location,
+        "last_login": None
+    }
+    
+    with open(user_file, 'w', encoding='utf-8') as f:
+        json.dump(user_info, f, ensure_ascii=False, indent=2)
+    
+    return user_info
+
+def get_local_user(user_id):
+    """获取本地用户信息"""
+    users_dir = get_local_users_dir()
+    user_file = os.path.join(users_dir, f"{user_id}.json")
+    
+    if os.path.exists(user_file):
+        with open(user_file, 'r', encoding='utf-8') as f:
+            return json.load(f)
+    return None
+
+def update_local_user_login(user_id):
+    """更新用户最后登录时间"""
+    user_info = get_local_user(user_id)
+    if user_info:
+        user_info["last_login"] = datetime.now().isoformat()
+        
+        users_dir = get_local_users_dir()
+        user_file = os.path.join(users_dir, f"{user_id}.json")
+        
+        with open(user_file, 'w', encoding='utf-8') as f:
+            json.dump(user_info, f, ensure_ascii=False, indent=2)
+        
+        return True
+    return False
+
+def list_local_users():
+    """列出所有本地用户"""
+    users_dir = get_local_users_dir()
+    users = []
+    
+    if os.path.exists(users_dir):
+        for file_name in os.listdir(users_dir):
+            if file_name.endswith('.json'):
+                user_id = file_name[:-5]  # 去掉.json后缀
+                user_info = get_local_user(user_id)
+                if user_info:
+                    users.append(user_info)
+    
+    return users
+
+# 设备ID生成和缓存管理
+def generate_device_id():
+    """生成设备唯一标识"""
+    import hashlib
+    import random
+    
+    # 基于时间戳和随机数生成设备ID
+    device_info = f"{datetime.now().isoformat()}_{random.randint(10000, 99999)}"
+    device_id = hashlib.md5(device_info.encode()).hexdigest()[:8]
+    return device_id
+
+def get_device_node_mapping():
+    """获取设备到节点的映射"""
+    if "device_node_mapping" not in st.session_state:
+        st.session_state.device_node_mapping = {}
+    return st.session_state.device_node_mapping
+
+def update_device_mapping(device_id, node_id):
+    """更新设备映射"""
+    mapping = get_device_node_mapping()
+    mapping[device_id] = node_id
+    st.session_state.device_node_mapping = mapping
+
+def get_node_by_device(device_id):
+    """根据设备ID获取节点ID"""
+    mapping = get_device_node_mapping()
+    return mapping.get(device_id)
+
+# 缓存管理和数据比较函数 - 使用临时缓存文件
+def get_cache_file_path():
+    """获取缓存文件路径"""
+    cache_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), ".cache")
+    os.makedirs(cache_dir, exist_ok=True)
+    return os.path.join(cache_dir, f"session_cache_{st.session_state.get('session_id', 'default')}.json")
+
+def load_cache_data():
+    """加载缓存数据"""
+    try:
+        cache_file = get_cache_file_path()
+        if os.path.exists(cache_file):
+            with open(cache_file, 'r', encoding='utf-8') as f:
+                return json.load(f)
+    except:
+        pass
+    return {"nodes_online_count": 0, "last_update_time": None, "health_status": False}
+
+def save_cache_data(data):
+    """保存缓存数据"""
+    try:
+        cache_file = get_cache_file_path()
+        with open(cache_file, 'w', encoding='utf-8') as f:
+            json.dump(data, f, ensure_ascii=False, indent=2)
+    except:
+        pass
+
+def cleanup_cache():
+    """清理缓存文件"""
+    try:
+        cache_file = get_cache_file_path()
+        if os.path.exists(cache_file):
+            os.remove(cache_file)
+    except:
+        pass
+
+def update_cache_and_check_change(new_data):
+    """更新缓存并检查数据是否变化"""
+    # 只保存最小必要的数据
+    cache_data = {
+        "nodes_online_count": new_data.get("nodes", {}).get("online", 0),
+        "last_update_time": datetime.now().isoformat(),
+        "health_status": new_data.get("health_status", False)
+    }
+    
+    # 加载旧数据
+    old_data = load_cache_data()
+    
+    # 检查关键数据是否变化
+    changed = (
+        old_data.get("nodes_online_count") != cache_data.get("nodes_online_count") or
+        old_data.get("health_status") != cache_data.get("health_status")
+    )
+    
+    # 保存新数据
+    save_cache_data(cache_data)
+    
+    return changed
+
+# 定期清理缓存（改为清理过期的会话缓存）
+def cleanup_expired_cache():
+    """清理过期的会话缓存文件"""
+    try:
+        cache_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), ".cache")
+        if not os.path.exists(cache_dir):
+            return True
+        
+        current_time = datetime.now()
+        for file_name in os.listdir(cache_dir):
+            if file_name.startswith("session_cache_") and file_name.endswith(".json"):
+                file_path = os.path.join(cache_dir, file_name)
+                # 检查文件修改时间，如果超过2小时则删除
+                file_mod_time = datetime.fromtimestamp(os.path.getmtime(file_path))
+                if (current_time - file_mod_time).seconds > 7200:  # 2小时
+                    os.remove(file_path)
+        
+        st.session_state.last_cache_cleanup = current_time
+        return True
+    except Exception as e:
+        return False
+
+# 定期清理缓存
+if (datetime.now() - st.session_state.last_cache_cleanup).seconds > 3600:
+    cleanup_expired_cache()
+
+def is_admin():
+    """检查当前是否有管理员权限"""
+    try:
+        return ctypes.windll.shell32.IsUserAnAdmin()
+    except:
+        return False
+
+def request_admin_privileges():
+    """请求管理员权限"""
+    if is_admin():
+        return True
+    
+    # 重新启动程序并请求管理员权限
+    ctypes.windll.shell32.ShellExecuteW(
+        None, "runas", sys.executable, " ".join(sys.argv), None, 1
+    )
+    return False
+
+def check_write_permission(path):
+    """检查指定路径是否有写入权限"""
+    try:
+        # 尝试创建测试文件
+        test_file = os.path.join(path, ".permission_test")
+        with open(test_file, 'w') as f:
+            f.write("test")
+        os.remove(test_file)
+        return True
+    except (PermissionError, OSError):
+        return False
+
+def ensure_directory_with_permission(path):
+    """确保目录存在且有写入权限"""
+    # 首先尝试创建目录
+    try:
+        os.makedirs(path, exist_ok=True)
+    except PermissionError:
+        return False, "权限不足，无法创建文件夹"
+    
+    # 然后检查写入权限
+    if not check_write_permission(path):
+        return False, "权限不足，无法写入文件"
+    
+    return True, "权限检查通过"
+
+def create_folders_with_retry(user_id, username, folder_location, max_retries=2):
+    """带重试机制的文件夹创建"""
+    import time
+    
+    for attempt in range(max_retries + 1):  # 包括初始尝试
+        if attempt > 0:
+            time.sleep(1)  # 重试前等待1秒
+        
+        result = create_folders_with_script(user_id, username, folder_location)
+        
+        if result["success"]:
+            return result
+        
+        # 如果失败，记录错误并继续重试
+        if attempt < max_retries:
+            print(f"文件夹创建失败，尝试第 {attempt + 1} 次重试...")
+            continue
+    
+    # 所有重试都失败
+    return {
+        "success": False,
+        "error": f"文件夹创建失败，已重试 {max_retries} 次",
+        "suggestion": "请检查系统权限或选择其他位置",
+        "last_error": result.get("error", "未知错误")
+    }
+
+def create_folders_with_script(user_id, username, folder_location):
+    import subprocess
+    import tempfile
+    
+    # 创建临时文件用于接收脚本结果
+    with tempfile.NamedTemporaryFile(mode='w', suffix='.json', delete=False) as temp_file:
+        temp_path = temp_file.name
+    
+    try:
+        # 构建脚本命令
+        script_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "create_folders.py")
+        cmd = [
+            sys.executable,
+            script_path,
+            "--user-id", user_id,
+            "--username", username,
+            "--folder-location", folder_location,
+            "--output", temp_path
+        ]
+        
+        # 执行脚本
+        result = subprocess.run(
+            cmd,
+            capture_output=True,
+            text=True,
+            timeout=30  # 30秒超时
+        )
+        
+        # 读取脚本结果
+        with open(temp_path, 'r', encoding='utf-8') as f:
+            script_result = json.load(f)
+        
+        # 添加脚本执行信息
+        script_result["script_exit_code"] = result.returncode
+        script_result["script_stdout"] = result.stdout
+        script_result["script_stderr"] = result.stderr
+        
+        return script_result
+    
+    except subprocess.TimeoutExpired:
+        return {
+            "success": False,
+            "error": "脚本执行超时",
+            "suggestion": "请检查系统响应或重试"
+        }
+    except Exception as e:
+        return {
+            "success": False,
+            "error": f"脚本执行失败: {str(e)}",
+            "suggestion": "请检查脚本文件是否存在或权限是否足够"
+        }
+    finally:
+        # 清理临时文件
+        try:
+            os.unlink(temp_path)
+        except:
+            pass
+
+def request_uac_permission_for_folder_creation(folder_path):
+    """请求UAC权限以创建文件夹"""
+    try:
+        # 尝试直接创建文件夹
+        os.makedirs(folder_path, exist_ok=True)
+        
+        # 测试写入权限
+        test_file = os.path.join(folder_path, ".permission_test")
+        with open(test_file, 'w') as f:
+            f.write("test")
+        os.remove(test_file)
+        
+        return True, "权限获取成功", None
+    except PermissionError as e:
+        # 权限不足，尝试通过UAC请求权限
+        try:
+            # 使用Windows API请求权限
+            import ctypes
+            from ctypes import wintypes
+            
+            # 准备ShellExecute参数
+            hwnd = None
+            operation = "runas"  # 请求UAC提升
+            exec_file = sys.executable
+            params = f'"{os.path.join(os.path.dirname(__file__), "request_permission.py")}" "{folder_path}"'
+            show_cmd = 1
+            current_dir = None
+            
+            # 调用ShellExecute请求UAC权限
+            result = ctypes.windll.shell32.ShellExecuteW(
+                hwnd, operation, exec_file, params, current_dir, show_cmd
+            )
+            
+            # 检查结果
+            if result > 32:  # 成功
+                return True, "权限请求已发送，请确认UAC提示", None
+            else:
+                return False, f"权限请求失败，错误代码: {result}", "请以管理员身份运行程序"
+        except Exception as e:
+            return False, f"权限请求异常: {str(e)}", "请以管理员身份运行程序"
+    except Exception as e:
+        return False, f"创建文件夹失败: {str(e)}", "请检查文件夹路径是否正确"
+
+def create_system_info_file(user_id, username, folder_location):
+    """创建系统信息文件和文件夹结构 - 包含权限检查"""
+    # 只存储系统需要的最小信息
+    system_info = {
+        "user_id": user_id,
+        "username": username,
+        "purpose": "此文件包含闲置计算加速器系统运行所需的信息，请勿删除"
+    }
+    
+    # 根据用户选择的文件夹位置确定路径
+    if folder_location == "project":
+        base_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "node_data")
+    elif folder_location == "c":
+        base_path = "C:\\idle-sense-system-data"  # 使用醒目的项目名开头
+    elif folder_location == "d":
+        base_path = "D:\\idle-sense-system-data"  # 使用醒目的项目名开头
+    else:
+        base_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "node_data")
+    
+    # 检查并确保有权限创建目录
+    has_permission, message = ensure_directory_with_permission(base_path)
+    if not has_permission:
+        return {
+            "success": False,
+            "error": message,
+            "suggestion": f"请以管理员身份运行程序，或选择其他位置创建文件夹。当前尝试位置：{base_path}"
+        }
+    
+    # 创建三层平级文件夹结构
+    user_system_dir = os.path.join(base_path, "user_system", user_id)  # 存放用户ID等系统数据
+    user_data_dir = os.path.join(base_path, "user_data")               # 用户存放读写数据的地方
+    temp_data_dir = os.path.join(base_path, "temp_data")               # 临时存放数据给别人调用
+    docs_dir = os.path.join(user_system_dir, "docs")                   # 存放说明文档
+    
+    for dir_path in [user_system_dir, user_data_dir, temp_data_dir, docs_dir]:
+        has_permission, message = ensure_directory_with_permission(dir_path)
+        if not has_permission:
+            return {
+                "success": False,
+                "error": message,
+                "suggestion": f"无法创建子文件夹，请检查权限。当前尝试位置：{dir_path}"
+            }
+    
+    # 创建系统信息文件（在user_system文件夹中）
+    system_file_path = os.path.join(user_system_dir, "system_info.json")
+    try:
+        with open(system_file_path, "w", encoding="utf-8") as f:
+            json.dump(system_info, f, ensure_ascii=False, indent=2)
+    except PermissionError:
+        return {
+            "success": False,
+            "error": "权限不足，无法创建系统信息文件",
+            "suggestion": f"请检查对 {user_system_dir} 的写入权限"
+        }
+    
+    # 创建用户协议文档
+    user_agreement_path = os.path.join(docs_dir, "用户协议.md")
+    try:
+        with open(user_agreement_path, "w", encoding="utf-8") as f:
+            f.write("""# 闲置计算加速器用户协议
+
+## 重要声明
+
+欢迎使用闲置计算加速器系统！在使用本系统前，请仔细阅读以下条款：
+
+## 1. 服务内容
+
+本系统是一个开源的闲置计算资源利用平台，允许用户：
+- 提交计算任务到闲置设备
+- 共享闲置计算资源
+- 查看任务执行结果
+
+## 2. 用户责任
+
+- 用户需对提交的任务内容负责
+- 不得提交违法、有害或恶意代码
+- 遵守当地法律法规
+
+## 3. 隐私保护
+
+- 本系统为开源项目，数据存储在用户本地
+- 系统仅访问用户明确授权的文件夹
+- 不会收集用户个人信息
+
+## 4. 免责声明
+
+- 本系统按"原样"提供，不提供任何明示或暗示的保证
+- 用户使用系统所产生的任何后果由用户自行承担
+- 开发者不对因使用系统造成的任何损失承担责任
+
+## 5. 协议修改
+
+本协议可能随时更新，更新后的协议将在系统中公布。
+
+## 6. 同意条款
+
+使用本系统即表示您同意遵守以上条款。
+
+---
+最后更新时间：2024年
+""")
+    except Exception as e:
+        return {
+            "success": False,
+            "error": f"创建用户协议失败: {str(e)}",
+            "suggestion": f"请检查对 {docs_dir} 的写入权限"
+        }
+    
+    # 创建安全说明和使用指南文档
+    security_guide_path = os.path.join(docs_dir, "安全说明和使用指南.md")
+    try:
+        with open(security_guide_path, "w", encoding="utf-8") as f:
+            f.write(f"""# 安全说明和使用指南
+
+## 文件夹结构说明
+
+您的数据存储在以下位置：
+- 系统文件夹: `{base_path}`
+- 用户系统文件夹: `{user_system_dir}`
+- 用户数据文件夹: `{user_data_dir}`
+- 临时数据文件夹: `{temp_data_dir}`
+
+## 权限说明
+
+### 系统权限范围
+- 系统只能读写您授权创建的文件夹内容
+- 系统无法访问您电脑上的其他文件
+- 所有操作都在您的明确授权下进行
+
+### 文件夹用途
+- **用户系统文件夹** (`{user_system_dir}`): 存放用户ID等系统数据，平时不常用
+- **用户数据文件夹** (`{user_data_dir}`): 存放您不会删除的个人文件，系统可读取
+- **临时数据文件夹** (`{temp_data_dir}`): 存放任务执行时的临时文件，会定期清理
+- **文档文件夹** (`{docs_dir}`): 存放系统说明文档
+
+## 如何让系统读取您的文件
+
+如果您需要系统处理您的文件：
+1. 将文件放入用户数据文件夹: `{user_data_dir}`
+2. 在任务代码中指定文件路径
+3. 系统将能够访问和处理这些文件
+
+## 安全注意事项
+
+1. **文件安全**: 
+   - 请勿在用户数据文件夹中存放敏感信息
+   - 定期备份重要文件
+
+2. **任务安全**:
+   - 只运行您信任的代码
+   - 避免处理来源不明的文件
+
+3. **系统安全**:
+   - 定期检查系统更新
+   - 如发现异常行为，请立即停止使用并联系开发者
+
+## 文件管理
+
+### 系统管理的文件
+- `system_info.json`: 系统运行必需信息，请勿删除
+- 临时数据文件夹中的文件: 系统会定期清理
+
+### 用户管理的文件
+- 用户数据文件夹中的文件: 由您完全控制
+- 文档文件夹中的文件: 可随时查看
+
+## 常见问题
+
+**Q: 系统能访问我电脑上的其他文件吗？**
+A: 不能。系统只能访问您明确授权创建的文件夹。
+
+**Q: 临时文件会被保留多久？**
+A: 临时文件会在任务完成后24小时内自动清理。
+
+**Q: 如何彻底退出系统？**
+A: 关闭网页界面即可，所有本地数据保留。
+
+---
+如有更多问题，请查看项目文档或联系开发者。
+""")
+    except Exception as e:
+        return {
+            "success": False,
+            "error": f"创建安全说明失败: {str(e)}",
+            "suggestion": f"请检查对 {docs_dir} 的写入权限"
+        }
+    
+    return {
+        "success": True,
+        "base_path": base_path,
+        "user_system_dir": user_system_dir,
+        "user_data_dir": user_data_dir,
+        "temp_data_dir": temp_data_dir,
+        "docs_dir": docs_dir,
+        "system_file": system_file_path,
+        "user_agreement": user_agreement_path,
+        "security_guide": security_guide_path
+    }
+
+def read_system_info(user_id):
+    """读取系统信息文件"""
+    for location in ["project", "c", "d"]:
+        if location == "project":
+            base_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "node_data")
+        elif location == "c":
+            base_path = "C:\\idle-sense-system-data"
+        elif location == "d":
+            base_path = "D:\\idle-sense-system-data"
+        
+        # 系统信息文件现在位于大文件夹根目录
+        system_file_path = os.path.join(base_path, "idle_sense_system.json")
+        
+        if os.path.exists(system_file_path):
+            with open(system_file_path, "r", encoding="utf-8") as f:
+                return json.load(f)
+    
+    return None
+
 # 工具函数 - 增强错误处理
 def check_scheduler_health():
-    """检查调度中心是否在线，并获取节点状态"""
+    """检查调度中心是否在线，并获取节点状态 - 优化版"""
     try:
-        # 首先检查基本连接
-        response = requests.get(f"{SCHEDULER_URL}/", timeout=5)
+        # 减少超时时间，更快检测连接问题
+        response = requests.get(f"{SCHEDULER_URL}/", timeout=3)
         if response.status_code != 200:
             # 尝试获取健康端点
             try:
-                health_response = requests.get(f"{SCHEDULER_URL}/health", timeout=3)
+                health_response = requests.get(f"{SCHEDULER_URL}/health", timeout=2)
                 if health_response.status_code != 200:
                     return False, {"error": f"HTTP {health_response.status_code}"}
             except:
                 return False, {"error": "无法连接到调度中心"}
         
-        # 获取节点统计信息
+        # 简化健康检查和节点信息获取流程
+        health_response = requests.get(f"{SCHEDULER_URL}/health", timeout=2)
+        health_data = health_response.json() if health_response.status_code == 200 else {"status": "reachable"}
+        
+        # 仅获取一次所有节点信息，减少API调用
         try:
-            nodes_response = requests.get(f"{SCHEDULER_URL}/api/nodes", params={"online_only": True}, timeout=5)
+            nodes_response = requests.get(f"{SCHEDULER_URL}/api/nodes", params={"online_only": False}, timeout=4)
             if nodes_response.status_code == 200:
                 nodes_data = nodes_response.json()
-                online_nodes = nodes_data.get("count", 0)
-                
-                # 获取所有节点以获取总数
-                all_nodes_response = requests.get(f"{SCHEDULER_URL}/api/nodes", params={"online_only": False}, timeout=5)
-                total_nodes = 0
-                if all_nodes_response.status_code == 200:
-                    all_nodes_data = all_nodes_response.json()
-                    total_nodes = all_nodes_data.get("count", 0)
-                else:
-                    # 如果无法获取所有节点，则假设总节点数等于在线节点数
-                    total_nodes = online_nodes
-                
-                # 合并健康信息和节点统计
-                health_response = requests.get(f"{SCHEDULER_URL}/health", timeout=3)
-                if health_response.status_code == 200:
-                    health_data = health_response.json()
-                else:
-                    health_data = {"status": "reachable"}
+                all_nodes = nodes_data.get("nodes", [])
+                online_nodes = sum(1 for node in all_nodes if node.get("status") == "online")
                 
                 # 添加节点统计信息
                 health_data["nodes"] = {
                     "online": online_nodes,
-                    "total": total_nodes
+                    "total": len(all_nodes)
                 }
-                
-                return True, health_data
             else:
-                # 如果无法获取节点信息，仍返回基础健康信息
-                health_response = requests.get(f"{SCHEDULER_URL}/health", timeout=3)
-                if health_response.status_code == 200:
-                    health_data = health_response.json()
-                else:
-                    health_data = {"status": "reachable", "nodes": {"online": 0, "total": 0}}
-                
-                return True, health_data
+                health_data["nodes"] = {"online": 0, "total": 0}
         except Exception as e:
-            # 如果节点统计获取失败，仍返回基本健康状态
-            health_response = requests.get(f"{SCHEDULER_URL}/health", timeout=3)
-            if health_response.status_code == 200:
-                health_data = health_response.json()
-            else:
-                health_data = {"status": "reachable", "nodes": {"online": 0, "total": 0}}
-            
-            return True, health_data
+            health_data["nodes"] = {"online": 0, "total": 0}
+        
+        return True, health_data
     except requests.exceptions.ConnectionError:
         return False, {"error": "无法连接到调度中心"}
     except Exception as e:
@@ -245,28 +853,21 @@ def delete_task(task_id):
         return False, {"error": str(e)}
 
 def get_all_nodes():
-    """获取所有节点信息 - 修复版：使用新版API并获取准确的在线状态"""
+    """获取所有节点信息 - 优化版：减少API调用次数"""
     try:
-        # 首先获取所有节点的基本信息
-        response = requests.get(f"{SCHEDULER_URL}/api/nodes?online_only=false", timeout=5)  # 获取所有节点
+        # 仅调用一次API获取所有节点，在本地处理在线状态
+        response = requests.get(f"{SCHEDULER_URL}/api/nodes?online_only=false", timeout=5)
         if response.status_code == 200:
             data = response.json()
             nodes = []
             online_count = 0
             
-            # 为了准确获取在线状态，我们还需要获取在线节点列表
-            online_response = requests.get(f"{SCHEDULER_URL}/api/nodes?online_only=true", timeout=5)
-            online_nodes_set = set()
-            if online_response.status_code == 200:
-                online_data = online_response.json()
-                online_nodes_set = {node.get("node_id") for node in online_data.get("nodes", [])}
-            
-            # 转换数据结构以兼容原有界面
+            # 转换数据结构并在本地确定在线状态
             for node in data.get("nodes", []):
                 node_id = node.get("node_id", "unknown")
-                # 根据在线节点列表确定状态
-                is_online = node_id in online_nodes_set
-                status = "online" if is_online else "offline"
+                # 直接从节点信息获取状态
+                status = node.get("status", "offline")
+                is_online = status == "online"
                 
                 if is_online:
                     online_count += 1
@@ -287,10 +888,10 @@ def get_all_nodes():
             return True, {
                 "nodes": nodes,
                 "total_nodes": len(nodes),
-                "total_idle": online_count  # 实际在线节点数
+                "total_idle": online_count
             }
         
-        # 如果新版API失败，尝试旧端点（兼容性）
+        # 兼容性降级
         response = requests.get(f"{SCHEDULER_URL}/nodes", timeout=5)
         if response.status_code == 200:
             return True, response.json()
@@ -348,16 +949,7 @@ def get_all_results():
     except:
         return False, {"error": "请求失败"}
 
-def resume_node(node_id: str):
-    """恢复指定节点"""
-    try:
-        response = requests.post(f"{SCHEDULER_URL}/api/nodes/{node_id}/resume", timeout=5)
-        if response.status_code == 200:
-            return True, response.json()
-        else:
-            return False, {"error": f"HTTP {response.status_code}"}
-    except:
-        return False, {"error": "请求失败"}
+
 
 def stop_node(node_id: str):
     """停止指定节点"""
@@ -401,38 +993,74 @@ with st.sidebar:
             tab_login, tab_register = st.tabs(["登录", "注册"])
             
             with tab_login:
-                st.markdown("### 用户登录")
+                st.markdown("### 本地用户登录")
+                st.caption("输入您的用户名或用户ID进行登录")
                 
-                login_username = st.text_input("用户名", key="login_username")
-                
-                if st.button("🔐 登录", key="login_button"):
-                    if not login_username:
-                        st.error("请输入用户名")
+                # 显示已注册的本地用户（可选）
+                with st.expander("查看已注册用户", expanded=False):
+                    local_users = list_local_users()
+                    if local_users:
+                        for user in local_users:
+                            st.write(f"👤 {user['username']} (ID: {user['user_id']})")
                     else:
-                        try:
-                            response = requests.post(
-                                f"{SCHEDULER_URL}/api/users/login",
-                                json={"username": login_username}
-                            )
-                            if response.status_code == 200:
-                                result = response.json()
-                                st.session_state.user_session = {
-                                    "session_id": result["session_id"],
-                                    "username": login_username,
-                                    "user_id": result["user"]["user_id"]
-                                }
-                                st.session_state.is_logged_in = True
-                                st.success("✅ 登录成功！")
-                                st.rerun()
-                            else:
-                                st.error(f"登录失败: {response.text}")
-                        except Exception as e:
-                            st.error(f"登录请求失败: {str(e)}")
+                        st.info("暂无已注册用户")
+                
+                login_username = st.text_input("用户名或用户ID", key="login_username")
+                
+                if st.button("🔐 本地登录", key="local_login_button"):
+                    if not login_username:
+                        st.error("请输入用户名或用户ID")
+                    else:
+                        # 本地登录逻辑
+                        local_users = list_local_users()
+                        found_user = None
+                        
+                        # 按用户名查找
+                        for user in local_users:
+                            if user['username'] == login_username or user['user_id'] == login_username:
+                                found_user = user
+                                break
+                        
+                        if found_user:
+                            # 更新最后登录时间
+                            update_local_user_login(found_user['user_id'])
+                            
+                            # 创建本地session
+                            st.session_state.user_session = {
+                                "session_id": f"local_{found_user['user_id']}_{datetime.now().timestamp()}",
+                                "user": found_user,
+                                "username": found_user['username'],
+                                "is_local": True  # 标记为本地用户
+                            }
+                            
+                            st.success(f"✅ 登录成功！欢迎回来，{found_user['username']}")
+                            st.info("🔄 页面将自动刷新...")
+                            time.sleep(1)
+                            st.rerun()
+                        else:
+                            st.error("❌ 用户不存在，请先注册")
+                            st.info("💡 提示：如果您是新用户，请切换到'注册'标签页")
+            
+            # 当前版本暂只支持本地登录
+            st.info("当前版本支持本地登录，请使用本地用户登录功能")
             
             with tab_register:
-                st.markdown("### 新用户注册")
+                st.markdown("### 本地用户注册")
+                st.caption("注册后可直接使用本地登录")
                 
-                reg_username = st.text_input("用户名", key="reg_username")
+                reg_username = st.text_input("用户名", key="reg_username", help="用户名只能包含中文、英文和数字，长度不超过20个字符")
+                
+                # 实时验证用户名
+                if reg_username:
+                    is_valid, message = validate_username(reg_username)
+                    if not is_valid:
+                        st.error(f"用户名格式错误: {message}")
+                    else:
+                        # 检查用户名是否可用
+                        available_username = check_username_availability(reg_username)
+                        if available_username != reg_username:
+                            st.info(f"用户名 '{reg_username}' 已被使用，将自动调整为 '{available_username}'")
+                            reg_username = available_username
                 
                 # 文件夹位置选择
                 st.markdown("### 📁 文件夹位置设置")
@@ -445,546 +1073,223 @@ with st.sidebar:
                         "文件夹位置",
                         ["项目目录", "C盘", "D盘"],
                         index=0,
-                        key="folder_location"
+                        format_func=lambda x: {
+                            "项目目录": "项目目录 (推荐)",
+                            "C盘": "C盘",
+                            "D盘": "D盘"
+                        }.get(x, x)
                     )
-                    
-                    # 映射到API参数
-                    location_map = {
-                        "项目目录": "project",
-                        "C盘": "c", 
-                        "D盘": "d"
-                    }
-                    selected_location = location_map[folder_location]
                 
                 with col2:
-                    st.markdown("**文件夹路径预览：**")
-                    
                     if folder_location == "项目目录":
-                        st.info("📁 项目目录\\node_data\\user_data\\{用户ID}")
-                        st.caption("推荐：数据与项目文件一起管理")
+                        st.info("📁 相对路径，便于管理")
                     elif folder_location == "C盘":
-                        st.info("📁 C:\\idle_sense_data\\user_data\\{用户ID}")
-                        st.caption("C盘空间充足时推荐")
-                    else:  # D盘
-                        st.info("📁 D:\\idle_sense_data\\user_data\\{用户ID}")
-                        st.caption("D盘空间充足时推荐")
+                        st.info("💾 系统盘，启动快")
+                    elif folder_location == "D盘":
+                        st.info("💾 数据盘，空间大")
                 
-                # 文件夹使用协议
-                st.markdown("### 本地操作授权")
+                # 转换文件夹位置值
+                folder_value = {"项目目录": "project", "C盘": "c", "D盘": "d"}.get(folder_location, "project")
                 
-                # 强制用户阅读并同意
-                with st.container():
-                    st.markdown("#### 文件夹使用协议")
-                    st.markdown("""
-                    使用本系统需要同意在您的设备上创建以下文件夹：
-                    - **用户数据文件夹**: `node_data/user_data/{您的用户ID}`
-                    - **临时数据文件夹**: `node_data/temp_data/{您的用户ID}`
-                    
-                    所有操作均由您主动授权发起，操作结果由您自行负责。
-                    """)
-                    
-                    agree_folder = st.checkbox("□ 我已阅读并同意文件夹使用协议", key="agree_folder")
-                    
-                    st.markdown("#### 本地操作授权确认")
-                    st.markdown("""
-                    【本地文件操作免责声明】
-                    1. 所有本地文件夹/文件操作均需用户主动点击授权后执行
-                    2. 系统不会在后台进行任何未告知的本地文件操作
-                    3. 操作结果及后续风险由用户自行承担责任
-                    """)
-                    
-                    confirm_auth = st.checkbox("□ 我已确认本地操作授权", key="confirm_auth")
+                # 合并的用户协议和权限确认
+                st.markdown("### 📋 用户协议与权限确认")
+                st.markdown("""
+                #### 🔒 系统权限说明
                 
-                # 显示具体的文件夹路径（增强用户体验）
-                import os
-                project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
-                user_data_path = os.path.join(project_root, "node_data", "user_data", "{您的用户ID}")
-                temp_data_path = os.path.join(project_root, "node_data", "temp_data", "{您的用户ID}")
+                **系统将获取以下权限：**
+                - 在您选择的位置创建系统文件夹
+                - 读写系统文件夹内的内容
+                - 创建三层平级文件夹结构：用户系统文件夹、用户数据文件夹、临时数据文件夹
                 
-                st.markdown("#### 具体操作路径")
-                st.code(f"""
-用户数据文件夹: {user_data_path}
-临时数据文件夹: {temp_data_path}
-""", language="text")
+                **系统权限限制：**
+                - 系统只能访问您授权创建的文件夹
+                - 系统无法访问您电脑上的其他文件
+                - 所有操作都在您的明确授权下进行
                 
-                # 独立的授权确认弹窗（模拟实现）
-                show_authorization_modal = st.checkbox("🔒 点击此处查看并确认本地操作授权", key="show_auth_modal")
+                **文件夹用途：**
+                - **用户系统文件夹**: 存放用户ID等系统数据，平时不常用
+                - **用户数据文件夹**: 存放您不会删除的个人文件，系统可读取
+                - **临时数据文件夹**: 存放任务执行时的临时文件，会定期清理
                 
-                if show_authorization_modal:
-                    with st.container():
-                        st.markdown("---")
-                        st.markdown("### 🔒 【本地操作授权确认】")
-                        st.markdown("**此操作需要您明确授权才能继续**")
-                        
-                        # 授权弹窗内容
-                        st.markdown(f"""
-#### 操作详情
-- **操作类型**: 文件夹创建
-- **目标路径**: 
-  - `{user_data_path}`
-  - `{temp_data_path}`
-- **操作设备**: 您的本地计算机
-
-#### 授权声明
-所有操作均由您主动授权发起，确认授权后系统将执行以下操作：
-1. 在您的设备上创建上述文件夹
-2. 仅在此次授权范围内执行操作
-3. 不会进行任何未告知的额外操作
-
-#### 风险提示
-操作结果及后续风险由您自行承担责任。
-""")
-                        
-                        # 强制用户手动确认
-                        auth_confirmed = st.checkbox("✅ 我已阅读并确认授权本次本地操作", key="final_auth_confirm")
-                        
-                        if not auth_confirmed:
-                            st.warning("⚠️ 请确认授权后才能继续注册")
-                        
-                        st.markdown("---")
+                **了解更多：**
+                - [用户协议](#) | [安全说明和使用指南](#)
                 
-                if st.button("📝 注册", type="primary", use_container_width=True):
+                所有操作均由您主动授权发起，操作结果由您自行承担责任。
+                """)
+                
+                # 合并的勾选项
+                agree_all = st.checkbox("✅ 我已阅读并同意用户协议，并确认系统权限获取", key="agree_all")
+                
+                # 注册按钮
+                if st.button("🚀 本地注册", type="primary", disabled=not (reg_username and agree_all)):
                     if not reg_username:
-                        st.error("请填写用户名")
-                    elif not agree_folder:
-                        st.error("必须同意文件夹使用协议")
-                    elif not confirm_auth:
-                        st.error("必须确认本地操作授权")
-                    elif show_authorization_modal and not auth_confirmed:
-                        st.error("请完成本地操作授权确认")
+                        st.error("请输入用户名")
+                    elif not agree_all:
+                        st.error("请同意用户协议并确认系统权限获取")
                     else:
-                        with st.spinner("注册中..."):
-                            # 调用注册API
-                            try:
-                                response = requests.post(
-                                    f"{SCHEDULER_URL}/api/users/register",
-                                    json={
-                                        "username": reg_username,
-                                        "agree_folder_usage": True,
-                                        "folder_location": selected_location,
-                                        "user_confirmed_authorization": True
-                                    }
-                                )
+                        # 本地注册逻辑
+                        # 创建进度条
+                        progress_bar = st.progress(0)
+                        status_text = st.empty()
+                        
+                        try:
+                            # 步骤1: 验证用户名
+                            status_text.text("正在验证用户名...")
+                            progress_bar.progress(10)
+                            is_valid, message = validate_username(reg_username)
+                            if not is_valid:
+                                st.error(f"用户名格式错误: {message}")
+                                progress_bar.empty()
+                                status_text.empty()
+                                st.stop()  # 停止执行，而不是return
+                            
+                            # 步骤2: 检查用户名可用性
+                            status_text.text("检查用户名可用性...")
+                            progress_bar.progress(20)
+                            available_username = check_username_availability(reg_username)
+                            
+                            # 步骤3: 生成本地用户ID
+                            status_text.text("生成用户ID...")
+                            progress_bar.progress(30)
+                            local_user_id = generate_local_user_id()
+                            
+                            # 步骤4: 保存本地用户信息
+                            status_text.text("保存用户信息...")
+                            progress_bar.progress(40)
+                            user_info = save_local_user(local_user_id, available_username, folder_value)
+                            
+                            # 步骤5: 创建文件夹和系统信息文件
+                            status_text.text("创建文件夹结构...")
+                            progress_bar.progress(50)
+                            st.info("🔧 正在创建文件夹，如需权限会弹出UAC提示，请点击'是'允许...")
+                            
+                            # 使用重试机制创建文件夹
+                            paths = create_folders_with_retry(local_user_id, available_username, folder_value)
+                            
+                            if paths["success"]:
+                                # 步骤6: 创建用户会话
+                                status_text.text("完成注册...")
+                                progress_bar.progress(90)
                                 
-                                if response.status_code == 200:
-                                    result = response.json()
-                                    if result["success"]:
-                                        st.session_state.user_session = {
-                                            "session_id": result["session_id"],
-                                            "user": result["user"],
-                                            "username": reg_username
-                                        }
-                                        
-                                        # 显示详细的成功信息
-                                        st.success("✅ 注册成功！")
-                                        
-                                        # 显示文件夹创建确认
-                                        user_id = result["user"]["user_id"]
-                                        folder_location = result["user"]["folder_location"]
-                                        
-                                        # 根据选择的文件夹位置构建路径
-                                        if folder_location == "project":
-                                            base_path = os.path.join(project_root, "node_data")
-                                        elif folder_location == "c":
-                                            base_path = "C:\\idle_sense_data"
-                                        elif folder_location == "d":
-                                            base_path = "D:\\idle_sense_data"
-                                        else:
-                                            base_path = os.path.join(project_root, "node_data")
-                                        
-                                        actual_user_path = os.path.join(base_path, "user_data", user_id)
-                                        actual_temp_path = os.path.join(base_path, "temp_data", user_id)
-                                        
-                                        st.markdown("### 📁 文件夹创建确认")
-                                        st.markdown(f"""
-**已根据您的授权创建以下文件夹：**
-- 用户数据文件夹: `{actual_user_path}`
-- 临时数据文件夹: `{actual_temp_path}`
-- 文件夹位置: **{folder_location.upper()}盘**
+                                st.session_state.user_session = {
+                                    "session_id": f"local_{local_user_id}_{datetime.now().timestamp()}",
+                                    "user": user_info,
+                                    "username": available_username,
+                                    "is_local": True
+                                }
+                                
+                                # 完成注册
+                                progress_bar.progress(100)
+                                status_text.text("注册成功！")
+                                
+                                st.success("✅ 本地注册成功！")
+                                
+                                # 显示文件夹创建确认
+                                st.markdown("### 📁 文件夹创建确认")
+                                st.markdown(f"""
+**已根据您的授权创建以下文件夹和文件：**
+- 系统文件夹: `{paths["base_path"]}`
+- 用户系统文件夹: `{paths["user_system_dir"]}`
+- 用户数据文件夹: `{paths["user_data_dir"]}`
+- 临时数据文件夹: `{paths["temp_data_dir"]}`
+- 文档文件夹: `{paths["docs_dir"]}`
+- 系统信息文件: `{paths["system_file"]}`
+
+**文件说明：**
+- `system_info.json` 包含系统运行所需信息，请勿删除
+- 用户系统文件夹存放用户ID等系统数据，平时不常用
+- 用户数据文件夹用于存放您不会删除的个人文件
+- 临时数据文件夹用于任务执行时的临时文件，会定期清理
+- 文档文件夹包含用户协议和安全说明，可随时查看
+
+**重要提示：**
+- 系统只能访问您授权创建的文件夹内容
+- 如需系统读取您的文件，请将文件放入用户数据文件夹
+- 临时文件会在任务完成后24小时内自动清理
+- 删除操作需您手动完成
 
 **操作记录已保存至本地日志，供您核查。**
 """)
-                                        
-                                        st.info("💡 您现在可以开始使用系统的完整功能了！")
-                                        
-                                        # 延迟跳转，让用户有时间阅读确认信息
-                                        time.sleep(3)
-                                        st.rerun()
-                                    else:
-                                        st.error(f"注册失败: {result.get('error', '未知错误')}")
-                                else:
-                                    st.error(f"注册失败: HTTP {response.status_code}")
-                            except Exception as e:
-                                st.error(f"注册请求失败: {e}")
-            
-            with tab_login:
-                st.info("当前版本暂只支持注册新用户")
-                st.markdown("请使用注册功能创建新账户")
-                
-                # 添加文件夹管理功能（已登录用户可见）
-                if st.session_state.user_session:
-                    st.markdown("---")
-                    st.markdown("### 📁 文件夹管理")
-                    
-                    user_info = st.session_state.user_session.get("user", {})
-                    user_id = user_info.get("user_id")
-                    folder_location = user_info.get("folder_location", "project")
-                    
-                    if user_id:
-                        # 根据选择的文件夹位置构建路径
-                        if folder_location == "project":
-                            base_path = os.path.join(project_root, "node_data")
-                        elif folder_location == "c":
-                            base_path = "C:\\idle_sense_data"
-                        elif folder_location == "d":
-                            base_path = "D:\\idle_sense_data"
-                        else:
-                            base_path = os.path.join(project_root, "node_data")
-                        
-                        user_data_path = os.path.join(base_path, "user_data", user_id)
-                        temp_data_path = os.path.join(base_path, "temp_data", user_id)
-                        
-                        # 显示文件夹位置信息
-                        location_display = {
-                            "project": "项目目录",
-                            "c": "C盘",
-                            "d": "D盘"
-                        }.get(folder_location, "项目目录")
-                        
-                        st.markdown(f"""
-**您的文件夹信息：**
-- **位置**: {location_display}
-- 用户数据文件夹: `{user_data_path}`
-- 临时数据文件夹: `{temp_data_path}`
-""")
-                        
-                        # 文件夹操作选项
-                        col1, col2 = st.columns(2)
-                        with col1:
-                            if st.button("🔍 查看文件夹", use_container_width=True):
-                                st.info(f"文件夹位置: {user_data_path}")
-                                st.info("您可以通过文件管理器手动访问这些文件夹")
-                        
-                        with col2:
-                            if st.button("🗑️ 删除文件夹", use_container_width=True, type="secondary"):
-                                st.warning("⚠️ 此操作将删除您的所有数据")
-                                delete_confirm = st.checkbox("确认删除所有用户数据")
-                                if delete_confirm:
-                                    st.error("删除功能暂未实现，请手动删除文件夹")
-                        
-                        # 操作日志查看
-                        if st.button("📋 查看操作日志", use_container_width=True):
-                            log_file = os.path.join(project_root, "node_data", "logs", "local_operations.log")
-                            if os.path.exists(log_file):
-                                st.success("操作日志文件存在")
-                                st.code(f"日志位置: {log_file}")
-                            else:
-                                st.info("暂无操作日志记录")
-    
-    st.divider()
-    
-    # 调度中心状态
-    st.subheader("调度中心状态")
-    health_ok, health_info = check_scheduler_health()
-    
-    if health_ok:
-        st.success(f"✅ 在线 (v{health_info.get('version', '1.0.0')})")
-        
-        # 显示节点信息
-        nodes_info = health_info.get("nodes", {})
-        online_nodes = nodes_info.get("online", 0)
-        total_nodes = nodes_info.get("total", 0)
-        
-        # 更新session state中的节点状态
-        if (st.session_state.last_node_status['online'] != online_nodes or 
-            st.session_state.last_node_status['total'] != total_nodes):
-            st.session_state.last_node_status = {'online': online_nodes, 'total': total_nodes}
-        
-        # 使用列布局显示节点状态
-        col1, col2 = st.columns(2)
-        with col1:
-            st.metric("在线节点", online_nodes)
-        with col2:
-            st.metric("总计节点", total_nodes)
-        
-        # 节点激活功能
-        if online_nodes == 0:
-            st.warning("⚠️ 没有在线节点，任务无法执行")
-        else:
-            st.info(f"✅ 有 {online_nodes} 个在线节点，任务可以正常执行")
-        
-        # 无论是否有在线节点，都提供激活本地节点的选项
-        with st.expander("🔧 激活本地节点", expanded=(online_nodes == 0)):
-            st.markdown("激活您的本地计算机作为计算节点")
-            
-            col1, col2 = st.columns(2)
-            
-            with col1:
-                cpu_limit = st.slider("CPU限制 (核心)", 0.1, 4.0, 1.0, 0.1)
-                memory_limit = st.slider("内存限制 (MB)", 128, 4096, 512, 128)
-            
-            with col2:
-                storage_limit = st.slider("存储限制 (MB)", 256, 8192, 1024, 256)
-                
-            if st.button("⚡ 激活本地节点", type="primary"):
-                with st.spinner("正在激活本地节点..."):
-                    try:
-                        response = requests.post(
-                            f"{SCHEDULER_URL}/api/nodes/activate-local",
-                            json={
-                                "cpu_limit": cpu_limit,
-                                "memory_limit": memory_limit,
-                                "storage_limit": storage_limit
-                            }
-                        )
-                        response = requests.post(
-                            f"{SCHEDULER_URL}/api/nodes/activate-local",
-                            json={
-                                "cpu_limit": cpu_limit,
-                                "memory_limit": memory_limit,
-                                "storage_limit": storage_limit
-                            },
-                            timeout=10
-                        )
-                        if response.status_code == 200:
-                            result = response.json()
-                            if result["success"]:
-                                st.success("✅ 本地节点激活成功！")
-                                st.info(f"节点ID: {result['node_id']}")
                                 
-                                # 立即获取节点状态以验证激活
-                                time.sleep(0.5)  # 短暂等待以确保节点注册完成
-                                
-                                # 立即刷新调度中心健康状态来验证节点是否在线
-                                health_ok, health_info = check_scheduler_health()
-                                if health_ok:
-                                    nodes_info = health_info.get("nodes", {})
-                                    online_nodes = nodes_info.get("online", 0)
-                                    total_nodes = nodes_info.get("total", 0)
-                                    
-                                    # 立即更新session state中的节点状态
-                                    st.session_state.last_node_status = {'online': online_nodes, 'total': total_nodes}
-                                    st.session_state.last_refresh = datetime.now()
-                                    
-                                    # 显示当前节点状态
-                                    if online_nodes > 0:
-                                        st.success(f"🎉 恭喜！节点激活成功 - 当前在线节点: {online_nodes}, 总计: {total_nodes}")
-                                    else:
-                                        st.info(f"ℹ️ 节点已激活，请稍候 - 当前在线节点: {online_nodes}, 总计: {total_nodes}")
-                                        
-                                        # 再次尝试获取状态，最多尝试3次
-                                        for i in range(3):
-                                            time.sleep(1)
-                                            retry_health_ok, retry_health_info = check_scheduler_health()
-                                            if retry_health_ok:
-                                                retry_nodes_info = retry_health_info.get("nodes", {})
-                                                retry_online = retry_nodes_info.get("online", 0)
-                                                retry_total = retry_nodes_info.get("total", 0)
-                                                if retry_online > 0:
-                                                    st.session_state.last_node_status = {'online': retry_online, 'total': retry_total}
-                                                    st.success(f"✅ 现在在线节点: {retry_online}, 总计: {retry_total}")
-                                                    break
-                                
-                                # 强制页面刷新以更新所有UI组件
-                                time.sleep(1)
+                                st.info("💡 您现在可以开始使用系统的完整功能了！")
+                                time.sleep(2)
                                 st.rerun()
                             else:
-                                st.error(f"激活失败: {result.get('message', '未知错误')}")
-                        else:
-                            st.error(f"激活失败: HTTP {response.status_code}")
-                    except Exception as e:
-                        st.error(f"激活请求失败: {str(e)}")
-        
-        # 添加结束按钮
-        st.subheader("节点控制")
+                                # 文件夹创建失败
+                                progress_bar.empty()
+                                status_text.empty()
+                                
+                                st.error(f"❌ 文件夹创建失败")
+                                st.error(f"错误：{paths['error']}")
+                                st.warning(f"建议：{paths['suggestion']}")
+                                
+                                # 提供重试选项
+                                if st.button("🔄 重试创建文件夹", key="retry_folder_creation"):
+                                    st.rerun()
+                                
+                                # 显示技术详情（可选）
+                                if st.checkbox("显示技术详情", key="show_script_details"):
+                                    st.code(f"""
+脚本退出代码: {paths.get('script_exit_code', 'N/A')}
+脚本输出: {paths.get('script_stdout', 'N/A')}
+脚本错误: {paths.get('script_stderr', 'N/A')}
+""", language="text")
+                                
+                                # 提供备选方案
+                                st.markdown("### 🔧 解决方案")
+                                st.markdown("""
+1. **重试操作**：点击上方"重试创建文件夹"按钮
+2. **选择其他位置**：返回注册页面，选择"项目目录"位置
+3. **手动创建文件夹**：在目标位置手动创建`idle-sense-system-data`文件夹
+4. **检查脚本文件**：确认`create_folders.py`文件存在于程序目录
+""")
+                        except Exception as e:
+                            progress_bar.empty()
+                            status_text.empty()
+                            st.error(f"注册失败: {str(e)}")
+            
+            # 显示本地用户统计
+            with st.expander("📊 本地用户统计", expanded=False):
+                local_users = list_local_users()
+                st.metric("本地用户总数", len(local_users))
+                
+                if local_users:
+                    st.write("**最近注册用户：**")
+                    recent_users = sorted(local_users, key=lambda x: x.get('created_at', ''), reverse=True)[:3]
+                    for user in recent_users:
+                        created_at = user.get('created_at', '未知时间')
+                        if created_at != '未知时间':
+                            try:
+                                dt = datetime.fromisoformat(created_at.replace('Z', '+00:00'))
+                                created_at = dt.strftime('%Y-%m-%d %H:%M')
+                            except:
+                                pass
+                        st.write(f"👤 {user['username']} - {created_at}")
+            
+            # 当前版本暂只支持本地登录
+            st.info("💡 提示：当前版本支持本地用户注册和登录，无需网络连接")
 
-        # 获取所有节点信息以确定有哪些激活的节点
-        success, nodes_info = get_all_nodes()
-        if success and nodes_info.get("nodes"):
-            active_nodes = nodes_info["nodes"]
-            if active_nodes:
-        # 创建节点选择器
-                node_options = {f"{node['node_id']} ({node['status']})": node['node_id'] 
-                                for node in active_nodes}
-                selected_node = st.selectbox("选择要控制的节点", list(node_options.values()))
+# 用户已登录，显示主界面
+if st.session_state.user_session:
+    # 侧边栏状态显示
+    with st.sidebar:
+        st.markdown("---")
+        st.markdown("### 📊 系统状态")
         
-                if st.button("⏹️ 停止节点", type="secondary"):
-                    stop_success, stop_result = stop_node(selected_node)
-                    if stop_success:
-                        st.success(f"✅ 节点 {selected_node} 已停止")
-                        time.sleep(1)
-                        st.rerun()
-                    else:
-                        st.error(f"❌ 停止失败: {stop_result.get('error', '未知错误')}")
+        # 检查调度器健康状态
+        health_ok, health_info = check_scheduler_health()
+        
+        if health_ok:
+            st.success("🟢 调度器在线")
+            idle_nodes = health_info.get("nodes", {}).get("online", 0)
+            st.metric("在线设备", idle_nodes)
+            if idle_nodes > 0:
+                st.success(f"✅ 有 {idle_nodes} 台设备在线，可以执行任务")
             else:
-                st.info("当前没有可用节点")
+                st.warning("⚠️ 没有设备在线，请激活设备")
         else:
-            st.info("无法获取节点信息")
-        
-        # 显示任务队列信息
-        tasks_info = health_info.get("tasks", {})
-        pending_tasks = tasks_info.get("pending", 0)
-        running_tasks = tasks_info.get("running", 0)
-        
-        st.metric("待处理任务", pending_tasks, f"运行中: {running_tasks}")
-    else:
-        st.error("❌ 离线")
-        if "error" in health_info:
-            st.caption(f"错误: {health_info['error']}")
-        st.caption("请确保调度中心正在运行")
-    
-    st.divider()
-    
-    # 自动刷新控制
-    st.subheader("自动刷新")
-    auto_refresh = st.checkbox("启用自动刷新", value=st.session_state.auto_refresh)
-    st.session_state.auto_refresh = auto_refresh
-    
-    # 检查当前节点状态
-    health_ok, health_info = check_scheduler_health()
-    current_online = 0
-    current_total = 0
-    if health_ok:
-        nodes_info = health_info.get("nodes", {})
-        current_online = nodes_info.get("online", 0)
-        current_total = nodes_info.get("total", 0)
-    
-    # 检查节点状态是否发生变化
-    status_changed = (
-        st.session_state.last_node_status['online'] != current_online or
-        st.session_state.last_node_status['total'] != current_total
-    )
-    
-    if status_changed:
-        # 更新状态记录
-        st.session_state.last_node_status = {'online': current_online, 'total': current_total}
-        st.session_state.last_node_check_time = datetime.now()
-        
-        # 显示状态变化提醒（不刷新页面，只是显示信息）
-        st.success(f"🔄 节点状态更新: 在线 {current_online}, 总计 {current_total}")
-    
-    if auto_refresh:
-        refresh_interval = st.slider("刷新间隔(秒)", 30, 300, REFRESH_INTERVAL)  # 增加最小间隔到30秒，减少不必要的刷新
-        REFRESH_INTERVAL = refresh_interval
-        
-        # 自动刷新逻辑 - 仅在达到时间间隔时才刷新
-        time_since_refresh = (datetime.now() - st.session_state.last_refresh).seconds
-        if time_since_refresh >= REFRESH_INTERVAL:
-            st.session_state.last_refresh = datetime.now()
-            # 只有在达到时间间隔时才刷新
-            st.rerun()
-    else:
-        # 即使禁用自动刷新，也要检查是否刚激活了节点需要快速刷新
-        if hasattr(st.session_state, 'refresh_after_activation') and st.session_state.refresh_after_activation:
-            activation_elapsed = (datetime.now() - st.session_state.get('activation_time', datetime.now())).seconds
-            if activation_elapsed < 5:  # 激活后5秒内强制刷新
-                time.sleep(0.5)  # 短暂延迟确保系统状态同步
-                st.session_state.last_refresh = datetime.now()
-                st.rerun()
-            else:
-                # 重置激活标志
-                st.session_state.refresh_after_activation = False
-    
-    st.divider()
-    
-    # 示例代码
-    st.subheader("示例代码")
-    example_code = st.selectbox(
-        "选择示例",
-        ["简单计算", "数据处理", "模拟计算", "读取用户数据", "自定义"]
-    )
-    
-    examples = {
-        "简单计算": """# 简单数学计算
-result = 0
-for i in range(1000000):
-    result += i * 0.001
-print(f"计算结果: {result:.2f}")""",
-        
-        "数据处理": """# 数据处理示例
-import random
-
-# 生成测试数据
-data = [random.randint(1, 1000) for _ in range(10000)]
-
-# 计算统计信息
-mean = sum(data) / len(data)
-variance = sum((x - mean) ** 2 for x in data) / len(data)
-std_dev = variance ** 0.5
-
-print(f"数据量: {len(data)}")
-print(f"平均值: {mean:.2f}")
-print(f"标准差: {std_dev:.2f}")
-print(f"最大值: {max(data)}")
-print(f"最小值: {min(data)}")""",
-        
-        "模拟计算": """# 蒙特卡洛模拟计算π
-import random
-import math
-
-num_points = 1000000
-points_inside = 0
-
-for _ in range(num_points):
-    x = random.random()
-    y = random.random()
-    
-    if math.sqrt(x**2 + y**2) <= 1:
-        points_inside += 1
-
-pi_estimate = 4 * points_inside / num_points
-print(f"π的估计值: {pi_estimate}")
-print(f"与真实π的误差: {abs(pi_estimate - math.pi):.6f}")""",
-        
-        "读取用户数据": """# 读取用户数据文件夹中的文件示例
-
-# 方法1：使用系统提供的函数读取文件
-try:
-    # 读取用户数据文件夹中的文件
-    file_content = read_user_file("my_data.txt")
-    print(f"成功读取文件内容:\n{file_content}")
-except Exception as e:
-    print(f"读取文件失败: {e}")
-    print("请确保在user_data文件夹中放置了my_data.txt文件")
-
-# 方法2：检查用户文件夹中的文件列表
-print("\\n用户文件夹中的文件:")
-user_files = list_user_files()
-for file in user_files:
-    print(f"- {file}")
-
-# 方法3：使用用户文件夹路径进行计算
-print(f"\\n用户文件夹路径: {USER_FOLDER}")
-print(f"临时文件夹路径: {TEMP_FOLDER}")
-
-# 示例：如果用户提供了数据文件，就使用用户数据
-if user_file_exists("dataset.csv"):
-    print("检测到用户数据文件，将使用用户数据进行计算")
-    # 这里可以添加处理用户数据的代码
-else:
-    print("未检测到用户数据文件，使用默认数据进行计算")
-    # 这里可以添加使用默认数据的代码
-"""
-    }
-    
-    if example_code != "自定义":
-        st.code(examples[example_code], language="python")
-    
-    st.divider()
-    
-    # 快速操作
-    st.subheader("快速操作")
-    if st.button("🔄 手动刷新", use_container_width=True):
-        st.session_state.last_refresh = datetime.now()
-        st.rerun()
-    
-    if st.button("📋 查看所有结果", use_container_width=True):
-        success, results = get_all_results()
-        if success and results.get("results"):
-            st.session_state.results_data = results
-            # 切换到任务监控标签页的逻辑可以在这里添加
-        elif not success:
-            st.error(f"获取结果失败: {results.get('error', '未知错误')}")
+            st.error("🔴 调度器离线")
+            st.info("请检查调度器服务是否正常运行")
 
 # 主界面 - 标签页布局
 tab1, tab2, tab3, tab4, tab5 = st.tabs(["📝 提交任务", "📊 任务监控", "🖥️ 节点管理", "📈 系统统计", "📋 任务结果"])
@@ -1005,6 +1310,59 @@ with tab1:
     
     # 代码编辑器
     st.subheader("Python代码")
+    
+    # 示例代码选择
+    example_code = st.selectbox(
+        "选择示例代码",
+        ["自定义", "Hello World", "数学计算", "文件处理", "网络请求"],
+        index=0
+    )
+    
+    # 预定义示例代码
+    examples = {
+        "Hello World": 'print("Hello, World!")',
+        "数学计算": '''
+# 计算圆的面积
+import math
+
+radius = 5
+area = math.pi * radius ** 2
+print(f"半径为{radius}的圆的面积是: {area:.2f}")
+''',
+        "文件处理": '''
+# 读取并处理文件
+import os
+
+# 创建一个示例文件
+with open("example.txt", "w") as f:
+    f.write("这是示例文本\\n第二行\\n第三行")
+    
+# 读取文件内容
+with open("example.txt", "r") as f:
+    content = f.read()
+    lines = content.split("\\n")
+    
+print(f"文件共有{len(lines)}行")
+print(f"第一行: {lines[0]}")
+''',
+        "网络请求": '''
+# 发送HTTP请求
+import requests
+import json
+
+try:
+    # 获取IP地址信息
+    response = requests.get("https://httpbin.org/ip", timeout=5)
+    if response.status_code == 200:
+        data = response.json()
+        print(f"您的IP地址是: {data['origin']}")
+    else:
+        print(f"请求失败，状态码: {response.status_code}")
+except Exception as e:
+    print(f"请求出错: {e}")
+'''
+    }
+    
     if example_code != "自定义" and example_code in examples:
         default_code = examples[example_code]
     else:
@@ -1068,13 +1426,24 @@ print(f"斐波那契数列第20项: {result}")"""
 with tab2:
     st.header("任务监控")
     
-    # 获取并显示所有结果
+    # 获取并显示所有结果 - 添加数据变化检测
     if st.button("🔄 刷新任务列表", key="refresh_tasks"):
+        # 清除缓存，强制刷新
+        cleanup_cache()
         st.rerun()
     
     success, results = get_all_results()
     if success and results.get("results"):
         results_list = results["results"]
+        
+        # 检查任务结果是否变化
+        task_data = {
+            'nodes': {
+                'online': len(results.get("results", []))
+            },
+            'health_status': len(results.get("results", [])) > 0
+        }
+        task_data_changed = update_cache_and_check_change(task_data)
         
         if results_list:
             st.subheader("已完成的任务")
@@ -1218,10 +1587,10 @@ with tab2:
                                 duration = task_info["completed_at"] - task_info["created_at"]
                                 st.metric("执行时间", f"{duration:.1f}秒")
                         
-                        # 显示结果
+                        # 显示任务详情 - 延迟加载大型结果
                         if task_info.get("result"):
-                            st.subheader("执行结果")
-                            st.code(task_info["result"], language="text")
+                            with st.expander("执行结果", expanded=False):
+                                st.code(task_info["result"], language="text")
                         
                         # 资源需求信息
                         if task_info.get("required_resources"):
@@ -1240,17 +1609,23 @@ with tab3:
     
     if success and nodes_info.get("nodes"):
         nodes = nodes_info["nodes"]
-        total_nodes = nodes_info.get("total_nodes", 0)
         idle_nodes = nodes_info.get("total_idle", 0)
         
-        # 节点统计
-        col1, col2, col3 = st.columns(3)
-        with col1:
-            st.metric("总节点数", total_nodes)
-        with col2:
-            st.metric("在线节点", idle_nodes)
-        with col3:
-            st.metric("离线节点", total_nodes - idle_nodes)
+        # 检查节点信息是否变化 - 只关注在线节点数
+        nodes_data = {
+            "nodes": {
+                "online": idle_nodes
+            },
+            "health_status": idle_nodes > 0
+        }
+        nodes_data_changed = update_cache_and_check_change(nodes_data)
+        
+        # 节点统计 - 只显示在线节点数
+        st.metric("在线设备", idle_nodes)
+        if idle_nodes > 0:
+            st.success(f"✅ 有 {idle_nodes} 台设备在线，可以执行任务")
+        else:
+            st.warning("⚠️ 没有设备在线，请激活设备")
         
         # 节点列表
         st.subheader("节点列表")
@@ -1273,6 +1648,15 @@ with tab3:
                     st.write("**基本信息**")
                     st.write(f"状态: `{node_status}`")
                     st.write(f"平台: `{node.get('platform', 'N/A')}`")
+                    
+                    # 显示设备ID（如果有）
+                    device_id = node.get("device_id", "")
+                    if device_id:
+                        st.markdown(f"""
+                        <div style="background-color: #f0f2f6; padding: 5px; border-radius: 3px; font-size: 0.8em; display: inline-block;">
+                        📱 设备ID: {device_id}
+                        </div>
+                        """, unsafe_allow_html=True)
                     
                     if node.get("idle_since"):
                         idle_since = datetime.fromisoformat(node["idle_since"].replace('Z', '+00:00'))
@@ -1303,6 +1687,15 @@ with tab4:
     success, stats = get_system_stats()
     
     if success:
+        # 检查系统统计是否变化
+        stats_data = {
+            "nodes": {
+                "online": stats.get("total_nodes", 0)
+            },
+            "health_status": stats.get("total_nodes", 0) > 0
+        }
+        stats_changed = update_cache_and_check_change(stats_data)
+        
         # 关键指标
         col1, col2, col3, col4 = st.columns(4)
         
@@ -1329,29 +1722,23 @@ with tab4:
         scheduler_stats = stats.get("scheduler", {})
         if scheduler_stats:
             st.subheader("调度器统计")
-            col1, col2, col3, col4 = st.columns(4)
+            col1, col2 = st.columns(2)
             
             with col1:
                 st.metric("已处理任务", scheduler_stats.get("tasks_processed", 0))
             
             with col2:
                 st.metric("失败任务", scheduler_stats.get("tasks_failed", 0))
-            
-            with col3:
-                st.metric("注册节点", scheduler_stats.get("nodes_registered", 0))
-            
-            with col4:
-                st.metric("失效节点", scheduler_stats.get("nodes_dropped", 0))
         
         # 可视化图表
         st.subheader("性能图表")
         
-        # 创建图表
+        # 创建图表 - 去掉节点状态分布
         fig = make_subplots(
             rows=2, cols=2,
-            subplot_titles=("任务状态分布", "节点状态分布", "调度器统计", "资源利用率"),
-            specs=[[{"type": "pie"}, {"type": "pie"}],
-                   [{"type": "bar"}, {"type": "scatter"}]]
+            subplot_titles=("任务状态分布", "调度器统计", "资源利用率", "系统性能"),
+            specs=[[{"type": "pie"}, {"type": "bar"}],
+                   [{"type": "scatter"}, {"type": "indicator"}]]
         )
         
         # 任务状态饼图
@@ -1369,34 +1756,16 @@ with tab4:
                     row=1, col=1
                 )
         
-        # 节点状态饼图
-        nodes_info = stats.get("nodes", {})
-        if nodes_info:
-            idle_nodes = nodes_info.get("idle", 0)
-            busy_nodes = nodes_info.get("busy", 0)
-            offline_nodes = nodes_info.get("offline", 0)
-            total_nodes = idle_nodes + busy_nodes + offline_nodes
-            
-            if total_nodes > 0:
-                node_labels = ["闲置", "忙碌", "离线"]
-                node_values = [idle_nodes, busy_nodes, offline_nodes]
-                fig.add_trace(
-                    go.Pie(labels=node_labels, values=node_values, hole=.3),
-                    row=1, col=2
-                )
-        
-        # 调度器统计柱状图
+        # 调度器统计柱状图 - 去掉节点相关统计
         if scheduler_stats:
-            scheduler_labels = ["处理任务", "失败任务", "注册节点", "失效节点"]
+            scheduler_labels = ["处理任务", "失败任务"]
             scheduler_values = [
                 scheduler_stats.get("tasks_processed", 0),
-                scheduler_stats.get("tasks_failed", 0),
-                scheduler_stats.get("nodes_registered", 0),
-                scheduler_stats.get("nodes_dropped", 0)
+                scheduler_stats.get("tasks_failed", 0)
             ]
             fig.add_trace(
                 go.Bar(x=scheduler_labels, y=scheduler_values),
-                row=2, col=1
+                row=1, col=2
             )
         
         # 更新布局
@@ -1430,6 +1799,15 @@ with tab5:
             status_success, task_info = get_task_status(latest_task_id)
             
             if status_success and task_info:
+                # 检查任务状态是否变化
+                task_status_data = {
+                    "nodes": {
+                        "online": 1 if task_info.get("status") == "completed" else 0
+                    },
+                    "health_status": task_info.get("status") == "completed"
+                }
+                task_status_changed = update_cache_and_check_change(task_status_data)
+                
                 status = task_info.get("status", "unknown")
                 if status == "completed":
                     st.success(f"✅ 任务 {latest_task_id} 已完成")
@@ -1455,11 +1833,3 @@ with tab5:
 # 页脚
 st.divider()
 st.caption("闲置计算加速器 v2.0.0 | 开源免费项目 | 适配新版调度中心API")
-
-# 自动刷新逻辑
-if st.session_state.auto_refresh:
-    time_since_refresh = (datetime.now() - st.session_state.last_refresh).seconds
-    if time_since_refresh >= REFRESH_INTERVAL:
-        # 在后台触发刷新
-        st.session_state.last_refresh = datetime.now()
-        st.rerun()
