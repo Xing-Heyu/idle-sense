@@ -11,8 +11,8 @@ class User:
         self.created_at = datetime.now()
         self.is_active = True
         self.folder_agreement = False  # 用户是否同意文件夹使用规则
-        self.user_folder_path = f"user_data/{self.user_id}"  # 用户文件夹路径
-        self.temp_folder_path = f"temp_data/{self.user_id}"  # 临时文件夹路径
+        self.user_folder_path = f"user_data (您的数据文件-主要工作区)/{self.user_id}"  # 用户文件夹路径
+        self.temp_folder_path = f"temp_data (临时文件-自动清理)/{self.user_id}"  # 临时文件夹路径
         
     def to_dict(self) -> Dict[str, Any]:
         return {

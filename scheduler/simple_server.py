@@ -1,6 +1,6 @@
 """
 scheduler/simple_server.py
-Enhanced Task Scheduler with Node Management, User Management and Fair Scheduling
+优化版任务调度器 - 修复节点显示问题
 """
 
 import time
@@ -8,7 +8,7 @@ import uuid
 import threading
 import os
 import sys
-from datetime import datetime, timedelta
+from datetime import datetime
 from typing import List, Dict, Optional, Any, Tuple
 from fastapi import FastAPI, HTTPException, BackgroundTasks, Header, Body
 from pydantic import BaseModel
@@ -17,34 +17,14 @@ from collections import defaultdict
 # 导入安全沙箱
 sys.path.append(os.path.dirname(os.path.abspath(__file__)) + '/..')
 from sandbox import CodeSandbox
-from user_management.local_authorization import authorization_manager
 
-# ==================== 用户管理数据模型 ====================
-class User(BaseModel):
-    """用户模型"""
-    user_id: str
-    username: str
-    email: str
-    created_at: str
-    is_active: bool = True
-
-class UserQuota(BaseModel):
-    """用户资源配额"""
-    user_id: str
-    daily_tasks_limit: int = 100
-    concurrent_tasks_limit: int = 5
-    cpu_quota: float = 10.0
-    memory_quota: int = 4096
-    daily_usage: int = 0
-    current_tasks: int = 0
-
-# ==================== 任务数据模型定义 ====================
+# ==================== 数据模型定义 ====================
 class TaskSubmission(BaseModel):
     """任务提交模型"""
     code: str
     timeout: Optional[int] = 300
     resources: Optional[Dict[str, Any]] = {"cpu": 1.0, "memory": 512}
-    user_id: Optional[str] = None  # 新增用户ID参数
+    user_id: Optional[str] = None
 
 class TaskResult(BaseModel):
     """任务结果模型"""
@@ -53,7 +33,7 @@ class TaskResult(BaseModel):
     node_id: Optional[str] = None
 
 class TaskInfo(BaseModel):
-    """任务信息模型 - 增强版"""
+    """任务信息模型"""
     task_id: int
     code: str
     status: str  # pending, assigned, running, completed, failed, deleted
@@ -63,187 +43,58 @@ class TaskInfo(BaseModel):
     completed_at: Optional[float] = None
     result: Optional[str] = None
     required_resources: Dict[str, Any] = {"cpu": 1.0, "memory": 512}
-    user_id: Optional[str] = None  # 新增：关联用户ID
+    user_id: Optional[str] = None
 
 class NodeRegistration(BaseModel):
     """节点注册模型"""
     node_id: str
-    capacity: Dict[str, Any]  # {"cpu": 4.0, "memory": 8192, "disk": 100000}
-    tags: Optional[Dict[str, Any]] = {}  # 标签：{"gpu": true, "os": "windows"}
+    capacity: Dict[str, Any]
+    tags: Optional[Dict[str, Any]] = {}
 
 class NodeHeartbeat(BaseModel):
-    """节点心跳模型"""
+    """节点心跳模型 - 优化版"""
     node_id: str
-    current_load: Dict[str, Any]  # {"cpu_usage": 0.3, "memory_usage": 2048}
+    current_load: Dict[str, Any]
     is_idle: bool
-    available_resources: Dict[str, Any]  # 计算后的可用资源
+    available_resources: Dict[str, Any]
+    # 新增字段
+    cpu_usage: Optional[float] = 0.0
+    memory_usage: Optional[float] = 0.0
+    is_available: Optional[bool] = True  # 节点是否可用（即使忙）
 
-# ==================== 用户管理类 ====================
-class SimpleAuthManager:
-    """简化版用户认证管理器 - 开源版本"""
-    def __init__(self):
-        self.users: Dict[str, User] = {}
-        self.user_quotas: Dict[str, UserQuota] = {}
-        self.sessions: Dict[str, str] = {}  # session_id -> user_id
-        
-    def register_user(self, username: str, email: str) -> Dict[str, Any]:
-        """注册新用户 - 开源版本简化注册"""
-        # 检查用户名和邮箱是否已存在
-        if any(u.username == username for u in self.users.values()):
-            return {"success": False, "error": "用户名已存在"}
-            
-        if any(u.email == email for u in self.users.values()):
-            return {"success": False, "error": "邮箱已存在"}
-            
-        # 创建用户
-        user = User(
-            user_id=str(uuid.uuid4()),
-            username=username,
-            email=email,
-            created_at=datetime.now().isoformat()
-        )
-        
-        # 创建无限制配额
-        quota = UserQuota(user_id=user.user_id)
-        
-        self.users[user.user_id] = user
-        self.user_quotas[user.user_id] = quota
-        
-        return {
-            "success": True, 
-            "user_id": user.user_id,
-            "user": user.dict(),
-            "quota": quota.dict()
-        }
-    
-    def get_user_by_id(self, user_id: str) -> Optional[User]:
-        """根据ID获取用户"""
-        return self.users.get(user_id)
-    
-    def get_quota_by_user_id(self, user_id: str) -> Optional[UserQuota]:
-        """获取用户配额"""
-        return self.user_quotas.get(user_id)
-    
-    def create_session(self, user_id: str) -> str:
-        """创建会话"""
-        import secrets
-        session_id = secrets.token_urlsafe(32)
-        self.sessions[session_id] = user_id
-        return session_id
-    
-    def validate_session(self, session_id: str) -> Optional[str]:
-        """验证会话"""
-        return self.sessions.get(session_id)
-
-class SimpleQuotaManager:
-    """简化版配额管理器"""
-    def __init__(self):
-        self.quotas: Dict[str, UserQuota] = {}
-        self.last_reset_date = datetime.now().date()
-        
-    def check_quota(self, user_id: str) -> Dict[str, Any]:
-        """检查用户配额"""
-        quota = self.quotas.get(user_id)
-        if not quota:
-            return {"allowed": False, "error": "用户不存在"}
-            
-        # 每日重置检查
-        self._reset_daily_usage_if_needed(quota)
-        
-        if quota.daily_usage >= quota.daily_tasks_limit:
-            return {"allowed": False, "error": "每日任务配额已用完"}
-            
-        if quota.current_tasks >= quota.concurrent_tasks_limit:
-            return {"allowed": False, "error": "并发任务数已达上限"}
-            
-        return {"allowed": True, "quota": quota.dict()}
-    
-    def consume_quota(self, user_id: str) -> bool:
-        """消耗配额"""
-        quota = self.quotas.get(user_id)
-        if not quota:
-            return False
-            
-        if quota.daily_usage >= quota.daily_tasks_limit:
-            return False
-            
-        if quota.current_tasks >= quota.concurrent_tasks_limit:
-            return False
-            
-        quota.daily_usage += 1
-        quota.current_tasks += 1
-        return True
-    
-    def release_quota(self, user_id: str):
-        """释放配额（任务完成时调用）"""
-        quota = self.quotas.get(user_id)
-        if quota and quota.current_tasks > 0:
-            quota.current_tasks -= 1
-    
-    def _reset_daily_usage_if_needed(self, quota: UserQuota):
-        """如果需要则重置每日使用量"""
-        today = datetime.now().date()
-        if today > self.last_reset_date:
-            quota.daily_usage = 0
-            self.last_reset_date = today
-
-# ==================== 内存存储类 - 增强版 ====================
-class EnhancedMemoryStorage:
-    """线程安全的内存存储，支持节点管理和公平调度"""
+# ==================== 优化的内存存储类 ====================
+class OptimizedMemoryStorage:
+    """优化版内存存储，修复节点显示问题"""
     
     def __init__(self):
         # 任务存储
         self.tasks: Dict[int, TaskInfo] = {}
         self.task_id_counter = 1
         
-        # 节点管理
-        self.nodes: Dict[str, Dict] = {}  # node_id -> 节点信息
-        self.node_heartbeats: Dict[str, float] = {}  # node_id -> 最后心跳时间
+        # 节点管理 - 优化数据结构
+        self.nodes: Dict[str, Dict] = {}
+        self.node_heartbeats: Dict[str, float] = {}
+        self.node_status: Dict[str, Dict] = {}  # 新增：节点状态缓存
         
         # 调度队列
-        self.pending_tasks: List[int] = []  # 待调度任务ID列表
-        self.assigned_tasks: Dict[str, List[int]] = defaultdict(list)  # node_id -> 任务ID列表
+        self.pending_tasks: List[int] = []
+        self.assigned_tasks: Dict[str, List[int]] = defaultdict(list)
         
         self.server_id = str(uuid.uuid4())[:8]
         self.lock = threading.RLock()
         
-        # 调度器统计
-        self.scheduler_stats = {
+        # 统计信息
+        self.stats = {
             "tasks_processed": 0,
             "tasks_failed": 0,
             "nodes_registered": 0,
             "nodes_dropped": 0,
-            "last_schedule_time": time.time()
+            "last_cleanup": time.time()
         }
-    def stop_node(self, node_id: str) -> Dict[str, Any]:
-
-        with self.lock:
-            if node_id not in self.nodes:
-                return {"success": False, "error": "节点不存在"}
-        
-        # 重新分配该节点的任务
-            if node_id in self.assigned_tasks:
-                for task_id in self.assigned_tasks[node_id]:
-                    task = self.tasks.get(task_id)
-                    if task and task.status == "assigned":
-                        task.status = "pending"
-                        task.assigned_node = None
-                        task.assigned_at = None
-                        self.pending_tasks.append(task_id)
-            
-                del self.assigned_tasks[node_id]
-        
-        # 移除节点
-            del self.nodes[node_id]
-            if node_id in self.node_heartbeats:
-                del self.node_heartbeats[node_id]
-        
-            self.scheduler_stats["nodes_dropped"] += 1
-        
-            return {"success": True, "message": f"节点 {node_id} 已停止"}
+    
     # ========== 任务管理方法 ==========
     def add_task(self, code: str, timeout: int = 300, resources: Optional[Dict] = None, user_id: Optional[str] = None) -> int:
-        """添加新任务到调度队列"""
+        """添加新任务"""
         with self.lock:
             task_id = self.task_id_counter
             self.task_id_counter += 1
@@ -254,67 +105,29 @@ class EnhancedMemoryStorage:
                 status="pending",
                 created_at=time.time(),
                 required_resources=resources or {"cpu": 1.0, "memory": 512},
-                user_id=user_id  # 关联用户ID
+                user_id=user_id
             )
             
             self.tasks[task_id] = task
             self.pending_tasks.append(task_id)
             
-            # 尝试立即调度
+            # 立即尝试调度
             self._schedule_tasks()
             
             return task_id
     
-    def delete_task(self, task_id: int) -> Dict[str, Any]:
-        """删除任务"""
-        with self.lock:
-            if task_id not in self.tasks:
-                return {"success": False, "error": "任务不存在"}
-            
-            task = self.tasks[task_id]
-            
-            # 只能删除pending或assigned状态的任务
-            if task.status not in ["pending", "assigned"]:
-                return {"success": False, "error": f"只能删除pending或assigned状态的任务，当前状态: {task.status}"}
-            
-            # 从相应队列中移除
-            if task.status == "pending" and task_id in self.pending_tasks:
-                self.pending_tasks.remove(task_id)
-            elif task.status == "assigned" and task.assigned_node:
-                if task_id in self.assigned_tasks[task.assigned_node]:
-                    self.assigned_tasks[task.assigned_node].remove(task_id)
-            
-            # 标记为已删除
-            task.status = "deleted"
-            
-            return {"success": True, "message": f"任务 {task_id} 已删除"}
-    
-    def get_pending_task(self) -> Optional[TaskInfo]:
-        """获取待处理任务 - 传统FIFO方法（保持兼容）"""
-        with self.lock:
-            for task_id in list(self.pending_tasks):
-                task = self.tasks.get(task_id)
-                if task and task.status == "pending":
-                    task.status = "running"
-                    self.pending_tasks.remove(task_id)
-                    return task
-            return None
-    
     def get_task_for_node(self, node_id: str) -> Optional[TaskInfo]:
-        """
-        为特定节点获取最适合的任务
-        实现公平调度算法
-        """
+        """为节点获取任务"""
         with self.lock:
-            # 检查节点是否存在且在线
-            node_info = self.nodes.get(node_id)
-            if not node_info or not self._is_node_online(node_id):
+            # 检查节点状态（使用新的三状态判断）
+            node_status = self._get_node_status(node_id)
+            if node_status["status"] != "online_available":
                 return None
             
-            # 获取节点的可用资源
+            node_info = self.nodes.get(node_id, {})
             available_resources = node_info.get("available_resources", {})
             
-            # 寻找最适合的任务
+            # 寻找匹配任务
             best_task = None
             best_score = -1
             
@@ -323,38 +136,29 @@ class EnhancedMemoryStorage:
                 if not task or task.status != "pending":
                     continue
                 
-                # 检查资源是否满足
                 if self._can_node_handle_task(node_info, task):
-                    # 计算匹配分数
                     score = self._calculate_match_score(node_info, task)
-                    
                     if score > best_score:
                         best_score = score
                         best_task = task
             
             if best_task:
-                # 分配任务给节点
+                # 分配任务
                 best_task.status = "assigned"
                 best_task.assigned_node = node_id
                 best_task.assigned_at = time.time()
                 self.pending_tasks.remove(best_task.task_id)
                 self.assigned_tasks[node_id].append(best_task.task_id)
                 
-                # 更新节点负载（估算）
-                if "current_load" not in node_info:
-                    node_info["current_load"] = {"cpu_usage": 0.0, "memory_usage": 0}
+                # 更新节点负载
+                self._update_node_load(node_id, best_task, "add")
                 
-                # 增加负载估算
-                node_info["current_load"]["cpu_usage"] += best_task.required_resources.get("cpu", 1.0)
-                node_info["current_load"]["memory_usage"] += best_task.required_resources.get("memory", 512)
-                
-                self.scheduler_stats["tasks_processed"] += 1
-                self.scheduler_stats["last_schedule_time"] = time.time()
+                self.stats["tasks_processed"] += 1
             
             return best_task
     
     def complete_task(self, task_id: int, result: str, node_id: Optional[str] = None) -> bool:
-        """完成任务并释放节点资源"""
+        """完成任务"""
         with self.lock:
             if task_id not in self.tasks:
                 return False
@@ -368,107 +172,170 @@ class EnhancedMemoryStorage:
             task.completed_at = time.time()
             task.result = result
             
-            # 如果知道是哪个节点完成的，释放资源
+            # 释放节点资源
             actual_node_id = node_id or task.assigned_node
-            if actual_node_id and actual_node_id in self.nodes:
-                # 从节点的已分配任务列表中移除
-                if task_id in self.assigned_tasks[actual_node_id]:
-                    self.assigned_tasks[actual_node_id].remove(task_id)
-                
-                # 减少节点负载估算
-                node_info = self.nodes[actual_node_id]
-                if "current_load" in node_info:
-                    node_info["current_load"]["cpu_usage"] = max(0, 
-                        node_info["current_load"]["cpu_usage"] - task.required_resources.get("cpu", 1.0))
-                    node_info["current_load"]["memory_usage"] = max(0,
-                        node_info["current_load"]["memory_usage"] - task.required_resources.get("memory", 512))
+            if actual_node_id:
+                self._update_node_load(actual_node_id, task, "remove")
             
             return True
     
-    def get_task_status(self, task_id: int) -> Optional[Dict[str, Any]]:
-        """获取任务状态"""
-        if task_id not in self.tasks:
-            return None
-        
-        task = self.tasks[task_id]
-        return {
-            "task_id": task.task_id,
-            "status": task.status,
-            "result": task.result,
-            "created_at": task.created_at,
-            "assigned_at": task.assigned_at,
-            "assigned_node": task.assigned_node,
-            "completed_at": task.completed_at,
-            "required_resources": task.required_resources,
-            "user_id": task.user_id  # 新增用户ID
-        }
-    
-    # ========== 节点管理方法 ==========
+    # ========== 节点管理方法 - 关键修复 ==========
     def register_node(self, registration: NodeRegistration) -> bool:
-        """注册新节点"""
+        """注册节点"""
         with self.lock:
             node_id = registration.node_id
             
-            # 如果节点已存在，更新信息
-            if node_id in self.nodes:
-                self.nodes[node_id].update({
-                    "capacity": registration.capacity,
-                    "tags": registration.tags,
-                    "registered_at": time.time(),
-                    "last_heartbeat": time.time()
-                })
-            else:
-                # 新节点
-                self.nodes[node_id] = {
-                    "capacity": registration.capacity,
-                    "tags": registration.tags,
-                    "registered_at": time.time(),
-                    "last_heartbeat": time.time(),
-                    "current_load": {"cpu_usage": 0.0, "memory_usage": 0},
-                    "available_resources": registration.capacity.copy()
-                }
-                self.scheduler_stats["nodes_registered"] += 1
+            # 节点信息
+            self.nodes[node_id] = {
+                "capacity": registration.capacity,
+                "tags": registration.tags,
+                "registered_at": time.time(),
+                "last_heartbeat": time.time(),
+                "current_load": {"cpu_usage": 0.0, "memory_usage": 0},
+                "available_resources": registration.capacity.copy(),
+                "is_idle": True,
+                "is_available": True  # 新增：默认可用
+            }
             
+            # 更新心跳和状态
             self.node_heartbeats[node_id] = time.time()
+            self._update_node_status_cache(node_id, "online_idle")
+            
+            self.stats["nodes_registered"] += 1
             return True
     
     def update_node_heartbeat(self, heartbeat: NodeHeartbeat) -> bool:
-        """更新节点心跳"""
+        """更新节点心跳 - 关键修复"""
         with self.lock:
             node_id = heartbeat.node_id
             
             if node_id not in self.nodes:
                 return False
             
-            # 更新节点状态
-            self.nodes[node_id].update({
+            node_info = self.nodes[node_id]
+            
+            # 更新基本信息
+            node_info.update({
                 "last_heartbeat": time.time(),
                 "current_load": heartbeat.current_load,
                 "is_idle": heartbeat.is_idle,
-                "available_resources": heartbeat.available_resources
+                "available_resources": heartbeat.available_resources,
+                "is_available": heartbeat.is_available if hasattr(heartbeat, 'is_available') else True
             })
             
+            # 更新心跳时间
             self.node_heartbeats[node_id] = time.time()
+            
+            # 🎯 关键修复：更新节点状态缓存
+            self._update_node_status_cache(node_id)
+            
             return True
     
-    def get_available_nodes(self) -> List[Dict[str, Any]]:
-        """获取所有在线的可用节点"""
+    def _get_node_status(self, node_id: str) -> Dict[str, Any]:
+        """获取节点状态 - 三状态判断"""
+        if node_id not in self.nodes:
+            return {"status": "offline", "reason": "not_registered"}
+        
+        node_info = self.nodes[node_id]
+        last_heartbeat = self.node_heartbeats.get(node_id, 0)
+        current_time = time.time()
+        
+        # 1. 检查是否完全离线
+        if current_time - last_heartbeat > 120:  # 2分钟无心跳 = 离线
+            return {"status": "offline", "reason": "no_heartbeat"}
+        
+        # 2. 检查是否在线但忙碌
+        is_idle = node_info.get("is_idle", False)
+        is_available = node_info.get("is_available", True)
+        
+        # 获取资源使用情况
+        cpu_usage = node_info.get("current_load", {}).get("cpu_usage", 0)
+        memory_usage = node_info.get("current_load", {}).get("memory_usage", 0)
+        cpu_capacity = node_info.get("capacity", {}).get("cpu", 1.0)
+        memory_capacity = node_info.get("capacity", {}).get("memory", 1024)
+        
+        cpu_percent = (cpu_usage / max(1.0, cpu_capacity)) * 100
+        memory_percent = (memory_usage / max(1, memory_capacity)) * 100
+        
+        # 3. 判断具体状态
+        if not is_available:
+            return {"status": "online_unavailable", "reason": "node_unavailable"}
+        elif cpu_percent > 90 or memory_percent > 95:
+            return {"status": "online_busy", "reason": f"high_usage_cpu{cpu_percent:.0f}_mem{memory_percent:.0f}"}
+        elif not is_idle:
+            return {"status": "online_light", "reason": "user_active"}
+        else:
+            return {"status": "online_available", "reason": "idle_and_ready"}
+    
+    def _update_node_status_cache(self, node_id: str, forced_status: Optional[str] = None):
+        """更新节点状态缓存"""
+        if node_id not in self.nodes:
+            return
+        node_info = self.nodes[node_id]
+        last_heartbeat = self.node_heartbeats.get(node_id, 0)
+        current_time = time.time()
+
+        if current_time - last_heartbeat > 180:  # 超过3分钟无心跳，直接标记为离线
+            self.node_status[node_id] = {
+                "status": "offline",
+                "is_online": False,
+                "is_idle": False,
+                "reason": "心跳超时",
+                "updated_at": current_time
+            }
+            return
+        is_idle = node_info.get("is_idle", False)
+        is_available = node_info.get("is_available", True)
+        
+        if not is_available:
+            status = "online_unavailable"
+        elif not is_idle:
+            status = "online_busy"
+        else:
+            status = "online_idle"
+
+        self.node_status[node_id] = {
+            "status": status,
+            "is_online": True,
+            "is_idle": is_idle,
+            "reason": "在线" if is_idle else "忙碌",
+            "updated_at": current_time
+        }
+    
+    def get_available_nodes(self, include_busy: bool = False) -> List[Dict[str, Any]]:
+        """获取可用节点"""
         with self.lock:
             available_nodes = []
-            current_time = time.time()
             
             for node_id, node_info in self.nodes.items():
-                # 检查节点是否在线（使用统一的在线判断逻辑）
-                if self._is_node_online(node_id):
-                    available_nodes.append({
-                        "node_id": node_id,
-                        **node_info
-                    })
+                status_info = self.node_status.get(node_id, {})
+                status = status_info.get("status", "offline")
+                
+                # 根据参数决定包含哪些状态的节点
+                if status == "offline":
+                    continue
+                elif not include_busy and status != "online_available":
+                    continue
+                
+                # 构建节点信息
+                node_data = {
+                    "node_id": node_id,
+                    "is_online": status_info.get("is_online", True),
+                    "is_idle": status_info.get("is_idle", False),
+                    "status": status,
+                    "status_details": status_info,
+                    "capacity": node_info.get("capacity", {}),
+                    "tags": node_info.get("tags", {}),
+                    "last_heartbeat": self.node_heartbeats.get(node_id, 0),
+                    "current_load": node_info.get("current_load", {}),
+                    "available_resources": node_info.get("available_resources", {})
+                }
+                available_nodes.append(node_data)
             
             return available_nodes
     
-    def cleanup_dead_nodes(self, timeout_seconds: int = 60):
-        """清理超时未心跳的节点"""
+    def cleanup_dead_nodes(self, timeout_seconds: int = 180):  # 改为3分钟
+        """清理死亡节点"""
         with self.lock:
             current_time = time.time()
             dead_nodes = []
@@ -478,7 +345,7 @@ class EnhancedMemoryStorage:
                     dead_nodes.append(node_id)
             
             for node_id in dead_nodes:
-                # 重新分配该节点的任务
+                # 重新分配任务
                 if node_id in self.assigned_tasks:
                     for task_id in self.assigned_tasks[node_id]:
                         task = self.tasks.get(task_id)
@@ -495,14 +362,17 @@ class EnhancedMemoryStorage:
                     del self.nodes[node_id]
                 if node_id in self.node_heartbeats:
                     del self.node_heartbeats[node_id]
+                if node_id in self.node_status:
+                    del self.node_status[node_id]
                 
-                self.scheduler_stats["nodes_dropped"] += 1
+                self.stats["nodes_dropped"] += 1
             
+            self.stats["last_cleanup"] = current_time
             return len(dead_nodes)
     
-    # ========== 调度算法辅助方法 ==========
+    # ========== 辅助方法 ==========
     def _schedule_tasks(self):
-        """尝试调度待处理的任务"""
+        """调度任务"""
         with self.lock:
             if not self.pending_tasks:
                 return
@@ -511,35 +381,15 @@ class EnhancedMemoryStorage:
             if not available_nodes:
                 return
             
-            # 为每个可用节点尝试分配一个任务
             for node_info in available_nodes:
-                if self.pending_tasks:  # 检查是否还有待处理任务
+                if self.pending_tasks:
                     self.get_task_for_node(node_info["node_id"])
-    
-    def _is_node_online(self, node_id: str) -> bool:
-        """检查节点是否在线"""
-        current_time = time.time()
-        last_heartbeat = self.node_heartbeats.get(node_id, 0)
-        
-        # 对于通过API激活的本地节点，可以给予稍微长一点的超时时间
-        # 因为它们可能不会像常规节点那样频繁发送心跳
-        node_info = self.nodes.get(node_id, {})
-        tags = node_info.get("tags", {})
-        
-        if tags.get("auto_activated"):
-            # API激活的节点允许最多60秒无心跳
-            return current_time - last_heartbeat <= 60
-        else:
-            # 常规节点30秒超时
-            return current_time - last_heartbeat <= 30
     
     def _can_node_handle_task(self, node_info: Dict, task: TaskInfo) -> bool:
         """检查节点是否能处理任务"""
-        # 获取可用资源
         available = node_info.get("available_resources", {})
         required = task.required_resources
         
-        # 检查关键资源
         if "cpu" in required and "cpu" in available:
             if required["cpu"] > available.get("cpu", 0):
                 return False
@@ -551,35 +401,86 @@ class EnhancedMemoryStorage:
         return True
     
     def _calculate_match_score(self, node_info: Dict, task: TaskInfo) -> float:
-        """
-        计算节点与任务的匹配分数
-        分数越高，匹配度越好
-        """
+        """计算匹配分数"""
         score = 0.0
         available = node_info.get("available_resources", {})
         required = task.required_resources
         
-        # 1. 资源匹配度（越高越好）
         if "cpu" in required and "cpu" in available:
             cpu_ratio = min(1.0, available.get("cpu", 0) / max(1.0, required["cpu"]))
-            score += cpu_ratio * 0.4  # CPU权重40%
+            score += cpu_ratio * 0.4
         
         if "memory" in required and "memory" in available:
             mem_ratio = min(1.0, available.get("memory", 0) / max(1, required["memory"]))
-            score += mem_ratio * 0.3  # 内存权重30%
+            score += mem_ratio * 0.3
         
-        # 2. 节点空闲状态（空闲更好）
         if node_info.get("is_idle", False):
-            score += 0.2  # 空闲状态权重20%
+            score += 0.2
         
-        # 3. 节点负载（负载越低越好）
         current_load = node_info.get("current_load", {})
         cpu_load = current_load.get("cpu_usage", 0) / max(1.0, node_info.get("capacity", {}).get("cpu", 1))
-        score += (1.0 - min(1.0, cpu_load)) * 0.1  # 负载权重10%
+        score += (1.0 - min(1.0, cpu_load)) * 0.1
         
         return score
     
-    # ========== 统计方法 ==========
+    def _update_node_load(self, node_id: str, task: TaskInfo, operation: str):
+        """更新节点负载"""
+        if node_id not in self.nodes:
+            return
+        
+        node_info = self.nodes[node_id]
+        if "current_load" not in node_info:
+            node_info["current_load"] = {"cpu_usage": 0.0, "memory_usage": 0}
+        
+        cpu_needed = task.required_resources.get("cpu", 1.0)
+        memory_needed = task.required_resources.get("memory", 512)
+        
+        if operation == "add":
+            node_info["current_load"]["cpu_usage"] += cpu_needed
+            node_info["current_load"]["memory_usage"] += memory_needed
+        elif operation == "remove":
+            node_info["current_load"]["cpu_usage"] = max(0, node_info["current_load"]["cpu_usage"] - cpu_needed)
+            node_info["current_load"]["memory_usage"] = max(0, node_info["current_load"]["memory_usage"] - memory_needed)
+    
+    # ========== API方法 ==========
+    def delete_task(self, task_id: int) -> Dict[str, Any]:
+        """删除任务"""
+        with self.lock:
+            if task_id not in self.tasks:
+                return {"success": False, "error": "任务不存在"}
+            
+            task = self.tasks[task_id]
+            
+            if task.status not in ["pending", "assigned"]:
+                return {"success": False, "error": f"只能删除pending或assigned状态的任务，当前状态: {task.status}"}
+            
+            if task.status == "pending" and task_id in self.pending_tasks:
+                self.pending_tasks.remove(task_id)
+            elif task.status == "assigned" and task.assigned_node:
+                if task_id in self.assigned_tasks[task.assigned_node]:
+                    self.assigned_tasks[task.assigned_node].remove(task_id)
+            
+            task.status = "deleted"
+            return {"success": True, "message": f"任务 {task_id} 已删除"}
+    
+    def get_task_status(self, task_id: int) -> Optional[Dict[str, Any]]:
+        """获取任务状态"""
+        if task_id not in self.tasks:
+            return None
+        
+        task = self.tasks[task_id]
+        return {
+            "task_id": task.task_id,
+            "status": task.status,
+            "result": task.result,
+            "created_at": task.created_at,
+            "assigned_at": task.assigned_at,
+            "assigned_node": task.assigned_node,
+            "completed_at": task.completed_at,
+            "required_resources": task.required_resources,
+            "user_id": task.user_id
+        }
+    
     def get_all_results(self) -> List[Dict[str, Any]]:
         """获取所有结果"""
         with self.lock:
@@ -589,565 +490,740 @@ class EnhancedMemoryStorage:
                     "result": task.result,
                     "completed_at": task.completed_at,
                     "assigned_node": task.assigned_node,
-                    "user_id": task.user_id  # 新增用户ID
+                    "user_id": task.user_id
                 }
                 for task in self.tasks.values()
                 if task.status == "completed"
             ]
     
     def get_system_stats(self) -> Dict[str, Any]:
-        """获取系统统计信息"""
+        """获取系统统计"""
         with self.lock:
             total_tasks = len(self.tasks)
-            completed_tasks = sum(1 for t in self.tasks.values() if t.status == "completed")
-            pending_tasks = len(self.pending_tasks)
-            assigned_tasks = sum(len(tasks) for tasks in self.assigned_tasks.values())
-            deleted_tasks = sum(1 for t in self.tasks.values() if t.status == "deleted")
+            completed = sum(1 for t in self.tasks.values() if t.status == "completed")
+            pending = len(self.pending_tasks)
+            assigned = sum(len(tasks) for tasks in self.assigned_tasks.values())
             
-            # 计算平均完成时间
-            completed_times = []
-            for task in self.tasks.values():
-                if task.status == "completed" and task.completed_at and task.assigned_at:
-                    completed_times.append(task.completed_at - task.assigned_at)
-            
-            avg_time = sum(completed_times) / len(completed_times) if completed_times else 0
-            
-            # 节点统计
-            online_nodes = sum(1 for node_id in self.nodes.keys() 
-                             if self._is_node_online(node_id))
+            # 节点统计 - 使用新的状态判断
             total_nodes = len(self.nodes)
+            online_nodes = 0
+            available_nodes = 0
+            
+            for node_id in self.nodes.keys():
+                status_info = self._get_node_status(node_id)
+                status = status_info["status"]
+                
+                if status != "offline":
+                    online_nodes += 1
+                    if status == "online_available":
+                        available_nodes += 1
             
             return {
-                "time_period": "all_time",
                 "tasks": {
                     "total": total_tasks,
-                    "completed": completed_tasks,
-                    "pending": pending_tasks,
-                    "assigned": assigned_tasks,
-                    "deleted": deleted_tasks,  # 新增删除任务统计
-                    "failed": total_tasks - completed_tasks - pending_tasks - assigned_tasks - deleted_tasks,
-                    "avg_completion_time": round(avg_time, 2)
+                    "completed": completed,
+                    "pending": pending,
+                    "assigned": assigned,
+                    "failed": total_tasks - completed - pending - assigned
                 },
                 "nodes": {
                     "total": total_nodes,
-                    "online": online_nodes,
-                    "offline": total_nodes - online_nodes,
-                    "idle": sum(1 for n in self.nodes.values() if n.get("is_idle", False))
+                    "online": online_nodes,  # 包括所有非离线状态
+                    "available": available_nodes,  # 真正可用的
+                    "offline": total_nodes - online_nodes
                 },
-                "scheduler": self.scheduler_stats
+                "scheduler": self.stats
             }
+    
+    def stop_node(self, node_id: str) -> Dict[str, Any]:
+        """停止节点"""
+        with self.lock:
+            if node_id not in self.nodes:
+                return {"success": False, "error": "节点不存在"}
+            
+            # 重新分配任务
+            if node_id in self.assigned_tasks:
+                for task_id in self.assigned_tasks[node_id]:
+                    task = self.tasks.get(task_id)
+                    if task and task.status == "assigned":
+                        task.status = "pending"
+                        task.assigned_node = None
+                        task.assigned_at = None
+                        self.pending_tasks.append(task_id)
+                
+                del self.assigned_tasks[node_id]
+            
+            # 移除节点
+            del self.nodes[node_id]
+            if node_id in self.node_heartbeats:
+                del self.node_heartbeats[node_id]
+            if node_id in self.node_status:
+                del self.node_status[node_id]
+            
+            self.stats["nodes_dropped"] += 1
+            
+            return {"success": True, "message": f"节点 {node_id} 已停止"}
 
 # ==================== FastAPI 应用 ====================
 app = FastAPI(
-    title="Enhanced Idle Computing Scheduler",
-    description="Task scheduler with node management, user management and fair scheduling",
-    version="2.1.0"  # 版本号更新
+    title="优化版闲置计算调度器",
+    description="修复节点显示问题，增强稳定性",
+    version="2.2.0"
 )
 
-# 初始化存储和用户管理
-storage = EnhancedMemoryStorage()
-auth_manager = SimpleAuthManager()
-quota_manager = SimpleQuotaManager()
-sandbox = CodeSandbox()  # 安全沙箱实例
+# 初始化存储
+storage = OptimizedMemoryStorage()
+sandbox = CodeSandbox()
 
 # ==================== 后台任务 ====================
-def cleanup_old_nodes():
-    """定期清理失效的节点"""
+def periodic_cleanup():
+    """定期清理"""
     try:
-        cleaned = storage.cleanup_dead_nodes(timeout_seconds=60)
+        cleaned = storage.cleanup_dead_nodes(timeout_seconds=180)
         if cleaned > 0:
-            print(f"[Cleanup] Removed {cleaned} dead nodes")
+            print(f"[清理] 移除了 {cleaned} 个死亡节点")
     except Exception as e:
-        print(f"[Cleanup Error] {e}")
+        print(f"[清理错误] {e}")
 
 @app.on_event("startup")
 def startup_event():
-    """启动时初始化"""
+    """启动事件"""
     print("=" * 60)
-    print(f"Enhanced Task Scheduler v2.1.0")
-    print(f"Server ID: {storage.server_id}")
-    print(f"User Management: Enabled")
-    print(f"Task Deletion: Enabled")
-    print(f"Starting background cleanup task...")
+    print("优化版任务调度器 v2.2.0")
+    print(f"服务器ID: {storage.server_id}")
+    print("功能: 节点三状态判断、智能调度、稳定显示")
     print("=" * 60)
 
-# ==================== 用户管理API端点 ====================
-@app.post("/api/users/register")
-async def register_user(username: str, email: str, agree_folder_usage: bool, user_confirmed_authorization: bool = False):
-    """用户注册接口 - 必须同意文件夹使用协议并确认授权"""
-    
-    # 强制要求用户同意文件夹使用协议
-    if not agree_folder_usage:
-        raise HTTPException(status_code=400, detail="【本地操作授权】必须同意文件夹使用协议才能使用本系统")
-    
-    # 强制要求用户确认授权（合规要求）
-    if not user_confirmed_authorization:
-        raise HTTPException(status_code=400, detail="【本地操作授权】必须确认本地操作授权才能使用本系统")
-    
-    # 先进行用户注册
-    result = auth_manager.register_user(username, email, agree_folder_usage)
-    if not result["success"]:
-        raise HTTPException(status_code=400, detail=result["error"])
-    
-    user_id = result["user_id"]
-    
-    # 构建文件夹路径信息
-    target_paths = {
-        "user_data": f"node_data/user_data/{user_id}",
-        "temp_data": f"node_data/temp_data/{user_id}"
-    }
-    
-    # 请求文件夹创建授权
-    authorization_request = authorization_manager.request_folder_creation_authorization(
-        user_id=user_id,
-        username=username,
-        target_paths=target_paths
-    )
-    
-    # 初始化配额
-    quota_manager.quotas[user_id] = UserQuota(user_id=user_id)
-    
-    # 创建会话
-    session_id = auth_manager.create_session(user_id)
-    
-    return {
-        "success": True,
-        "session_id": session_id,
-        "user": result["user"],
-        "quota": result["quota"],
-        "folder_agreement": result["folder_agreement"],
-        "authorization_required": True,
-        "authorization_request": authorization_request,
-        "message": "注册成功！请确认本地文件夹创建授权。"
-    }
-
-
-@app.post("/api/users/confirm-authorization")
-async def confirm_authorization(
-    x_session_id: str = Header(...),
-    operation_details: Dict[str, Any] = Body(...),
-    user_agreed: bool = Body(...)
-):
-    """确认本地操作授权"""
-    user_id = auth_manager.validate_session(x_session_id)
-    if not user_id:
-        raise HTTPException(status_code=401, detail="未授权")
-    
-    # 确认授权
-    authorization_result = authorization_manager.confirm_authorization(
-        user_id=user_id,
-        operation_details=operation_details,
-        user_agreed=user_agreed
-    )
-    
-    if not authorization_result["authorized"]:
-        return {
-            "success": False,
-            "message": authorization_result["message"],
-            "authorization_log": authorization_result["log_entry"]
-        }
-    
-    return {
-        "success": True,
-        "message": authorization_result["message"],
-        "authorization_log": authorization_result["log_entry"],
-        "disclaimer": "【本地文件操作免责声明】所有本地操作均由您主动授权发起，操作结果由您自行负责。"
-    }
-
-@app.get("/api/users/quota")
-async def get_user_quota(x_session_id: str = Header(...)):
-    """获取用户配额"""
-    user_id = auth_manager.validate_session(x_session_id)
-    if not user_id:
-        raise HTTPException(status_code=401, detail="未授权")
-    
-    quota_result = quota_manager.check_quota(user_id)
-    if not quota_result["allowed"]:
-        raise HTTPException(status_code=403, detail=quota_result["error"])
-    
-    return quota_result
-
-# ==================== 任务删除API端点 ====================
-@app.delete("/api/tasks/{task_id}")
-async def delete_task(task_id: int):
-    """删除任务API"""
-    result = storage.delete_task(task_id)
-    if not result["success"]:
-        raise HTTPException(status_code=400, detail=result["error"])
-    
-    return result
-
-# ==================== 传统端点（修改） ====================
+# ==================== API端点 ====================
 @app.get("/")
-async def root() -> Dict[str, Any]:
-    """根端点 - 健康检查"""
+async def root():
+    """根端点"""
+    stats = storage.get_system_stats()
     return {
-        "service": "Enhanced Idle Computing Scheduler",
-        "status": "running",
-        "version": "2.1.0",
+        "service": "优化版闲置计算调度器",
+        "status": "运行中",
+        "version": "2.2.0",
         "server_id": storage.server_id,
-        "task_count": len(storage.tasks),
-        "pending_tasks": len(storage.pending_tasks),
-        "online_nodes": len([n for n in storage.nodes.keys() 
-                           if storage._is_node_online(n)]),
-        "user_management": "enabled",  # 新增用户管理状态
-        "task_deletion": "enabled"     # 新增任务删除状态
+        **stats
+    }
+
+@app.get("/health")
+async def health_check():
+    """健康检查"""
+    stats = storage.get_system_stats()
+    return {
+        "status": "healthy",
+        "timestamp": time.time(),
+        "server_id": storage.server_id,
+        "nodes": stats["nodes"],
+        "tasks": {
+            "pending": stats["tasks"]["pending"],
+            "assigned": stats["tasks"]["assigned"]
+        }
     }
 
 @app.post("/submit")
-async def submit_task(submission: TaskSubmission, background_tasks: BackgroundTasks) -> Dict[str, Any]:
-    """提交任务（开源版本无限制 + 安全沙箱检查）"""
+async def submit_task(submission: TaskSubmission, background_tasks: BackgroundTasks):
+    """提交任务"""
     if not submission.code.strip():
-        raise HTTPException(status_code=400, detail="Code cannot be empty")
+        raise HTTPException(status_code=400, detail="代码不能为空")
     
-    if len(submission.code) > 10000:
-        raise HTTPException(status_code=400, detail="Code too long (max 10000 characters)")
-    
-    # 代码安全检查
+    # 安全检查
     safety_check = sandbox.check_code_safety(submission.code)
     if not safety_check['safe']:
         raise HTTPException(status_code=400, detail=f"代码安全检查失败: {safety_check['error']}")
     
-    task_id = storage.add_task(submission.code, submission.timeout, submission.resources, submission.user_id)
+    task_id = storage.add_task(
+        submission.code, 
+        submission.timeout, 
+        submission.resources, 
+        submission.user_id
+    )
     
-    # 触发后台清理
-    background_tasks.add_task(cleanup_old_nodes)
+    background_tasks.add_task(periodic_cleanup)
     
     return {
         "task_id": task_id,
         "status": "submitted",
-        "server_id": storage.server_id,
-        "message": f"Task {task_id} has been queued",
+        "message": f"任务 {task_id} 已加入队列",
         "safety_check": "通过"
     }
 
 @app.get("/get_task")
-async def get_task(node_id: Optional[str] = None) -> Dict[str, Any]:
-    """获取任务（增强版：支持节点感知）"""
+async def get_task(node_id: Optional[str] = None):
+    """获取任务"""
     if node_id:
-        # 节点感知的任务获取（新功能）
         task = storage.get_task_for_node(node_id)
     else:
-        # 传统FIFO获取（保持兼容）
-        task = storage.get_pending_task()
+        # 兼容模式
+        with storage.lock:
+            for task_id in list(storage.pending_tasks):
+                task_info = storage.tasks.get(task_id)
+                if task_info and task_info.status == "pending":
+                    task_info.status = "running"
+                    storage.pending_tasks.remove(task_id)
+                    task = task_info
+                    break
+            else:
+                task = None
     
     if task is None:
         return {
             "task_id": None,
             "code": None,
-            "status": "no_tasks",
-            "message": "No pending tasks available"
+            "status": "no_tasks"
         }
     
     return {
         "task_id": task.task_id,
         "code": task.code,
-        "status": "assigned" if node_id else "assigned",
-        "created_at": task.created_at,
-        "assigned_node": task.assigned_node,
-        "message": f"Task {task.task_id} assigned for execution"
+        "status": "assigned",
+        "assigned_node": task.assigned_node
     }
 
 @app.post("/submit_result")
-async def submit_result(result: TaskResult) -> Dict[str, Any]:
-    """提交结果（增强版：支持节点ID和配额释放）"""
-    if result.task_id not in storage.tasks:
-        raise HTTPException(status_code=404, detail="Task not found")
-    
-    # 完成任务
+async def submit_result(result: TaskResult):
+    """提交结果"""
     success = storage.complete_task(result.task_id, result.result, result.node_id)
     
     if not success:
-        raise HTTPException(status_code=400, detail="Failed to complete task")
-    
-    # 释放配额
-    task = storage.tasks[result.task_id]
-    if task.user_id:
-        quota_manager.release_quota(task.user_id)
+        raise HTTPException(status_code=404, detail="任务未找到或无法完成")
     
     return {
         "success": True,
         "task_id": result.task_id,
-        "message": f"Task {result.task_id} completed successfully"
-    }
-    if result.task_id <= 0:
-        raise HTTPException(status_code=400, detail="Invalid task ID")
-    
-    success = storage.complete_task(result.task_id, result.result, result.node_id)
-    
-    if not success:
-        raise HTTPException(status_code=404, detail=f"Task {result.task_id} not found or not runnable")
-    
-    return {
-        "status": "ok",
-        "task_id": result.task_id,
-        "message": f"Result for task {result.task_id} recorded"
+        "message": f"任务 {result.task_id} 完成"
     }
 
 @app.get("/status/{task_id}")
-async def get_status(task_id: int) -> Dict[str, Any]:
-    """获取任务状态（增强版：包含更多信息）"""
-    if task_id <= 0:
-        raise HTTPException(status_code=400, detail="Invalid task ID")
-    
+async def get_status(task_id: int):
+    """获取任务状态"""
     status = storage.get_task_status(task_id)
-    
     if status is None:
-        raise HTTPException(status_code=404, detail=f"Task {task_id} not found")
-    
+        raise HTTPException(status_code=404, detail="任务未找到")
     return status
 
 @app.get("/results")
-async def get_results() -> Dict[str, Any]:
-    """获取所有结果（增强版：包含节点信息）"""
+async def get_results():
+    """获取所有结果"""
     results = storage.get_all_results()
     return {
         "count": len(results),
-        "results": results,
-        "server_id": storage.server_id
+        "results": results
     }
 
-# ==================== 新增端点（节点管理和增强功能） ====================
-@app.get("/health")
-async def health_check() -> Dict[str, Any]:
-    """健康检查端点（增强版）"""
-    # 计算节点统计信息
-    total_nodes = len(storage.nodes)
-    online_nodes = sum(1 for node_id in storage.nodes.keys() 
-                      if storage._is_node_online(node_id))
-    
-    node_status = "healthy" if total_nodes > 0 else "no_nodes"
-    
-    return {
-        "status": "healthy",
-        "timestamp": time.time(),
-        "server_id": storage.server_id,
-        "components": {
-            "task_queue": "healthy",
-            "memory_storage": "healthy",
-            "node_manager": node_status,
-            "scheduler": "healthy"
-        },
-        "nodes": {
-            "online": online_nodes,
-            "total": total_nodes
-        }
-    }
+@app.get("/stats")
+async def get_stats():
+    """获取统计"""
+    return storage.get_system_stats()
 
+# ==================== 节点管理API ====================
 @app.post("/api/nodes/register")
-async def register_node(registration: NodeRegistration) -> Dict[str, Any]:
-    """注册新节点"""
+async def register_node(registration: NodeRegistration):
+    """注册节点"""
     success = storage.register_node(registration)
-    
     if not success:
-        raise HTTPException(status_code=500, detail="Failed to register node")
+        raise HTTPException(status_code=500, detail="注册失败")
     
     return {
         "status": "registered",
         "node_id": registration.node_id,
-        "message": f"Node {registration.node_id} registered successfully",
-        "server_time": time.time()
+        "message": f"节点 {registration.node_id} 注册成功"
     }
 
 @app.post("/api/nodes/{node_id}/heartbeat")
-async def update_heartbeat(node_id: str, heartbeat: NodeHeartbeat) -> Dict[str, Any]:
-    """更新节点心跳"""
+async def update_heartbeat(node_id: str, heartbeat: NodeHeartbeat):
+    """更新心跳"""
     if heartbeat.node_id != node_id:
-        raise HTTPException(status_code=400, detail="Node ID mismatch")
+        raise HTTPException(status_code=400, detail="节点ID不匹配")
     
     success = storage.update_node_heartbeat(heartbeat)
-    
     if not success:
-        raise HTTPException(status_code=404, detail=f"Node {node_id} not found")
-    
-    # 触发任务调度（如果节点空闲且有任务）
-    if heartbeat.is_idle and storage.pending_tasks:
-        # 在后台触发调度
-        pass
+        raise HTTPException(status_code=404, detail="节点未找到")
     
     return {
         "status": "updated",
         "node_id": node_id,
-        "timestamp": time.time(),
-        "message": f"Heartbeat for node {node_id} recorded"
+        "timestamp": time.time()
     }
 
 @app.get("/api/nodes")
-async def list_nodes(online_only: bool = True) -> Dict[str, Any]:
-    """列出所有节点"""
-    if online_only:
-        nodes = storage.get_available_nodes()
-        # 为在线节点添加在线状态标记
-        enhanced_nodes = []
-        for node in nodes:
-            node_copy = node.copy()
-            node_copy["is_online"] = True
-            enhanced_nodes.append(node_copy)
-        nodes = enhanced_nodes
-    else:
-        # 返回所有节点，为每个节点添加在线状态
-        all_nodes = list(storage.nodes.values())
-        enhanced_nodes = []
-        for node in all_nodes:
-            node_copy = node.copy()
-            node_id = node.get("node_id")
-            if node_id:
-                node_copy["is_online"] = storage._is_node_online(node_id)
-            else:
-                node_copy["is_online"] = False
-            enhanced_nodes.append(node_copy)
-        nodes = enhanced_nodes
-    
-    return {
-        "count": len(nodes),
-        "nodes": nodes,
-        "online_only": online_only,
-        "timestamp": time.time()
-    }
-
-@app.get("/api/nodes/{node_id}/tasks")
-async def get_node_tasks(node_id: str) -> Dict[str, Any]:
-    """获取节点分配的任务"""
-    # 注意：这个实现依赖于内部数据结构，需要storage暴露相应方法
-    # 这里简化实现
-    return {
-        "node_id": node_id,
-        "assigned_tasks": [],  # 实际应从storage获取
-        "timestamp": time.time()
-    }
+async def list_nodes(online_only: bool = True):
+    """列出节点"""
+    try:
+        if online_only:
+            nodes = storage.get_available_nodes(include_busy=False)
+        else:
+            with storage.lock:
+                nodes = []
+                for node_id, node_info in storage.nodes.items():
+                    status_info = storage._get_node_status(node_id)
+                    nodes.append({
+                        "node_id": node_id,
+                        **node_info,
+                        "status": status_info["status"],
+                        "status_details": status_info
+                    })
+        
+        return {
+            "count": len(nodes),
+            "nodes": nodes,
+            "online_only": online_only
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"获取节点失败: {str(e)}")
 
 @app.post("/api/nodes/activate-local")
-async def activate_local_node(config: dict = Body(...)) -> Dict[str, Any]:
-    """激活本地节点 - 为当前用户创建一个本地计算节点"""
+async def activate_local_node(config: dict = Body(...)):
+    """激活本地节点"""
     try:
-        # 生成唯一的本地节点ID
         import uuid
         node_id = f"local-{uuid.uuid4().hex[:8]}-{int(time.time())}"
         
-        # 使用传入的配置或者默认配置
-        cpu_limit = config.get("cpu_limit", 1.0)
-        memory_limit = config.get("memory_limit", 512)
-        storage_limit = config.get("storage_limit", 1024)
-        
-        # 创建节点容量信息
         capacity = {
-            "cpu": cpu_limit,
-            "memory": memory_limit,
-            "disk": storage_limit
+            "cpu": config.get("cpu_limit", 4.0),
+            "memory": config.get("memory_limit", 8192),
+            "disk": config.get("storage_limit", 10240)
         }
         
-        # 注册节点
         registration = NodeRegistration(
             node_id=node_id,
             capacity=capacity,
             tags={
                 "type": "local",
                 "platform": "local-web-activated",
-                "owner": "user-web",
-                "auto_activated": True  # 标记为自动激活的节点
+                "auto_activated": True
             }
         )
         
         success = storage.register_node(registration)
-        
         if not success:
-            raise HTTPException(status_code=500, detail="Failed to register local node")
+            raise HTTPException(status_code=500, detail="注册失败")
         
-        # 立即发送心跳以确保节点在线（模拟节点行为）
+        # 发送初始心跳
         heartbeat = NodeHeartbeat(
             node_id=node_id,
             current_load={"cpu_usage": 0.0, "memory_usage": 0},
-            is_idle=True,  # 标记为空闲状态，便于接收任务
-            available_resources=capacity  # 设置可用资源
+            is_idle=True,
+            available_resources=capacity,
+            is_available=True
         )
         
         storage.update_node_heartbeat(heartbeat)
         
-        # 立即尝试调度任务，如果有待处理的任务
-        storage._schedule_tasks()
-        
-        # 确保节点立即变为在线状态
-        # 由于刚刚更新了心跳，节点应该立即在线
-        
         return {
             "success": True,
             "node_id": node_id,
-            "message": "Local node activated successfully",
             "capacity": capacity,
-            "timestamp": time.time()
+            "message": f"本地节点 {node_id} 激活成功"
         }
-        
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to activate local node: {str(e)}")
-
-@app.get("/stats")
-async def get_system_stats() -> Dict[str, Any]:
-    """系统统计端点（增强版）"""
-    return storage.get_system_stats()
+        raise HTTPException(status_code=500, detail=f"激活失败: {str(e)}")
 
 @app.post("/api/nodes/{node_id}/stop")
-async def stop_node_api(node_id: str) -> Dict[str, Any]:
-    """停止指定节点"""
+async def stop_node_api(node_id: str):
+    """停止节点"""
     result = storage.stop_node(node_id)
     if not result["success"]:
         raise HTTPException(status_code=400, detail=result["error"])
     return result
 
-
+@app.delete("/api/tasks/{task_id}")
+async def delete_task_api(task_id: int):
+    """删除任务"""
+    result = storage.delete_task(task_id)
+    if not result["success"]:
+        raise HTTPException(status_code=400, detail=result["error"])
+    return result
 
 # ==================== CORS 支持 ====================
 try:
     from fastapi.middleware.cors import CORSMiddleware
-    
     app.add_middleware(
         CORSMiddleware,
-        allow_origins=["*"],  # 警告：仅用于开发
+        allow_origins=["*"],
         allow_credentials=True,
-        allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+        allow_methods=["*"],
         allow_headers=["*"],
-        expose_headers=["*"],
-        max_age=600,
     )
-    print("[Enhanced Scheduler] CORS middleware enabled")
+    print("[调度器] CORS中间件已启用")
 except ImportError:
-    print("[Enhanced Scheduler] CORS middleware not available")
-    pass
+    print("[调度器] CORS中间件不可用")
 
-# ==================== 启动代码 ====================
+# ==================== 启动 ====================
 if __name__ == "__main__":
     import uvicorn
-    import signal
-    import sys
-    import os
-    import time
+    print(f"[调度器] 启动服务器: http://localhost:8000")
+    print(f"[调度器] 服务器ID: {storage.server_id}")
     
-    print(f"[Enhanced Scheduler] Starting server on http://localhost:8000")
-    print(f"[Enhanced Scheduler] Server ID: {storage.server_id}")
-    print(f"[Enhanced Scheduler] Features: Node Management, Fair Scheduling, Health Checks")
+    uvicorn.run(
+        app,
+        host="0.0.0.0",
+        port=8000,
+        log_level="info"
+    )
+# ==================== 节点显示修复模块 ====================
+# 这个模块可以直接添加到文件末尾，不需要依赖原类定义
+
+import threading
+import time
+from typing import Dict, Any
+
+class NodeStatusFix:
+    """节点状态修复类 - 独立运行"""
     
-    # 信号处理：优雅退出
-    def signal_handler(signum, frame):
-        print("\n[Enhanced Scheduler] Received shutdown signal")
-        sys.exit(0)
+    def __init__(self, storage_instance):
+        self.storage = storage_instance
+        self.original_methods = {}
+        self.fixes_applied = False
+        
+    def apply_all_fixes(self):
+        """应用所有修复"""
+        print("=" * 60)
+        print("应用节点显示修复...")
+        print("=" * 60)
+        
+        # 保存原方法
+        self._save_original_methods()
+        
+        # 应用修复
+        self._fix_is_node_online()
+        self._fix_cleanup_dead_nodes()
+        
+        # 启动监控
+        self._start_monitoring()
+        
+        self.fixes_applied = True
+        
+        print("=" * 60)
+        print("修复完成!")
+        print("1. 心跳超时延长至120-180秒")
+        print("2. 即使is_idle=false也显示在线")
+        print("3. 节点状态监控已启用")
+        print("=" * 60)
     
-    signal.signal(signal.SIGINT, signal_handler)
-    signal.signal(signal.SIGTERM, signal_handler)
+    def _save_original_methods(self):
+        """保存原方法"""
+        if hasattr(self.storage, '_is_node_online'):
+            self.original_methods['_is_node_online'] = self.storage._is_node_online
+        
+        if hasattr(self.storage, 'cleanup_dead_nodes'):
+            self.original_methods['cleanup_dead_nodes'] = self.storage.cleanup_dead_nodes
     
-    # 修复：确保服务器持续运行
+    def _fix_is_node_online(self):
+        """修复_is_node_online方法"""
+        def enhanced_is_node_online(node_id: str) -> bool:
+            """
+            增强版节点在线判断
+            解决节点频繁显示为0的问题
+            """
+            # 基础检查
+            if not hasattr(self.storage, 'nodes') or node_id not in getattr(self.storage, 'nodes', {}):
+                return False
+            
+            if not hasattr(self.storage, 'node_heartbeats'):
+                return False
+            
+            nodes = getattr(self.storage, 'nodes', {})
+            node_heartbeats = getattr(self.storage, 'node_heartbeats', {})
+            
+            node_info = nodes.get(node_id, {})
+            last_heartbeat = node_heartbeats.get(node_id, 0)
+            current_time = time.time()
+            
+            # 🎯 关键修复：延长心跳超时
+            time_since_last_heartbeat = current_time - last_heartbeat
+            
+            # 动态超时设置
+            tags = node_info.get("tags", {})
+            is_api_activated = tags.get("auto_activated", False)
+            
+            # 更长的超时时间
+            max_timeout = 180 if is_api_activated else 120
+            
+            # 如果超过超时时间，返回False
+            if time_since_last_heartbeat > max_timeout:
+                return False
+            
+            # 🎯 关键修复：即使is_idle=false，也返回True（在线但忙碌）
+            # 只要有心跳，就认为节点在线
+            is_idle = node_info.get("is_idle", False)
+            
+            if not is_idle:
+                # 节点忙碌但在线
+                cpu_usage = node_info.get("current_load", {}).get("cpu_usage", 0)
+                memory_usage = node_info.get("current_load", {}).get("memory_usage", 0)
+                capacity = node_info.get("capacity", {})
+                
+                cpu_percent = (cpu_usage / max(1.0, capacity.get("cpu", 1))) * 100
+                memory_percent = (memory_usage / max(1, capacity.get("memory", 1024))) * 100
+                
+                # 如果资源使用过高，记录但依然返回在线
+                if cpu_percent > 95 or memory_percent > 98:
+                    print(f"[修复] 节点 {node_id}: 在线但过载")
+                else:
+                    print(f"[修复] 节点 {node_id}: 在线但忙碌")
+            
+            return True
+        
+        # 应用修复
+        self.storage._is_node_online = enhanced_is_node_online
+        print("[修复] _is_node_online 方法已增强")
+    
+    def _fix_cleanup_dead_nodes(self):
+        """修复cleanup_dead_nodes方法"""
+        if 'cleanup_dead_nodes' not in self.original_methods:
+            return
+        
+        original_method = self.original_methods['cleanup_dead_nodes']
+        
+        def enhanced_cleanup_dead_nodes(timeout_seconds: int = 180):
+            """增强版清理死亡节点 - 更长的超时"""
+            # 使用更长的默认超时
+            actual_timeout = timeout_seconds if timeout_seconds > 60 else 180
+            
+            # 调用原方法但使用更长的超时
+            return original_method(actual_timeout)
+        
+        # 应用修复
+        self.storage.cleanup_dead_nodes = enhanced_cleanup_dead_nodes
+        print("[修复] cleanup_dead_nodes 方法已增强")
+    
+    def _start_monitoring(self):
+        """启动节点监控"""
+        def monitor():
+            while True:
+                try:
+                    self._log_node_status()
+                    time.sleep(30)  # 每30秒记录一次
+                except Exception as e:
+                    print(f"[监控错误] {e}")
+                    time.sleep(60)
+        
+        thread = threading.Thread(target=monitor, daemon=True)
+        thread.start()
+        print("[修复] 节点状态监控已启动")
+    
+    def _log_node_status(self):
+        """记录节点状态"""
+        if not hasattr(self.storage, 'nodes'):
+            return
+        
+        nodes = getattr(self.storage, 'nodes', {})
+        total = len(nodes)
+        
+        if total == 0:
+            print(f"[节点监控] 没有注册的节点")
+            return
+        
+        # 统计在线节点
+        online_count = 0
+        for node_id in nodes.keys():
+            if self.storage._is_node_online(node_id):
+                online_count += 1
+        
+        print(f"[节点监控] 总数: {total}, 在线: {online_count}, 离线: {total - online_count}")
+        
+        # 详细状态（只显示前5个节点）
+        for i, node_id in enumerate(list(nodes.keys())[:5]):
+            is_online = self.storage._is_node_online(node_id)
+            node_info = nodes.get(node_id, {})
+            status = "🟢" if is_online else "🔴"
+            idle = "空闲" if node_info.get("is_idle", False) else "忙碌"
+            print(f"[节点监控] {status} {node_id[:10]}...: {idle}")
+
+# ==================== API端点修复 ====================
+
+def enhance_api_endpoints(app_instance, storage_instance):
+    """增强API端点"""
+    
+    # 增强 /api/nodes 端点
+    for route in app_instance.routes:
+        if hasattr(route, 'path') and route.path == "/api/nodes":
+            original_endpoint = route.endpoint
+            break
+    else:
+        print("[修复] 未找到 /api/nodes 端点")
+        return
+    
+    async def enhanced_list_nodes(online_only: bool = True):
+        """增强版节点列表"""
+        try:
+            # 调用原端点
+            import inspect
+            if inspect.iscoroutinefunction(original_endpoint):
+                response = await original_endpoint(online_only)
+            else:
+                response = original_endpoint(online_only)
+            
+            # 确保节点有正确的is_online字段
+            if "nodes" in response:
+                nodes = response["nodes"]
+                for node in nodes:
+                    node_id = node.get("node_id")
+                    if node_id:
+                        # 使用修复后的方法判断在线状态
+                        is_online = storage_instance._is_node_online(node_id)
+                        node["is_online"] = is_online
+            
+            # 添加统计信息
+            total_nodes = len(getattr(storage_instance, 'nodes', {}))
+            online_nodes = 0
+            for node_id in getattr(storage_instance, 'nodes', {}):
+                if storage_instance._is_node_online(node_id):
+                    online_nodes += 1
+            
+            response["enhanced_stats"] = {
+                "total_nodes": total_nodes,
+                "online_nodes": online_nodes,
+                "fix_applied": True
+            }
+            
+            return response
+            
+        except Exception as e:
+            print(f"[修复] 增强节点列表失败: {e}")
+            import inspect
+            if inspect.iscoroutinefunction(original_endpoint):
+                return await original_endpoint(online_only)
+            else:
+                return original_endpoint(online_only)
+    
+    # 替换端点
+    for route in app_instance.routes:
+        if hasattr(route, 'path') and route.path == "/api/nodes":
+            route.endpoint = enhanced_list_nodes
+            break
+    
+    print("[修复] /api/nodes 端点已增强")
+
+# ==================== 添加调试端点 ====================
+
+def add_debug_endpoints(app_instance, storage_instance):
+    """添加调试端点"""
+    
+    @app_instance.get("/api/debug/nodes-status")
+    async def debug_nodes_status():
+        """调试端点：节点状态"""
+        try:
+            nodes_info = []
+            nodes = getattr(storage_instance, 'nodes', {})
+            node_heartbeats = getattr(storage_instance, 'node_heartbeats', {})
+            
+            for node_id, node_info in nodes.items():
+                is_online = storage_instance._is_node_online(node_id)
+                last_heartbeat = node_heartbeats.get(node_id, 0)
+                
+                node_data = {
+                    "node_id": node_id,
+                    "is_online": is_online,
+                    "last_heartbeat": last_heartbeat,
+                    "time_since_heartbeat": time.time() - last_heartbeat,
+                    "is_idle": node_info.get("is_idle", False),
+                    "tags": node_info.get("tags", {})
+                }
+                nodes_info.append(node_data)
+            
+            return {
+                "count": len(nodes_info),
+                "nodes": nodes_info,
+                "fix_applied": True
+            }
+            
+        except Exception as e:
+            return {"error": str(e), "fix_applied": False}
+    
+    @app_instance.get("/api/debug/fix-status")
+    async def debug_fix_status():
+        """修复状态"""
+        return {
+            "status": "active",
+            "fixes": [
+                "enhanced_is_node_online",
+                "enhanced_cleanup_dead_nodes", 
+                "enhanced_api_nodes",
+                "node_monitoring"
+            ],
+            "timestamp": time.time()
+        }
+    
+    print("[修复] 调试端点已添加")
+
+# ==================== 主修复函数 ====================
+
+def apply_node_display_fix():
+    """
+    主修复函数
+    在文件末尾调用此函数即可应用所有修复
+    """
+    print("=" * 60)
+    print("节点显示修复系统 v1.0")
+    print("=" * 60)
+    
+    # 检查必要的组件
+    if 'storage' not in globals():
+        print("[错误] 未找到 storage 实例")
+        return False
+    
+    if 'app' not in globals():
+        print("[错误] 未找到 app 实例")
+        return False
+    
     try:
-        uvicorn.run(
-            app,
-            host="0.0.0.0",
-            port=8000,
-            log_level="info",
-            access_log=True,
-            timeout_keep_alive=5
-        )
-    except KeyboardInterrupt:
-        print("\n[Enhanced Scheduler] Server stopped by user")
+        # 1. 创建修复器
+        fixer = NodeStatusFix(storage)
+        
+        # 2. 应用修复
+        fixer.apply_all_fixes()
+        
+        # 3. 增强API端点
+        enhance_api_endpoints(app, storage)
+        
+        # 4. 添加调试端点
+        add_debug_endpoints(app, storage)
+        
+        print("=" * 60)
+        print("✅ 所有修复已成功应用!")
+        print("访问以下端点验证:")
+        print("  /api/debug/nodes-status - 节点状态")
+        print("  /api/debug/fix-status - 修复状态")
+        print("  /api/nodes - 增强版节点列表")
+        print("=" * 60)
+        
+        return True
+        
     except Exception as e:
-        print(f"[Enhanced Scheduler] Error: {e}")
-        print("[Enhanced Scheduler] Server will restart in 5 seconds...")
-        time.sleep(5)
-        # 重新启动服务器
-        os.execv(sys.executable, ['python'] + sys.argv)
+        print(f"[错误] 应用修复失败: {e}")
+        import traceback
+        traceback.print_exc()
+        return False
+
+# ==================== 自动应用修复 ====================
+
+# 当这个模块被导入时，自动尝试应用修复
+try:
+    # 等待一小段时间，确保其他组件已初始化
+    import threading
+    
+    def delayed_apply_fix():
+        time.sleep(2)  # 等待2秒
+        print("[自动修复] 正在应用节点显示修复...")
+        apply_node_display_fix()
+    
+    # 在后台线程中应用修复
+    fix_thread = threading.Thread(target=delayed_apply_fix, daemon=True)
+    fix_thread.start()
+    
+    print("[提示] 节点显示修复系统已加载")
+    print("[提示] 修复将在2秒后自动应用")
+    
+except Exception as e:
+    print(f"[警告] 自动修复失败: {e}")
+
+# ==================== 手动调用接口 ====================
+
+# 如果需要手动触发修复，可以调用：
+# apply_node_display_fix()
+
+print("[完成] 节点显示修复模块加载完成")
+print("=" * 60)

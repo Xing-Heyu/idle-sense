@@ -79,10 +79,10 @@ def check_write_permission(target_path):
 def create_folder_structure(base_path, user_id):
     try:
         # 创建三层平级文件夹结构
-        user_system_dir = os.path.join(base_path, "user_system", user_id)
-        user_data_dir = os.path.join(base_path, "user_data")
-        temp_data_dir = os.path.join(base_path, "temp_data")
-        docs_dir = os.path.join(user_system_dir, "docs")
+        user_system_dir = os.path.join(base_path, "user_system (系统专用-请勿修改)", user_id)
+        user_data_dir = os.path.join(base_path, "user_data (您的数据文件-主要工作区)")
+        temp_data_dir = os.path.join(base_path, "temp_data (临时文件-自动清理)")
+        docs_dir = os.path.join(user_system_dir, "docs (说明文档)")
         
         os.makedirs(user_system_dir, exist_ok=True)
         os.makedirs(user_data_dir, exist_ok=True)
@@ -115,9 +115,9 @@ if __name__ == "__main__":
         # 创建成功，删除测试文件夹
         import shutil
         try:
-            shutil.rmtree(os.path.join(target_path, "user_system"))
-            os.rmdir(os.path.join(target_path, "user_data"))
-            os.rmdir(os.path.join(target_path, "temp_data"))
+            shutil.rmtree(os.path.join(target_path, "user_system (系统专用-请勿修改)"))
+            os.rmdir(os.path.join(target_path, "user_data (您的数据文件-主要工作区)"))
+            os.rmdir(os.path.join(target_path, "temp_data (临时文件-自动清理)"))
         except:
             pass
         print("SUCCESS: 权限验证成功")
@@ -227,10 +227,10 @@ def create_system_info_file(user_id, username, folder_location):
         return result
     
     # 创建三层平级文件夹结构
-    user_system_dir = os.path.join(base_path, "user_system", user_id)  # 存放用户ID等系统数据
-    user_data_dir = os.path.join(base_path, "user_data")               # 用户存放读写数据的地方
-    temp_data_dir = os.path.join(base_path, "temp_data")               # 临时存放数据给别人调用
-    docs_dir = os.path.join(user_system_dir, "docs")                   # 存放说明文档
+    user_system_dir = os.path.join(base_path, "user_system (系统专用-请勿修改)", user_id)  # 存放用户ID等系统数据
+    user_data_dir = os.path.join(base_path, "user_data (您的数据文件-主要工作区)")               # 用户存放读写数据的地方
+    temp_data_dir = os.path.join(base_path, "temp_data (临时文件-自动清理)")               # 临时存放数据给别人调用
+    docs_dir = os.path.join(user_system_dir, "docs (说明文档)")                   # 存放说明文档
     
     result["user_system_dir"] = user_system_dir
     result["user_data_dir"] = user_data_dir

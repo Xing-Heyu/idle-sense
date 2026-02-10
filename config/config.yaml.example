@@ -78,7 +78,7 @@ node:
   security:
     enabled: true                 # 是否启用安全限制
     max_task_time: 300            # 任务最大执行时间(秒)
-    max_memory_mb: 1024           # 任务最大内存使用(MB)
+    max_memory_mb: 16384          # 任务最大内存使用(MB)（增加到16GB）
     max_disk_mb: 100              # 任务最大磁盘使用(MB)
     network_access: false         # 是否允许网络访问
     auto_cleanup: true            # 是否自动清理临时文件
@@ -104,8 +104,8 @@ node:
   
   # 资源限制
   resources:
-    max_cpu_cores: 2.0            # 最大可使用的CPU核心数
-    max_memory_mb: 4096           # 最大可使用的内存(MB)
+    max_cpu_cores: 16.0           # 最大可使用的CPU核心数（增加到16核）
+    max_memory_mb: 16384          # 最大可使用的内存(MB)（增加到16GB）
     max_disk_mb: 1024             # 最大可使用的磁盘空间(MB)
     reserve_cpu: 0.5              # 保留的CPU核心数（不用于计算）
     reserve_memory_mb: 1024       # 保留的内存(MB)（不用于计算）

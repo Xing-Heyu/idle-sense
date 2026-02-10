@@ -27,8 +27,8 @@ except ImportError:
 
 # 节点配置
 NODE_CAPACITY = {
-    "cpu": 4.0,  # CPU核心数
-    "memory": 8192  # 内存MB
+    "cpu": 8.0,   # CPU核心数（增加到8核）
+    "memory": 16384  # 内存MB（增加到16GB）
 }
 
 SERVER_URL = "http://localhost:8000"

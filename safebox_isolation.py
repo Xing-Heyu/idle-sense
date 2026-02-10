@@ -54,7 +54,7 @@ class ModuleA_Prepare:
         # 工作目录路径
         if user_id:
             # 如果有用户ID，使用用户临时文件夹
-            user_temp_dir = self.node_base_dir / "temp_data" / user_id
+            user_temp_dir = self.node_base_dir / "temp_data (临时文件-自动清理)" / user_id
             user_temp_dir.mkdir(parents=True, exist_ok=True)
             self.work_dir = user_temp_dir / task_id
         else:
@@ -255,8 +255,8 @@ if __name__ == "__main__":
         
         # 添加文件夹路径信息
         if self.user_id:
-            config_data['user_folder_path'] = f"user_data/{self.user_id}"
-            config_data['temp_folder_path'] = f"temp_data/{self.user_id}"
+            config_data['user_folder_path'] = f"user_data (您的数据文件-主要工作区)/{self.user_id}"
+            config_data['temp_folder_path'] = f"temp_data (临时文件-自动清理)/{self.user_id}"
         else:
             config_data['user_folder_path'] = ""
             config_data['temp_folder_path'] = ""
