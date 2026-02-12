@@ -511,7 +511,7 @@ for key, default in [
 
 # ==================== 修复的核心API函数 ====================
 
-@cache_result(ttl=10)
+
 def check_scheduler_health():
     """检查调度中心是否在线 - 修复节点显示为0的问题"""
     # 优先使用健康端点
@@ -533,18 +533,36 @@ def check_scheduler_health():
         
         for node in all_nodes:
             # 健壮的在线状态判断
-            if node.get("is_online", False):
+            is_online = False
+            if "is_online" in node:
+                val = node["is_online"]
+                if isinstance(val, bool):
+                    is_online = val
+                elif isinstance(val, str):
+                    is_online = val.lower() in ["true", "yes", "1", "online"]
+            elif "status" in node:
+                status = node["status"]
+                if isinstance(status, str):
+                    is_online = status.lower() == "online_available"
+            if is_online:
                 online_nodes += 1
-            health_data["nodes"] = {    
-                "online": online_nodes,
-                "total": len(all_nodes)
-            }    
+        
+        # ✅ 只更新 health_data 里的 nodes.online，不整体覆盖
+        if "nodes" not in health_data:
+            health_data["nodes"] = {}
+        health_data["nodes"]["online"] = online_nodes
+        health_data["nodes"]["total"] = len(all_nodes)
     else:
-        health_data["nodes"] = {"online": 0, "total": 0}
+        # 失败时也不覆盖，只设默认值
+        if "nodes" not in health_data:
+            health_data["nodes"] = {}
+        health_data["nodes"]["online"] = 0
+        health_data["nodes"]["total"] = 0
     
+    # 返回结果
     return True, health_data
 
-@cache_result(ttl=15)
+# 删除缓存装饰器 - 实时获取节点信息
 def get_all_nodes():
     """获取所有节点信息 - 修复在线状态判断"""
     success, data = safe_api_call(requests.get, f"{SCHEDULER_URL}/api/nodes", 
@@ -560,11 +578,12 @@ def get_all_nodes():
     
     for node in nodes:
         node_id = node.get("node_id", "unknown")
-
-        is_online = node.get("is_online", False)
+        
+        # 使用状态字段判断是否在线可用
+        status = node.get("status", "")
+        is_online = status.lower() == "online_available"
         is_idle = node.get("is_idle", False)
         
-        # 统一在线判断
         if is_online:
             online_count += 1
             if is_idle:
@@ -592,11 +611,15 @@ def get_all_nodes():
 # ==================== 保持原版的API函数 ====================
 
 def submit_task(code, timeout=300, cpu=1.0, memory=512):
+    user_id = None
+    if st.session_state.user_session:
+        user_id = st.session_state.user_session.get("user_id")
     """提交任务到调度中心"""
     payload = {
         "code": code,
         "timeout": timeout,
-        "resources": {"cpu": cpu, "memory": memory}
+        "resources": {"cpu": cpu, "memory": memory},
+        "user_id": user_id
     }
     return safe_api_call(requests.post, f"{SCHEDULER_URL}/submit", json=payload, timeout=10)
 
@@ -745,26 +768,27 @@ with st.sidebar:
     
     if health_ok:
         st.success("🟢 调度器在线")
-        online = health_info.get("nodes", {}).get("online", 0)
         
+        # 创建局部刷新容器
+        node_metric = st.empty()
         
-        col1, col2, col3 = st.columns(3)
-        with col1: st.metric("在线节点", online)
-        with col2: 
-            if st.button("🔄", help="刷新状态"): st.rerun()
+        col1, col2 = st.columns(2)
         
-        if online > 0:
-            st.success(f"✅ 有 {online} 台设备在线")
-            with st.expander("节点详情"):
-                success, nodes_info = get_all_nodes()
-                if success:
-                    for node in nodes_info.get("nodes", []):
-                        icon = "🟢" if node.get("is_online") else "🔴"
-                        idle_icon = "💤" if node.get("is_idle") else "⚡"
-                        st.write(f"{icon}{idle_icon} {node.get('node_id')}")
-        else:
-            st.warning("⚠️ 没有设备在线")
-            
+        with col1:
+            # 初始显示
+            online = health_info.get("nodes", {}).get("online", 0)
+            node_metric.metric("可用节点", online)
+        
+        with col2:
+            if st.button("🔄", help="刷新状态"):
+                # 只刷新节点数
+                fresh_ok, fresh_info = check_scheduler_health()
+                if fresh_ok:
+                    fresh_online = fresh_info.get("nodes", {}).get("online", 0)
+                    node_metric.metric("可用节点", fresh_online)
+                    st.success("✅ 已刷新")
+                else:
+                    st.error("❌ 调度器离线")
     else:
         st.error("🔴 调度器离线")
         st.code("请运行: python scheduler/simple_server.py")
@@ -793,42 +817,45 @@ with st.sidebar:
     
     # 节点激活功能
     st.divider()
-    st.markdown("### 🚀 节点激活")
+    st.markdown("### 🚀 节点管理")
     
-    if st.button("启动节点客户端", help="启动本地计算节点", type="primary", key="sidebar_start_node_btn"):
-        st.success("正在启动节点客户端...")
-        
-        cpu_share = st.session_state.get('share_cpu_value', 4.0)
-        memory_share = st.session_state.get('share_memory_value', 8192)
-        
-        try:
-            response = requests.post(
-                f"{SCHEDULER_URL}/api/nodes/activate-local",
-                json={
-                    "cpu_limit": cpu_share,
-                    "memory_limit": memory_share,
-                    "storage_limit": 102400
-                },
-                timeout=10
-            )
+    col_start, col_stop = st.columns(2)
+    
+    with col_start:
+        if st.button("▶️ 启动节点", help="启动本地计算节点", type="primary", key="sidebar_start_node_btn"):
+            st.success("正在启动节点客户端...")
             
-            if response.status_code == 200:
-                node_data = response.json()
-                node_id = node_data.get("node_id")
-                st.success(f"✅ 节点 {node_id} 已在调度器注册")
+            cpu_share = st.session_state.get('share_cpu_value', 4.0)
+            memory_share = st.session_state.get('share_memory_value', 8192)
+            
+            try:
+                response = requests.post(
+                    f"{SCHEDULER_URL}/api/nodes/activate-local",
+                    json={
+                        "cpu_limit": cpu_share,
+                        "memory_limit": memory_share,
+                        "storage_limit": 102400
+                    },
+                    timeout=10
+                )
                 
-                import tempfile
-                temp_dir = tempfile.gettempdir()
-                node_id_file = os.path.join(temp_dir, "idle_sense_node_id.txt")
-                with open(node_id_file, 'w') as f:
-                    f.write(node_id)
-                st.info(f"节点ID已保存: {node_id}")
-            else:
-                st.error(f"节点注册失败: {response.status_code} - {response.text}")
-        except Exception as e:
-            st.error(f"节点注册失败: {e}")
-        
-        st.code("""
+                if response.status_code == 200:
+                    node_data = response.json()
+                    node_id = node_data.get("node_id")
+                    st.success(f"✅ 节点 {node_id} 已在调度器注册")
+                    
+                    import tempfile
+                    temp_dir = tempfile.gettempdir()
+                    node_id_file = os.path.join(temp_dir, "idle_sense_node_id.txt")
+                    with open(node_id_file, 'w') as f:
+                        f.write(node_id)
+                    st.info(f"节点ID已保存: {node_id}")
+                else:
+                    st.error(f"节点注册失败: {response.status_code} - {response.text}")
+            except Exception as e:
+                st.error(f"节点注册失败: {e}")
+            
+            st.code("""
 方法1: 使用批处理文件
 双击运行 start_all.bat
 
@@ -836,9 +863,33 @@ with st.sidebar:
 1. 打开命令提示符
 2. 切换到项目目录
 3. 运行: python node/simple_client.py
-        """, language="bash")
-        
-        st.info("✅ 节点已激活！系统将自动管理节点运行。")        
+            """, language="bash")
+            
+            st.info("✅ 节点已激活！系统将自动管理节点运行。")
+    
+    with col_stop:
+        if st.button("⏹️ 停止节点", help="停止所有本地节点", type="secondary", key="sidebar_stop_node_btn"):
+            try:
+                # 获取所有节点列表
+                success, nodes_info = get_all_nodes()
+                if success and nodes_info.get("nodes"):
+                    stopped_count = 0
+                    for node in nodes_info["nodes"]:
+                        node_id = node.get("node_id")
+                        if node_id and node.get("is_online"):
+                            stop_success, stop_result = stop_node(node_id)
+                            if stop_success:
+                                stopped_count += 1
+                    
+                    if stopped_count > 0:
+                        st.success(f"✅ 已停止 {stopped_count} 个节点")
+                    else:
+                        st.info("ℹ️ 没有正在运行的节点")
+                else:
+                    st.info("ℹ️ 没有找到任何节点")
+            except Exception as e:
+                st.error(f"停止节点失败: {e}")
+    
     # 资源分配滑块
     st.divider()
     st.markdown("### 💻 资源分配")
@@ -1401,7 +1452,6 @@ print(f"斐波那契数列第20项: {result}")"""
         st.markdown("### 如何启动节点")
         col1, col2 = st.columns(2)
         
-                
         try:
             import subprocess
             script_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "node", "simple_client.py")
@@ -1443,9 +1493,9 @@ print(f"斐波那契数列第20项: {result}")"""
                             st.write(f"**平台**: {node.get('platform', 'unknown')}")
                         
                         with col2:
-                            resources = node.get('resources', {})
-                            st.write(f"**CPU**: {resources.get('cpu_cores', 'N/A')} 核心")
-                            st.write(f"**内存**: {resources.get('memory_mb', 'N/A')} MB")
+                            capacity = node.get('capacity', {})
+                            st.write(f"**CPU**: {capacity.get('cpu', 'N/A')} 核心")
+                            st.write(f"**内存**: {capacity.get('memory', 'N/A')} MB")
             else:
                 if not success:
                     st.error(f"获取节点信息失败: {nodes_info.get('error', '未知错误')}")
@@ -1565,8 +1615,8 @@ print(f"斐波那契数列第20项: {result}")"""
             success, results = get_all_results()
             if success and results.get("results"):
                 results_list = results["results"]
-                if st.session_state.user_session and st.session_state.user_session.get("user"):
-                    user_id = st.session_state.user_session["user"].get("user_id")
+                if st.session_state.user_session:
+                    user_id = st.session_state.user_session.get("user_id")
                     user_tasks = []
                     for result in results_list:
                         task_user_id = result.get("user_id")
@@ -1608,8 +1658,8 @@ print(f"斐波那契数列第20项: {result}")"""
         st.header("📋 您的任务结果")
         st.markdown("查看您提交的所有任务执行结果")
         user_id = None
-        if st.session_state.user_session and st.session_state.user_session.get("user"):
-            user_id = st.session_state.user_session["user"].get("user_id")
+        if st.session_state.user_session:
+            user_id = st.session_state.user_session.get("user_id") 
         if not user_id:
             st.warning("请先登录查看任务结果")
         else:
@@ -1702,7 +1752,7 @@ else:
                     
                     st.session_state.user_session = {
                         "session_id": f"local_{found_user['user_id']}_{datetime.now().timestamp()}",
-                        "user": found_user,
+                        "user_id": found_user['user_id'],
                         "username": found_user['username'],
                         "is_local": True
                     }
@@ -1731,7 +1781,7 @@ else:
                     st.info(f"用户名 '{reg_username}' 已被使用，将自动调整为 '{available_username}'")
                     reg_username = available_username
         
-        # 文件夹位置选择
+        # 文件夹位置设置
         st.markdown("### 📁 文件夹位置设置")
         
         col1, col2 = st.columns(2)
@@ -1839,7 +1889,7 @@ else:
                         
                         st.session_state.user_session = {
                             "session_id": f"local_{local_user_id}_{datetime.now().timestamp()}",
-                            "user": user_info,
+                            "user_id": local_user_id,
                             "username": available_username,
                             "is_local": True
                         }
