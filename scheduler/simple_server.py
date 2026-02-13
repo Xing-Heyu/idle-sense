@@ -792,7 +792,8 @@ async def activate_local_node(config: dict = Body(...)):
             tags={
                 "type": "local",
                 "platform": "local-web-activated",
-                "auto_activated": True
+                "auto_activated": True,
+                "user_id": config.get("user_id", "unknown")
             }
         )
         

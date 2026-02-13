@@ -238,12 +238,48 @@ class WindowsNodeClient:
     
     def execute_task(self, task_id: str, code: str) -> str:
         try:
+        # ===== 自动包装用户代码 =====
+            wrapper = f"""
+# ===== 系统环境初始化 =====
+import sys, os, json, time
+from datetime import datetime
+
+__node_id__ = "{self.node_id}"
+__task_id__ = "{task_id}"
+__start_time__ = time.time()
+
+# ===== 用户代码开始 =====
+{code}
+
+# ===== 用户代码结束 =====
+
+# ===== 结果自动收集 =====
+__result__ = locals().get('__result__', None)
+
+if __result__ is None:
+    import io
+    import contextlib
+    f = io.StringIO()
+    with contextlib.redirect_stdout(f):
+        try:
+            exec(\"\"\"{code}\"\"\")
+        except:
+            pass
+    __result__ = f.getvalue()
+
+if not __result__:
+    __result__ = "(无输出)"
+
+# 添加执行信息
+__result__ = f"[{{__node_id__}}] {{__result__}}"
+"""
+        
             local_vars = {}
-            exec(code, {"__builtins__": {}}, local_vars)
-            result = local_vars.get("__result__", "Task completed without result")
-            return str(result)
+            exec(wrapper, {"__builtins__": {}}, local_vars)
+            return str(local_vars.get("__result__", "无输出"))
+        
         except Exception as e:
-            error_msg = f"Task execution failed: {str(e)}"
+            error_msg = f"执行失败: {str(e)}"
             log(f"[ERROR] {error_msg}")
             return error_msg
     

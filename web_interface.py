@@ -50,7 +50,36 @@ st.set_page_config(
 # 配置
 SCHEDULER_URL = "http://localhost:8000"
 REFRESH_INTERVAL = 30
-
+# ==================== 持久化登录恢复（必须放最前面）====================
+if 'user_session' not in st.session_state:
+    st.markdown("""
+    <script>
+    // 页面加载时从 localStorage 读取登录态
+    const savedSession = localStorage.getItem('idle_accelerator_session');
+    if (savedSession) {
+        try {
+            const sessionData = JSON.parse(savedSession);
+            // 通过 URL 参数传递给 Streamlit
+            const url = new URL(window.location.href);
+            url.searchParams.set('restore_session', JSON.stringify(sessionData));
+            window.history.replaceState({}, '', url);
+        } catch(e) {}
+    }
+    </script>
+    """, unsafe_allow_html=True)
+    
+    # 从 URL 参数恢复 session_state
+    import json
+    restore_data = st.query_params.get_all('restore_session')
+    if restore_data:
+        try:
+            session_data = json.loads(restore_data[0])
+            st.session_state.user_session = session_data
+            # 清除 URL 参数，避免刷新重复恢复
+            st.query_params.clear()
+        except:
+            pass
+# ===================================================================
 # ==================== 优化工具函数 ====================
 
 def safe_api_call(func, *args, default=None, **kwargs):
@@ -597,7 +626,8 @@ def get_all_nodes():
             "status_detail": "空闲" if is_idle else "忙碌" if is_online else "离线",
             "platform": node.get("platform", "unknown"),
             "capacity": node.get("capacity", {}),
-            "tags": node.get("tags", {})
+            "tags": node.get("tags", {}),
+            "owner": node.get("tags", {}).get("user_id", "未知")
         })
     
     return True, {
@@ -728,19 +758,13 @@ def stop_node(node_id: str):
     """停止指定节点"""
     return safe_api_call(requests.post, f"{SCHEDULER_URL}/api/nodes/{node_id}/stop", timeout=5)
 
+
+
+
 # ==================== 页面标题和样式 ====================
 
 st.title("⚡ 闲置计算加速器")
 st.markdown("利用个人电脑闲置算力的分布式计算平台")
-
-st.markdown("""
-<style>
-.stApp { background-color: #0e1117 !important; color: #ffffff !important; }
-.main .block-container { background-color: #1f242d !important; border-radius: 8px; }
-.stButton>button { background-color: #2b2d30 !important; border: 1px solid #444746 !important; }
-</style>
-""", unsafe_allow_html=True)
-
 # ==================== 侧边栏 ====================
 
 with st.sidebar:
@@ -797,24 +821,35 @@ with st.sidebar:
     
     # 用户状态
     st.subheader("👤 用户状态")
-    if st.session_state.user_session:
-        st.success(f"✅ {st.session_state.user_session.get('username', '用户')}")
-        if st.button("🚪 退出登录"):
-            st.session_state.user_session = None
-            st.rerun()
-    else:
-        st.warning("🔒 未登录")
-        username = st.text_input("用户名")
-        if st.button("快速登录"):
-            if username:
-                st.session_state.user_session = {
-                    "username": username,
-                    "user_id": f"local_{hashlib.md5(username.encode()).hexdigest()[:8]}"
-                }
-                st.success(f"✅ 欢迎 {username}")
-                time.sleep(1)
-                st.rerun()
+if st.session_state.user_session:
+    st.success(f"✅ {st.session_state.user_session.get('username', '用户')}")
+    if st.button("🚪 退出登录"):
+    # 先清除 localStorage，再清除 session_state，最后刷新
+        st.markdown("<script>localStorage.removeItem('idle_accelerator_session');</script>", unsafe_allow_html=True)
+        st.session_state.user_session = None
+        st.query_params.clear()
+        st.rerun()
+else:
+    st.warning("🔒 未登录")
+    username = st.text_input("用户名", key="sidebar_username")
     
+    if st.button("快速登录"):
+        if username:
+            import hashlib
+            user_id = f"local_{hashlib.md5(username.encode()).hexdigest()[:8]}"
+            
+            # 写入本地用户文件（让本地登录也能识别）
+            user_manager.save_user(user_id, username, "project")
+            
+            # 设置 session_state
+            st.session_state.user_session = {
+                "username": username,
+                "user_id": user_id
+            }
+            
+            st.success(f"✅ 欢迎 {username}")
+            time.sleep(1)
+            st.rerun() 
     # 节点激活功能
     st.divider()
     st.markdown("### 🚀 节点管理")
@@ -829,12 +864,17 @@ with st.sidebar:
             memory_share = st.session_state.get('share_memory_value', 8192)
             
             try:
+                current_user_id = None
+                if st.session_state.user_session:
+                    current_user_id = st.session_state.user_session.get("user_id")
+
                 response = requests.post(
                     f"{SCHEDULER_URL}/api/nodes/activate-local",
                     json={
                         "cpu_limit": cpu_share,
                         "memory_limit": memory_share,
-                        "storage_limit": 102400
+                        "storage_limit": 102400,
+                        "user_id": current_user_id  # ← 加上这一行
                     },
                     timeout=10
                 )
@@ -1143,80 +1183,13 @@ print(f"合并完成，总共处理了 {total_count} 项数据")
                     memory_request = st.slider("内存需求(MB)", 512, 65536, 4096, 512)
             
             # 代码编辑器
-            with st.expander("Python代码", expanded=True):
-                example_code = st.selectbox(
-                    "选择示例代码",
-                    ["自定义", "Hello World", "数学计算", "文件处理", "网络请求"],
-                    index=0
-                )
-                
-                examples = {
-                    "Hello World": 'print("Hello, World!")',
-                    "数学计算": '''
-# 计算圆的面积
-import math
-
-radius = 5
-area = math.pi * radius ** 2
-print(f"半径为{radius}的圆的面积是: {area:.2f}")
-''',
-                    "文件处理": '''
-# 读取并处理文件
-import os
-
-# 创建一个示例文件
-with open("example.txt", "w") as f:
-    f.write("这是示例文本\\n第二行\\n第三行")
-    
-# 读取文件内容
-with open("example.txt", "r") as f:
-    content = f.read()
-    lines = content.split("\\n")
-    
-print(f"文件共有{len(lines)}行")
-print(f"第一行: {lines[0]}")
-''',
-                    "网络请求": '''
-# 发送HTTP请求
-import requests
-import json
-
-try:
-    # 获取IP地址信息
-    response = requests.get("https://httpbin.org/ip", timeout=5)
-    if response.status_code == 200:
-        data = response.json()
-        print(f"您的IP地址是: {data['origin']}")
-    else:
-        print(f"请求失败，状态码: {response.status_code}")
-except Exception as e:
-    print(f"请求出错: {e}")
-'''
-                }
-                
-                if example_code != "自定义" and example_code in examples:
-                    default_code = examples[example_code]
-                else:
-                    default_code = """# 在这里输入你的Python代码
-# 任务执行结果将通过print()输出
-# 或者赋值给 __result__ 变量
-
-print("Hello from idle computer!")
-
-# 示例：计算斐波那契数列
-def fibonacci(n):
-    if n <= 1:
-        return n
-    return fibonacci(n-1) + fibonacci(n-2)
-
-result = fibonacci(20)
-print(f"斐波那契数列第20项: {result}")"""
-                
+            with st.expander("Python代码", expanded=True):    
                 code = st.text_area(
                     "输入Python代码",
-                    value=default_code,
+                    value="",
                     height=300,
-                    label_visibility="collapsed"
+                    label_visibility="collapsed",
+                    placeholder="# 在这里直接写你的代码，无需任何框架\nprint('Hello world')"
                 )
             
             # 提交按钮
@@ -1491,6 +1464,7 @@ print(f"斐波那契数列第20项: {result}")"""
                         with col1:
                             st.write(f"**状态**: {node.get('status', 'unknown')}")
                             st.write(f"**平台**: {node.get('platform', 'unknown')}")
+                            st.write(f"**所有者**: {node.get('owner', '未知')}")
                         
                         with col2:
                             capacity = node.get('capacity', {})
@@ -1756,7 +1730,26 @@ else:
                         "username": found_user['username'],
                         "is_local": True
                     }
-                    
+                    st.markdown(f"""
+                    <script>
+                    localStorage.setItem('idle_accelerator_session', JSON.stringify({{
+                        user_id: '{found_user['user_id']}',
+                        username: '{found_user['username']}',
+                        is_local: true
+                    }}));
+                    </script>
+                    """, unsafe_allow_html=True)
+                    st.markdown(f"""
+                    <script>
+                    window.dispatchEvent(new CustomEvent('login-success', {{
+                        detail: {{
+                            user_id: '{found_user['user_id']}',
+                            username: '{found_user['username']}',
+                            is_local: true
+                        }}
+                    }}));
+                    </script>
+                    """, unsafe_allow_html=True)
                     st.success(f"✅ 登录成功！欢迎回来，{found_user['username']}")
                     st.info("🔄 页面将自动刷新...")
                     time.sleep(1)
@@ -1893,7 +1886,26 @@ else:
                             "username": available_username,
                             "is_local": True
                         }
-                        
+                        st.markdown(f"""
+                        <script>
+                        localStorage.setItem('idle_accelerator_session', JSON.stringify({{
+                            user_id: '{local_user_id}',
+                            username: '{available_username}',
+                            is_local: true
+                        }}));
+                        </script>
+                        """, unsafe_allow_html=True)
+                        st.markdown(f"""
+                        <script>
+                        window.dispatchEvent(new CustomEvent('login-success', {{
+                            detail: {{
+                                user_id: '{local_user_id}',
+                                username: '{available_username}',
+                                is_local: true
+                            }}
+                        }}));
+                        </script>
+                        """, unsafe_allow_html=True)
                         progress_bar.progress(100)
                         status_text.text("注册成功！")
                         
@@ -1958,3 +1970,4 @@ st.caption("闲置计算加速器 v2.0 | 开源免费项目 | 适配新版调度
 if st.session_state.auto_refresh:
     time.sleep(REFRESH_INTERVAL)
     st.rerun()
+# ==============================================================   

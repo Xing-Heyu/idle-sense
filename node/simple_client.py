@@ -394,42 +394,49 @@ class NodeClient:
         log("心跳线程停止")
     
     def safe_execute(self, code: str, timeout: int = TASK_TIMEOUT) -> str:
+
         try:
-            import subprocess
-            import tempfile
-            
-            with tempfile.NamedTemporaryFile(mode='w', suffix='.py', delete=False) as f:
-                f.write(code)
-                temp_file = f.name
-            
-            try:
-                start_time = time.time()
-                result = subprocess.run(
-                    [sys.executable, temp_file],
-                    capture_output=True,
-                    text=True,
-                    timeout=timeout,
-                    cwd=os.path.dirname(temp_file)
-                )
-                execution_time = time.time() - start_time
-                
-                if result.returncode == 0:
-                    output = result.stdout.strip()
-                    if not output:
-                        output = "执行成功（无输出）"
-                    return f"成功 ({execution_time:.1f}秒): {output[:200]}"
-                else:
-                    error_msg = result.stderr or "未知错误"
-                    return f"错误: {error_msg[:200]}"
-            finally:
-                try:
-                    os.unlink(temp_file)
-                except:
-                    pass
-        except subprocess.TimeoutExpired:
-            return f"错误: 执行超时（{timeout}秒）"
+        # ===== 自动包装用户代码 =====
+            wrapper = f"""
+# ===== 系统环境初始化 =====
+import sys, os, json, time
+from datetime import datetime
+
+__node_id__ = "{self.node_id}"
+__task_id__ = "unknown"
+__start_time__ = time.time()
+
+# ===== 用户代码开始 =====
+{code}
+
+# ===== 用户代码结束 =====
+
+# ===== 结果自动收集 =====
+__result__ = locals().get('__result__', None)
+
+if __result__ is None:
+    import io
+    import contextlib
+    f = io.StringIO()
+    with contextlib.redirect_stdout(f):
+        try:
+            exec(\"\"\"{code}\"\"\")
+        except:
+            pass
+    __result__ = f.getvalue()
+
+if not __result__:
+    __result__ = "(无输出)"
+
+__result__ = f"[{{__node_id__}}] {{__result__}}"
+"""
+        
+            local_vars = {}
+            exec(wrapper, {"__builtins__": {}}, local_vars)
+            return str(local_vars.get("__result__", "无输出"))
+        
         except Exception as e:
-            return f"错误: 执行异常 - {str(e)[:100]}"
+            return f"执行失败: {str(e)}"
     
     def fetch_task(self) -> Optional[Dict[str, Any]]:
         try:
@@ -448,7 +455,7 @@ class NodeClient:
     def submit_result(self, task_id: int, result: str) -> bool:
         try:
             result_data = {
-                "task_id": task_id,
+                "task_id": task_id,  # ← 确保这里有 task_id
                 "result": result,
                 "node_id": self.node_id,
                 "device_type": self.device_type
