@@ -1,0 +1,3268 @@
+SIM102 Use a single `if` statement instead of nested `if` statements
+  --> legacy\code_quality_check.py:74:9
+   |
+73 |           # 检查可能的缩进问题
+74 | /         if line.strip() and not line.startswith('\n') and not line.startswith(' ') and not line.startswith('\t'):
+75 | |             if i > 1 and lines[i-2].strip().endswith(':'):
+   | |__________________________________________________________^
+76 |                   print(f"[WARN] 第{i}行: 可能缺少缩进")
+   |
+help: Combine `if` statements using `and`
+
+F401 `streamlit` imported but unused; consider using `importlib.util.find_spec` to test for availability
+   --> legacy\code_quality_check.py:204:16
+    |
+202 |     # 2. 检查依赖
+203 |     try:
+204 |         import streamlit
+    |                ^^^^^^^^^
+205 |         print("[PASS] streamlit 已安装")
+206 |     except ImportError:
+    |
+help: Remove unused import: `streamlit`
+
+F401 `requests` imported but unused; consider using `importlib.util.find_spec` to test for availability
+   --> legacy\code_quality_check.py:211:16
+    |
+210 |     try:
+211 |         import requests
+    |                ^^^^^^^^
+212 |         print("[PASS] requests 已安装")
+213 |     except ImportError:
+    |
+help: Remove unused import: `requests`
+
+F401 `pandas` imported but unused; consider using `importlib.util.find_spec` to test for availability
+   --> legacy\code_quality_check.py:218:16
+    |
+217 |     try:
+218 |         import pandas
+    |                ^^^^^^
+219 |         print("[PASS] pandas 已安装")
+220 |     except ImportError:
+    |
+help: Remove unused import: `pandas`
+
+F401 `plotly` imported but unused; consider using `importlib.util.find_spec` to test for availability
+   --> legacy\code_quality_check.py:225:16
+    |
+224 |     try:
+225 |         import plotly
+    |                ^^^^^^
+226 |         print("[PASS] plotly 已安装")
+227 |     except ImportError:
+    |
+help: Remove unused import: `plotly`
+
+B904 Within an `except` clause, raise exceptions with `raise ... from err` or `raise ... from None` to distinguish them from errors in exception handling
+   --> legacy\connection_pool\__init__.py:240:21
+    |
+238 |                 if remaining <= 0:
+239 |                     self._stats.total_errors += 1
+240 |                     raise TimeoutError("Failed to acquire connection")
+    |                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+241 |
+242 |                 try:
+    |
+
+UP024 [*] Replace aliased errors with `OSError`
+  --> legacy\demo\demo_local_network.py:35:12
+   |
+33 |         s.close()
+34 |         return ip
+35 |     except (socket.error, OSError):
+   |            ^^^^^^^^^^^^^^^^^^^^^^^
+36 |         return "127.0.0.1"
+   |
+help: Replace with builtin `OSError`
+
+F401 `abc.abstractmethod` imported but unused
+  --> legacy\di\__init__.py:20:22
+   |
+18 | """
+19 | import logging
+20 | from abc import ABC, abstractmethod
+   |                      ^^^^^^^^^^^^^^
+21 | from dataclasses import dataclass, field
+22 | from enum import Enum
+   |
+help: Remove unused import: `abc.abstractmethod`
+
+B024 `Injectable` is an abstract base class, but it has no abstract methods or properties
+   --> legacy\di\__init__.py:246:7
+    |
+246 | class Injectable(ABC):
+    |       ^^^^^^^^^^
+247 |     """Base class for injectable services."""
+    |
+
+F401 `asyncio` imported but unused
+ --> legacy\diagnostics\__init__.py:7:8
+  |
+5 | capabilities for the idle-accelerator system.
+6 | """
+7 | import asyncio
+  |        ^^^^^^^
+8 | import json
+9 | import os
+  |
+help: Remove unused import: `asyncio`
+
+F401 `subprocess` imported but unused
+  --> legacy\diagnostics\__init__.py:12:8
+   |
+10 | import platform
+11 | import socket
+12 | import subprocess
+   |        ^^^^^^^^^^
+13 | import sys
+14 | import time
+   |
+help: Remove unused import: `subprocess`
+
+F401 `sys` imported but unused
+  --> legacy\diagnostics\__init__.py:13:8
+   |
+11 | import socket
+12 | import subprocess
+13 | import sys
+   |        ^^^
+14 | import time
+15 | from dataclasses import dataclass, field
+   |
+help: Remove unused import: `sys`
+
+UP035 `typing.Dict` is deprecated, use `dict` instead
+  --> legacy\diagnostics\__init__.py:17:1
+   |
+15 | from dataclasses import dataclass, field
+16 | from enum import Enum
+17 | from typing import Any, Callable, Dict, List, Optional
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+18 |
+19 | try:
+   |
+
+UP035 `typing.List` is deprecated, use `list` instead
+  --> legacy\diagnostics\__init__.py:17:1
+   |
+15 | from dataclasses import dataclass, field
+16 | from enum import Enum
+17 | from typing import Any, Callable, Dict, List, Optional
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+18 |
+19 | try:
+   |
+
+F401 `typing.Dict` imported but unused
+  --> legacy\diagnostics\__init__.py:17:35
+   |
+15 | from dataclasses import dataclass, field
+16 | from enum import Enum
+17 | from typing import Any, Callable, Dict, List, Optional
+   |                                   ^^^^
+18 |
+19 | try:
+   |
+help: Remove unused import
+
+F401 `typing.List` imported but unused
+  --> legacy\diagnostics\__init__.py:17:41
+   |
+15 | from dataclasses import dataclass, field
+16 | from enum import Enum
+17 | from typing import Any, Callable, Dict, List, Optional
+   |                                         ^^^^
+18 |
+19 | try:
+   |
+help: Remove unused import
+
+F401 `hashlib` imported but unused
+ --> legacy\distributed_lock\__init__.py:5:8
+  |
+3 | from __future__ import annotations
+4 |
+5 | import hashlib
+  |        ^^^^^^^
+6 | import json
+7 | import threading
+  |
+help: Remove unused import: `hashlib`
+
+F401 `datetime.datetime` imported but unused
+  --> legacy\distributed_lock\__init__.py:13:22
+   |
+11 | from contextlib import contextmanager
+12 | from dataclasses import dataclass, field
+13 | from datetime import datetime, timedelta
+   |                      ^^^^^^^^
+14 | from enum import Enum
+15 | from typing import Any, Generic, Optional, TypeVar
+   |
+help: Remove unused import
+
+F401 `datetime.timedelta` imported but unused
+  --> legacy\distributed_lock\__init__.py:13:32
+   |
+11 | from contextlib import contextmanager
+12 | from dataclasses import dataclass, field
+13 | from datetime import datetime, timedelta
+   |                                ^^^^^^^^^
+14 | from enum import Enum
+15 | from typing import Any, Generic, Optional, TypeVar
+   |
+help: Remove unused import
+
+F401 `typing.Generic` imported but unused
+  --> legacy\distributed_lock\__init__.py:15:25
+   |
+13 | from datetime import datetime, timedelta
+14 | from enum import Enum
+15 | from typing import Any, Generic, Optional, TypeVar
+   |                         ^^^^^^^
+16 |
+17 | T = TypeVar("T")
+   |
+help: Remove unused import
+
+F401 `typing.Optional` imported but unused
+  --> legacy\distributed_lock\__init__.py:15:34
+   |
+13 | from datetime import datetime, timedelta
+14 | from enum import Enum
+15 | from typing import Any, Generic, Optional, TypeVar
+   |                                  ^^^^^^^^
+16 |
+17 | T = TypeVar("T")
+   |
+help: Remove unused import
+
+B904 Within an `except` clause, raise exceptions with `raise ... from err` or `raise ... from None` to distinguish them from errors in exception handling
+   --> legacy\distributed_lock\__init__.py:204:17
+    |
+202 |                 )
+203 |             except ImportError:
+204 |                 raise ImportError("Redis support requires redis package")
+    |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+205 |         return self._client
+    |
+
+SIM102 Use a single `if` statement instead of nested `if` statements
+   --> legacy\distributed_lock\__init__.py:463:13
+    |
+461 |               self._set_reader_count(resource, current + 1)
+462 |
+463 | /             if current == 0:
+464 | |                 if self._write_lock.acquire(resource, timeout_seconds=timeout) != LockState.ACQUIRED:
+    | |_____________________________________________________________________________________________________^
+465 |                       self._set_reader_count(resource, current)
+466 |                       return False
+    |
+help: Combine `if` statements using `and`
+
+UP035 `typing.Dict` is deprecated, use `dict` instead
+  --> legacy\distributed_task_v2\__init__.py:17:1
+   |
+15 | from dataclasses import dataclass, field
+16 | from enum import Enum
+17 | from typing import Any, Callable, Dict, Generic, List, Optional, TypeVar, Union
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+18 |
+19 | T = TypeVar("T")
+   |
+
+UP035 `typing.List` is deprecated, use `list` instead
+  --> legacy\distributed_task_v2\__init__.py:17:1
+   |
+15 | from dataclasses import dataclass, field
+16 | from enum import Enum
+17 | from typing import Any, Callable, Dict, Generic, List, Optional, TypeVar, Union
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+18 |
+19 | T = TypeVar("T")
+   |
+
+F401 `typing.Dict` imported but unused
+  --> legacy\distributed_task_v2\__init__.py:17:35
+   |
+15 | from dataclasses import dataclass, field
+16 | from enum import Enum
+17 | from typing import Any, Callable, Dict, Generic, List, Optional, TypeVar, Union
+   |                                   ^^^^
+18 |
+19 | T = TypeVar("T")
+   |
+help: Remove unused import
+
+F401 `typing.List` imported but unused
+  --> legacy\distributed_task_v2\__init__.py:17:50
+   |
+15 | from dataclasses import dataclass, field
+16 | from enum import Enum
+17 | from typing import Any, Callable, Dict, Generic, List, Optional, TypeVar, Union
+   |                                                  ^^^^
+18 |
+19 | T = TypeVar("T")
+   |
+help: Remove unused import
+
+F401 `typing.Union` imported but unused
+  --> legacy\distributed_task_v2\__init__.py:17:75
+   |
+15 | from dataclasses import dataclass, field
+16 | from enum import Enum
+17 | from typing import Any, Callable, Dict, Generic, List, Optional, TypeVar, Union
+   |                                                                           ^^^^^
+18 |
+19 | T = TypeVar("T")
+   |
+help: Remove unused import
+
+F401 `datetime.datetime` imported but unused
+  --> legacy\event_bus\__init__.py:28:22
+   |
+26 | from collections import defaultdict
+27 | from dataclasses import dataclass, field
+28 | from datetime import datetime
+   |                      ^^^^^^^^
+29 | from enum import Enum
+30 | from typing import Any, Callable, Optional, Union
+   |
+help: Remove unused import: `datetime.datetime`
+
+F401 `json` imported but unused
+ --> legacy\health_check\__init__.py:6:8
+  |
+5 | import contextlib
+6 | import json
+  |        ^^^^
+7 | import socket
+8 | import subprocess
+  |
+help: Remove unused import: `json`
+
+F401 `subprocess` imported but unused
+  --> legacy\health_check\__init__.py:8:8
+   |
+ 6 | import json
+ 7 | import socket
+ 8 | import subprocess
+   |        ^^^^^^^^^^
+ 9 | import threading
+10 | import time
+   |
+help: Remove unused import: `subprocess`
+
+F401 `datetime.datetime` imported but unused
+  --> legacy\health_check\__init__.py:13:22
+   |
+11 | from abc import ABC, abstractmethod
+12 | from dataclasses import dataclass, field
+13 | from datetime import datetime
+   |                      ^^^^^^^^
+14 | from enum import Enum
+15 | from typing import Any, Callable, Dict, List, Optional, Tuple
+   |
+help: Remove unused import: `datetime.datetime`
+
+UP035 `typing.Dict` is deprecated, use `dict` instead
+  --> legacy\health_check\__init__.py:15:1
+   |
+13 | from datetime import datetime
+14 | from enum import Enum
+15 | from typing import Any, Callable, Dict, List, Optional, Tuple
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+
+UP035 `typing.List` is deprecated, use `list` instead
+  --> legacy\health_check\__init__.py:15:1
+   |
+13 | from datetime import datetime
+14 | from enum import Enum
+15 | from typing import Any, Callable, Dict, List, Optional, Tuple
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+
+UP035 `typing.Tuple` is deprecated, use `tuple` instead
+  --> legacy\health_check\__init__.py:15:1
+   |
+13 | from datetime import datetime
+14 | from enum import Enum
+15 | from typing import Any, Callable, Dict, List, Optional, Tuple
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+
+F401 `typing.Dict` imported but unused
+  --> legacy\health_check\__init__.py:15:35
+   |
+13 | from datetime import datetime
+14 | from enum import Enum
+15 | from typing import Any, Callable, Dict, List, Optional, Tuple
+   |                                   ^^^^
+   |
+help: Remove unused import
+
+F401 `typing.List` imported but unused
+  --> legacy\health_check\__init__.py:15:41
+   |
+13 | from datetime import datetime
+14 | from enum import Enum
+15 | from typing import Any, Callable, Dict, List, Optional, Tuple
+   |                                         ^^^^
+   |
+help: Remove unused import
+
+F401 `typing.Optional` imported but unused
+  --> legacy\health_check\__init__.py:15:47
+   |
+13 | from datetime import datetime
+14 | from enum import Enum
+15 | from typing import Any, Callable, Dict, List, Optional, Tuple
+   |                                               ^^^^^^^^
+   |
+help: Remove unused import
+
+F401 `typing.Tuple` imported but unused
+  --> legacy\health_check\__init__.py:15:57
+   |
+13 | from datetime import datetime
+14 | from enum import Enum
+15 | from typing import Any, Callable, Dict, List, Optional, Tuple
+   |                                                         ^^^^^
+   |
+help: Remove unused import
+
+ARG004 Unused static method argument: `args`
+  --> legacy\idle_sense\core.py:50:40
+   |
+49 |                 @staticmethod
+50 |                 def get_system_status(*args, **kwargs):
+   |                                        ^^^^
+51 |                     return {
+52 |                         "platform": "Linux",
+   |
+
+ARG004 Unused static method argument: `kwargs`
+  --> legacy\idle_sense\core.py:50:48
+   |
+49 |                 @staticmethod
+50 |                 def get_system_status(*args, **kwargs):
+   |                                                ^^^^^^
+51 |                     return {
+52 |                         "platform": "Linux",
+   |
+
+F821 Undefined name `field`
+  --> legacy\load_balancer\__init__.py:31:32
+   |
+29 |     weight: float = 1.0
+30 |     status: NodeStatus = NodeStatus.HEALTHY
+31 |     metadata: dict[str, Any] = field(default_factory=dict)
+   |                                ^^^^^
+32 |     connection: T | None = None
+   |
+
+B027 `LoadBalancingStrategy.reset` is an empty method in an abstract base class, but has no abstract decorator
+  --> legacy\load_balancer\__init__.py:77:5
+   |
+75 |           pass
+76 |
+77 | /     def reset(self):
+78 | |         pass
+   | |____________^
+   |
+
+F821 Undefined name `Callable`
+   --> legacy\load_balancer\__init__.py:169:30
+    |
+167 |     def __init__(self, hash_key: str = "client_ip"):
+168 |         self.hash_key = hash_key
+169 |         self._key_extractor: Callable | None = None
+    |                              ^^^^^^^^
+170 |
+171 |     def set_key_extractor(self, extractor: Callable[[Any], str]):
+    |
+
+F821 Undefined name `Callable`
+   --> legacy\load_balancer\__init__.py:171:44
+    |
+169 |         self._key_extractor: Callable | None = None
+170 |
+171 |     def set_key_extractor(self, extractor: Callable[[Any], str]):
+    |                                            ^^^^^^^^
+172 |         self._key_extractor = extractor
+    |
+
+F821 Undefined name `Callable`
+   --> legacy\load_balancer\__init__.py:253:31
+    |
+251 |         self._nodes: dict[str, Node[T]] = {}
+252 |         self._lock = threading.RLock()
+253 |         self._health_checker: Callable[[Node], bool] | None = None
+    |                               ^^^^^^^^
+254 |         self._health_thread: threading.Thread | None = None
+255 |         self._running = False
+    |
+
+F821 Undefined name `Callable`
+   --> legacy\load_balancer\__init__.py:311:43
+    |
+309 |                     node.error_count += 1
+310 |
+311 |     def set_health_checker(self, checker: Callable[[Node], bool]):
+    |                                           ^^^^^^^^
+312 |         self._health_checker = checker
+    |
+
+UP035 `typing.Dict` is deprecated, use `dict` instead
+  --> legacy\logging_config\__init__.py:15:1
+   |
+13 | from datetime import datetime
+14 | from pathlib import Path
+15 | from typing import Any, Dict, List, Optional
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+16 |
+17 | LOG_FORMAT = "%(asctime)s | %(levelname)-8s | %(name)s:%(lineno)d | %(message)s"
+   |
+
+UP035 `typing.List` is deprecated, use `list` instead
+  --> legacy\logging_config\__init__.py:15:1
+   |
+13 | from datetime import datetime
+14 | from pathlib import Path
+15 | from typing import Any, Dict, List, Optional
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+16 |
+17 | LOG_FORMAT = "%(asctime)s | %(levelname)-8s | %(name)s:%(lineno)d | %(message)s"
+   |
+
+F401 `typing.Dict` imported but unused
+  --> legacy\logging_config\__init__.py:15:25
+   |
+13 | from datetime import datetime
+14 | from pathlib import Path
+15 | from typing import Any, Dict, List, Optional
+   |                         ^^^^
+16 |
+17 | LOG_FORMAT = "%(asctime)s | %(levelname)-8s | %(name)s:%(lineno)d | %(message)s"
+   |
+help: Remove unused import
+
+F401 `typing.List` imported but unused
+  --> legacy\logging_config\__init__.py:15:31
+   |
+13 | from datetime import datetime
+14 | from pathlib import Path
+15 | from typing import Any, Dict, List, Optional
+   |                               ^^^^
+16 |
+17 | LOG_FORMAT = "%(asctime)s | %(levelname)-8s | %(name)s:%(lineno)d | %(message)s"
+   |
+help: Remove unused import
+
+F401 `datetime.datetime` imported but unused
+  --> legacy\message_queue\__init__.py:12:22
+   |
+10 | from collections import defaultdict
+11 | from dataclasses import dataclass, field
+12 | from datetime import datetime
+   |                      ^^^^^^^^
+13 | from enum import Enum
+14 | from typing import Any, Callable, Generic, Optional, TypeVar
+   |
+help: Remove unused import: `datetime.datetime`
+
+F401 `typing.Optional` imported but unused
+  --> legacy\message_queue\__init__.py:14:44
+   |
+12 | from datetime import datetime
+13 | from enum import Enum
+14 | from typing import Any, Callable, Generic, Optional, TypeVar
+   |                                            ^^^^^^^^
+15 |
+16 | T = TypeVar("T")
+   |
+help: Remove unused import: `typing.Optional`
+
+B904 Within an `except` clause, raise exceptions with `raise ... from err` or `raise ... from None` to distinguish them from errors in exception handling
+   --> legacy\message_queue\__init__.py:232:17
+    |
+230 |                 )
+231 |             except ImportError:
+232 |                 raise ImportError("Redis support requires redis package")
+    |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+233 |         return self._client
+    |
+
+F401 `os` imported but unused
+ --> legacy\migration\__init__.py:7:8
+  |
+5 | import hashlib
+6 | import json
+7 | import os
+  |        ^^
+8 | import sqlite3
+9 | import threading
+  |
+help: Remove unused import: `os`
+
+UP035 `typing.Dict` is deprecated, use `dict` instead
+  --> legacy\migration\__init__.py:16:1
+   |
+14 | from enum import Enum
+15 | from pathlib import Path
+16 | from typing import Any, Callable, Dict, List, Optional, Tuple
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+
+UP035 `typing.List` is deprecated, use `list` instead
+  --> legacy\migration\__init__.py:16:1
+   |
+14 | from enum import Enum
+15 | from pathlib import Path
+16 | from typing import Any, Callable, Dict, List, Optional, Tuple
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+
+UP035 `typing.Tuple` is deprecated, use `tuple` instead
+  --> legacy\migration\__init__.py:16:1
+   |
+14 | from enum import Enum
+15 | from pathlib import Path
+16 | from typing import Any, Callable, Dict, List, Optional, Tuple
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+
+F401 `typing.Dict` imported but unused
+  --> legacy\migration\__init__.py:16:35
+   |
+14 | from enum import Enum
+15 | from pathlib import Path
+16 | from typing import Any, Callable, Dict, List, Optional, Tuple
+   |                                   ^^^^
+   |
+help: Remove unused import
+
+F401 `typing.List` imported but unused
+  --> legacy\migration\__init__.py:16:41
+   |
+14 | from enum import Enum
+15 | from pathlib import Path
+16 | from typing import Any, Callable, Dict, List, Optional, Tuple
+   |                                         ^^^^
+   |
+help: Remove unused import
+
+F401 `typing.Optional` imported but unused
+  --> legacy\migration\__init__.py:16:47
+   |
+14 | from enum import Enum
+15 | from pathlib import Path
+16 | from typing import Any, Callable, Dict, List, Optional, Tuple
+   |                                               ^^^^^^^^
+   |
+help: Remove unused import
+
+F401 `typing.Tuple` imported but unused
+  --> legacy\migration\__init__.py:16:57
+   |
+14 | from enum import Enum
+15 | from pathlib import Path
+16 | from typing import Any, Callable, Dict, List, Optional, Tuple
+   |                                                         ^^^^^
+   |
+help: Remove unused import
+
+F401 `collections.defaultdict` imported but unused
+  --> legacy\monitoring\__init__.py:14:25
+   |
+12 | import threading
+13 | import time
+14 | from collections import defaultdict
+   |                         ^^^^^^^^^^^
+15 | from dataclasses import dataclass, field
+16 | from enum import Enum
+   |
+help: Remove unused import: `collections.defaultdict`
+
+F401 `typing.Callable` imported but unused
+  --> legacy\monitoring\__init__.py:17:25
+   |
+15 | from dataclasses import dataclass, field
+16 | from enum import Enum
+17 | from typing import Any, Callable, Optional, Union
+   |                         ^^^^^^^^
+   |
+help: Remove unused import
+
+F401 `typing.Union` imported but unused
+  --> legacy\monitoring\__init__.py:17:45
+   |
+15 | from dataclasses import dataclass, field
+16 | from enum import Enum
+17 | from typing import Any, Callable, Optional, Union
+   |                                             ^^^^^
+   |
+help: Remove unused import
+
+SIM115 Use a context manager for opening files
+  --> legacy\node\simple_client.py:14:18
+   |
+12 |     import os
+13 |     import sys
+14 |     sys.stdout = open(os.devnull, 'w')
+   |                  ^^^^
+15 |     sys.stderr = open(os.devnull, 'w')
+16 |     if sys.platform == 'win32':
+   |
+
+SIM115 Use a context manager for opening files
+  --> legacy\node\simple_client.py:15:18
+   |
+13 |     import sys
+14 |     sys.stdout = open(os.devnull, 'w')
+15 |     sys.stderr = open(os.devnull, 'w')
+   |                  ^^^^
+16 |     if sys.platform == 'win32':
+17 |         try:
+   |
+
+E402 Module level import not at top of file
+  --> legacy\node\simple_client.py:25:1
+   |
+23 |             pass
+24 |
+25 | import os
+   | ^^^^^^^^^
+26 | import platform
+27 | import socket
+   |
+
+E402 Module level import not at top of file
+  --> legacy\node\simple_client.py:26:1
+   |
+25 | import os
+26 | import platform
+   | ^^^^^^^^^^^^^^^
+27 | import socket
+28 | import sys
+   |
+
+E402 Module level import not at top of file
+  --> legacy\node\simple_client.py:27:1
+   |
+25 | import os
+26 | import platform
+27 | import socket
+   | ^^^^^^^^^^^^^
+28 | import sys
+29 | import threading
+   |
+
+E402 Module level import not at top of file
+  --> legacy\node\simple_client.py:28:1
+   |
+26 | import platform
+27 | import socket
+28 | import sys
+   | ^^^^^^^^^^
+29 | import threading
+30 | import time
+   |
+
+E402 Module level import not at top of file
+  --> legacy\node\simple_client.py:29:1
+   |
+27 | import socket
+28 | import sys
+29 | import threading
+   | ^^^^^^^^^^^^^^^^
+30 | import time
+31 | from datetime import datetime
+   |
+
+E402 Module level import not at top of file
+  --> legacy\node\simple_client.py:30:1
+   |
+28 | import sys
+29 | import threading
+30 | import time
+   | ^^^^^^^^^^^
+31 | from datetime import datetime
+32 | from typing import Any, Optional
+   |
+
+E402 Module level import not at top of file
+  --> legacy\node\simple_client.py:31:1
+   |
+29 | import threading
+30 | import time
+31 | from datetime import datetime
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+32 | from typing import Any, Optional
+   |
+
+E402 Module level import not at top of file
+  --> legacy\node\simple_client.py:32:1
+   |
+30 | import time
+31 | from datetime import datetime
+32 | from typing import Any, Optional
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+33 |
+34 | import requests
+   |
+
+E402 Module level import not at top of file
+  --> legacy\node\simple_client.py:34:1
+   |
+32 | from typing import Any, Optional
+33 |
+34 | import requests
+   | ^^^^^^^^^^^^^^^
+   |
+
+UP024 [*] Replace aliased errors with `OSError`
+   --> legacy\node\simple_client.py:111:20
+    |
+109 |                         log(f"[节点ID] 使用已保存的ID: {saved_id}")
+110 |                         return saved_id
+111 |             except (OSError, IOError):
+    |                    ^^^^^^^^^^^^^^^^^^
+112 |                 pass
+    |
+help: Replace with builtin `OSError`
+
+E722 Do not use bare `except`
+   --> legacy\node\simple_client.py:224:9
+    |
+222 |                 }
+223 |             return available
+224 |         except:
+    |         ^^^^^^
+225 |             return {
+226 |                 "cpu": 0.5,
+    |
+
+SIM115 Use a context manager for opening files
+  --> legacy\node\windows_client.py:14:18
+   |
+12 |     import os
+13 |     import sys
+14 |     sys.stdout = open(os.devnull, 'w')
+   |                  ^^^^
+15 |     sys.stderr = open(os.devnull, 'w')
+16 |     if sys.platform == 'win32':
+   |
+
+SIM115 Use a context manager for opening files
+  --> legacy\node\windows_client.py:15:18
+   |
+13 |     import sys
+14 |     sys.stdout = open(os.devnull, 'w')
+15 |     sys.stderr = open(os.devnull, 'w')
+   |                  ^^^^
+16 |     if sys.platform == 'win32':
+17 |         try:
+   |
+
+E722 Do not use bare `except`
+  --> legacy\node\windows_client.py:22:9
+   |
+20 |                 ctypes.windll.kernel32.GetConsoleWindow(), 0
+21 |             )
+22 |         except:
+   |         ^^^^^^
+23 |             pass
+   |
+
+E402 Module level import not at top of file
+  --> legacy\node\windows_client.py:25:1
+   |
+23 |             pass
+24 |
+25 | import os
+   | ^^^^^^^^^
+26 | import platform
+27 | import signal
+   |
+
+E402 Module level import not at top of file
+  --> legacy\node\windows_client.py:26:1
+   |
+25 | import os
+26 | import platform
+   | ^^^^^^^^^^^^^^^
+27 | import signal
+28 | import sys
+   |
+
+E402 Module level import not at top of file
+  --> legacy\node\windows_client.py:27:1
+   |
+25 | import os
+26 | import platform
+27 | import signal
+   | ^^^^^^^^^^^^^
+28 | import sys
+29 | import time
+   |
+
+E402 Module level import not at top of file
+  --> legacy\node\windows_client.py:28:1
+   |
+26 | import platform
+27 | import signal
+28 | import sys
+   | ^^^^^^^^^^
+29 | import time
+30 | from typing import Any, Optional
+   |
+
+E402 Module level import not at top of file
+  --> legacy\node\windows_client.py:29:1
+   |
+27 | import signal
+28 | import sys
+29 | import time
+   | ^^^^^^^^^^^
+30 | from typing import Any, Optional
+   |
+
+E402 Module level import not at top of file
+  --> legacy\node\windows_client.py:30:1
+   |
+28 | import sys
+29 | import time
+30 | from typing import Any, Optional
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+31 |
+32 | import requests
+   |
+
+E402 Module level import not at top of file
+  --> legacy\node\windows_client.py:32:1
+   |
+30 | from typing import Any, Optional
+31 |
+32 | import requests
+   | ^^^^^^^^^^^^^^^
+   |
+
+I001 [*] Import block is un-sorted or un-formatted
+  --> legacy\node\windows_client.py:41:5
+   |
+39 | # 尝试导入idle_sense库
+40 | try:
+41 |     from idle_sense import get_idle_info, is_idle as check_is_idle
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+42 |     IDLE_SENSE_AVAILABLE = True
+43 | except ImportError:
+   |
+help: Organize imports
+
+UP024 [*] Replace aliased errors with `OSError`
+  --> legacy\node\windows_client.py:95:20
+   |
+93 |                         log(f"[节点ID] 使用已保存的ID: {saved_id}")
+94 |                         return saved_id
+95 |             except (OSError, IOError):
+   |                    ^^^^^^^^^^^^^^^^^^
+96 |                 pass
+   |
+help: Replace with builtin `OSError`
+
+F401 `struct` imported but unused
+  --> legacy\p2p_network\__init__.py:22:8
+   |
+20 | import random
+21 | import socket
+22 | import struct
+   |        ^^^^^^
+23 | import time
+24 | from collections import OrderedDict
+   |
+help: Remove unused import: `struct`
+
+UP035 `typing.Set` is deprecated, use `set` instead
+  --> legacy\p2p_network\__init__.py:27:1
+   |
+25 | from dataclasses import dataclass, field
+26 | from enum import Enum
+27 | from typing import Any, Callable, Optional, Set, Tuple, Union
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+
+UP035 `typing.Tuple` is deprecated, use `tuple` instead
+  --> legacy\p2p_network\__init__.py:27:1
+   |
+25 | from dataclasses import dataclass, field
+26 | from enum import Enum
+27 | from typing import Any, Callable, Optional, Set, Tuple, Union
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+
+F401 `typing.Set` imported but unused
+  --> legacy\p2p_network\__init__.py:27:45
+   |
+25 | from dataclasses import dataclass, field
+26 | from enum import Enum
+27 | from typing import Any, Callable, Optional, Set, Tuple, Union
+   |                                             ^^^
+   |
+help: Remove unused import
+
+F401 `typing.Tuple` imported but unused
+  --> legacy\p2p_network\__init__.py:27:50
+   |
+25 | from dataclasses import dataclass, field
+26 | from enum import Enum
+27 | from typing import Any, Callable, Optional, Set, Tuple, Union
+   |                                                  ^^^^^
+   |
+help: Remove unused import
+
+F401 `typing.Union` imported but unused
+  --> legacy\p2p_network\__init__.py:27:57
+   |
+25 | from dataclasses import dataclass, field
+26 | from enum import Enum
+27 | from typing import Any, Callable, Optional, Set, Tuple, Union
+   |                                                         ^^^^^
+   |
+help: Remove unused import
+
+F401 `importlib` imported but unused
+  --> legacy\plugins\__init__.py:21:8
+   |
+19 |     plugin_manager.trigger("task_pre_execute", task=task)
+20 | """
+21 | import importlib
+   |        ^^^^^^^^^
+22 | import inspect
+23 | import json
+   |
+help: Remove unused import: `importlib`
+
+F401 `json` imported but unused
+  --> legacy\plugins\__init__.py:23:8
+   |
+21 | import importlib
+22 | import inspect
+23 | import json
+   |        ^^^^
+24 | import logging
+25 | from abc import ABC, abstractmethod
+   |
+help: Remove unused import: `json`
+
+F401 `pathlib.Path` imported but unused
+  --> legacy\plugins\__init__.py:27:21
+   |
+25 | from abc import ABC, abstractmethod
+26 | from dataclasses import dataclass, field
+27 | from pathlib import Path
+   |                     ^^^^
+28 | from typing import Any, Callable, Optional, Type
+   |
+help: Remove unused import: `pathlib.Path`
+
+UP035 `typing.Type` is deprecated, use `type` instead
+  --> legacy\plugins\__init__.py:28:1
+   |
+26 | from dataclasses import dataclass, field
+27 | from pathlib import Path
+28 | from typing import Any, Callable, Optional, Type
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+29 |
+30 | logger = logging.getLogger(__name__)
+   |
+
+F401 `typing.Type` imported but unused
+  --> legacy\plugins\__init__.py:28:45
+   |
+26 | from dataclasses import dataclass, field
+27 | from pathlib import Path
+28 | from typing import Any, Callable, Optional, Type
+   |                                             ^^^^
+29 |
+30 | logger = logging.getLogger(__name__)
+   |
+help: Remove unused import: `typing.Type`
+
+B027 `PluginBase.on_load` is an empty method in an abstract base class, but has no abstract decorator
+  --> legacy\plugins\__init__.py:54:5
+   |
+52 |           pass
+53 |
+54 | /     def on_load(self) -> None:
+55 | |         """Called when plugin is loaded."""
+56 | |         pass
+   | |____________^
+57 |
+58 |       def on_unload(self) -> None:
+   |
+
+B027 `PluginBase.on_unload` is an empty method in an abstract base class, but has no abstract decorator
+  --> legacy\plugins\__init__.py:58:5
+   |
+56 |           pass
+57 |
+58 | /     def on_unload(self) -> None:
+59 | |         """Called when plugin is unloaded."""
+60 | |         pass
+   | |____________^
+61 |
+62 |       def on_enable(self) -> None:
+   |
+
+B027 `PluginBase.on_enable` is an empty method in an abstract base class, but has no abstract decorator
+  --> legacy\plugins\__init__.py:62:5
+   |
+60 |           pass
+61 |
+62 | /     def on_enable(self) -> None:
+63 | |         """Called when plugin is enabled."""
+64 | |         pass
+   | |____________^
+65 |
+66 |       def on_disable(self) -> None:
+   |
+
+B027 `PluginBase.on_disable` is an empty method in an abstract base class, but has no abstract decorator
+  --> legacy\plugins\__init__.py:66:5
+   |
+64 |           pass
+65 |
+66 | /     def on_disable(self) -> None:
+67 | |         """Called when plugin is disabled."""
+68 | |         pass
+   | |____________^
+   |
+
+UP035 `typing.Dict` is deprecated, use `dict` instead
+  --> legacy\priority_queue\__init__.py:12:1
+   |
+10 | import time
+11 | from dataclasses import dataclass, field
+12 | from typing import Any, Dict, Generic, List, Optional, TypeVar
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+13 |
+14 | logger = logging.getLogger(__name__)
+   |
+
+UP035 `typing.List` is deprecated, use `list` instead
+  --> legacy\priority_queue\__init__.py:12:1
+   |
+10 | import time
+11 | from dataclasses import dataclass, field
+12 | from typing import Any, Dict, Generic, List, Optional, TypeVar
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+13 |
+14 | logger = logging.getLogger(__name__)
+   |
+
+F401 `typing.Dict` imported but unused
+  --> legacy\priority_queue\__init__.py:12:25
+   |
+10 | import time
+11 | from dataclasses import dataclass, field
+12 | from typing import Any, Dict, Generic, List, Optional, TypeVar
+   |                         ^^^^
+13 |
+14 | logger = logging.getLogger(__name__)
+   |
+help: Remove unused import
+
+F401 `typing.List` imported but unused
+  --> legacy\priority_queue\__init__.py:12:40
+   |
+10 | import time
+11 | from dataclasses import dataclass, field
+12 | from typing import Any, Dict, Generic, List, Optional, TypeVar
+   |                                        ^^^^
+13 |
+14 | logger = logging.getLogger(__name__)
+   |
+help: Remove unused import
+
+F401 `json` imported but unused
+  --> legacy\profiler\__init__.py:8:8
+   |
+ 6 | import functools
+ 7 | import io
+ 8 | import json
+   |        ^^^^
+ 9 | import pstats
+10 | import statistics
+   |
+help: Remove unused import: `json`
+
+F401 `traceback` imported but unused
+  --> legacy\profiler\__init__.py:13:8
+   |
+11 | import threading
+12 | import time
+13 | import traceback
+   |        ^^^^^^^^^
+14 | from abc import ABC, abstractmethod
+15 | from contextlib import contextmanager
+   |
+help: Remove unused import: `traceback`
+
+F401 `abc.ABC` imported but unused
+  --> legacy\profiler\__init__.py:14:17
+   |
+12 | import time
+13 | import traceback
+14 | from abc import ABC, abstractmethod
+   |                 ^^^
+15 | from contextlib import contextmanager
+16 | from dataclasses import dataclass, field
+   |
+help: Remove unused import
+
+F401 `abc.abstractmethod` imported but unused
+  --> legacy\profiler\__init__.py:14:22
+   |
+12 | import time
+13 | import traceback
+14 | from abc import ABC, abstractmethod
+   |                      ^^^^^^^^^^^^^^
+15 | from contextlib import contextmanager
+16 | from dataclasses import dataclass, field
+   |
+help: Remove unused import
+
+F401 `datetime.datetime` imported but unused
+  --> legacy\profiler\__init__.py:17:22
+   |
+15 | from contextlib import contextmanager
+16 | from dataclasses import dataclass, field
+17 | from datetime import datetime
+   |                      ^^^^^^^^
+18 | from enum import Enum
+19 | from typing import Any, Callable, Dict, List, Optional, TypeVar
+   |
+help: Remove unused import: `datetime.datetime`
+
+UP035 `typing.Dict` is deprecated, use `dict` instead
+  --> legacy\profiler\__init__.py:19:1
+   |
+17 | from datetime import datetime
+18 | from enum import Enum
+19 | from typing import Any, Callable, Dict, List, Optional, TypeVar
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+20 |
+21 | F = TypeVar("F", bound=Callable)
+   |
+
+UP035 `typing.List` is deprecated, use `list` instead
+  --> legacy\profiler\__init__.py:19:1
+   |
+17 | from datetime import datetime
+18 | from enum import Enum
+19 | from typing import Any, Callable, Dict, List, Optional, TypeVar
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+20 |
+21 | F = TypeVar("F", bound=Callable)
+   |
+
+F401 `typing.Dict` imported but unused
+  --> legacy\profiler\__init__.py:19:35
+   |
+17 | from datetime import datetime
+18 | from enum import Enum
+19 | from typing import Any, Callable, Dict, List, Optional, TypeVar
+   |                                   ^^^^
+20 |
+21 | F = TypeVar("F", bound=Callable)
+   |
+help: Remove unused import
+
+F401 `typing.List` imported but unused
+  --> legacy\profiler\__init__.py:19:41
+   |
+17 | from datetime import datetime
+18 | from enum import Enum
+19 | from typing import Any, Callable, Dict, List, Optional, TypeVar
+   |                                         ^^^^
+20 |
+21 | F = TypeVar("F", bound=Callable)
+   |
+help: Remove unused import
+
+F401 `typing.Optional` imported but unused
+  --> legacy\profiler\__init__.py:19:47
+   |
+17 | from datetime import datetime
+18 | from enum import Enum
+19 | from typing import Any, Callable, Dict, List, Optional, TypeVar
+   |                                               ^^^^^^^^
+20 |
+21 | F = TypeVar("F", bound=Callable)
+   |
+help: Remove unused import
+
+F401 `dataclasses.field` imported but unused
+  --> legacy\rate_limiter\__init__.py:9:36
+   |
+ 7 | from abc import ABC, abstractmethod
+ 8 | from contextlib import contextmanager
+ 9 | from dataclasses import dataclass, field
+   |                                    ^^^^^
+10 | from enum import Enum
+11 | from typing import Any, Callable, Optional
+   |
+help: Remove unused import: `dataclasses.field`
+
+F401 `typing.Optional` imported but unused
+  --> legacy\rate_limiter\__init__.py:11:35
+   |
+ 9 | from dataclasses import dataclass, field
+10 | from enum import Enum
+11 | from typing import Any, Callable, Optional
+   |                                   ^^^^^^^^
+   |
+help: Remove unused import: `typing.Optional`
+
+E722 Do not use bare `except`
+  --> legacy\request_permission.py:59:9
+   |
+57 |             with open(result_file, 'w', encoding='utf-8') as f:
+58 |                 json.dump(result, f, ensure_ascii=False, indent=2)
+59 |         except:
+   |         ^^^^^^
+60 |             pass
+   |
+
+UP035 `typing.Dict` is deprecated, use `dict` instead
+  --> legacy\resource_estimator\__init__.py:11:1
+   |
+ 9 | from dataclasses import dataclass, field
+10 | from enum import Enum
+11 | from typing import Any, Callable, Dict, List, Optional, Tuple
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+
+UP035 `typing.List` is deprecated, use `list` instead
+  --> legacy\resource_estimator\__init__.py:11:1
+   |
+ 9 | from dataclasses import dataclass, field
+10 | from enum import Enum
+11 | from typing import Any, Callable, Dict, List, Optional, Tuple
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+
+UP035 `typing.Tuple` is deprecated, use `tuple` instead
+  --> legacy\resource_estimator\__init__.py:11:1
+   |
+ 9 | from dataclasses import dataclass, field
+10 | from enum import Enum
+11 | from typing import Any, Callable, Dict, List, Optional, Tuple
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+
+F401 `typing.Callable` imported but unused
+  --> legacy\resource_estimator\__init__.py:11:25
+   |
+ 9 | from dataclasses import dataclass, field
+10 | from enum import Enum
+11 | from typing import Any, Callable, Dict, List, Optional, Tuple
+   |                         ^^^^^^^^
+   |
+help: Remove unused import
+
+F401 `typing.Dict` imported but unused
+  --> legacy\resource_estimator\__init__.py:11:35
+   |
+ 9 | from dataclasses import dataclass, field
+10 | from enum import Enum
+11 | from typing import Any, Callable, Dict, List, Optional, Tuple
+   |                                   ^^^^
+   |
+help: Remove unused import
+
+F401 `typing.List` imported but unused
+  --> legacy\resource_estimator\__init__.py:11:41
+   |
+ 9 | from dataclasses import dataclass, field
+10 | from enum import Enum
+11 | from typing import Any, Callable, Dict, List, Optional, Tuple
+   |                                         ^^^^
+   |
+help: Remove unused import
+
+F401 `typing.Optional` imported but unused
+  --> legacy\resource_estimator\__init__.py:11:47
+   |
+ 9 | from dataclasses import dataclass, field
+10 | from enum import Enum
+11 | from typing import Any, Callable, Dict, List, Optional, Tuple
+   |                                               ^^^^^^^^
+   |
+help: Remove unused import
+
+F401 `typing.Tuple` imported but unused
+  --> legacy\resource_estimator\__init__.py:11:57
+   |
+ 9 | from dataclasses import dataclass, field
+10 | from enum import Enum
+11 | from typing import Any, Callable, Dict, List, Optional, Tuple
+   |                                                         ^^^^^
+   |
+help: Remove unused import
+
+F401 `datetime.datetime` imported but unused
+  --> legacy\result_aggregator\__init__.py:11:22
+   |
+ 9 | from collections import defaultdict
+10 | from dataclasses import dataclass, field
+11 | from datetime import datetime
+   |                      ^^^^^^^^
+12 | from enum import Enum
+13 | from typing import Any, Callable, Dict, Generic, List, Optional, TypeVar, Union
+   |
+help: Remove unused import: `datetime.datetime`
+
+UP035 `typing.Dict` is deprecated, use `dict` instead
+  --> legacy\result_aggregator\__init__.py:13:1
+   |
+11 | from datetime import datetime
+12 | from enum import Enum
+13 | from typing import Any, Callable, Dict, Generic, List, Optional, TypeVar, Union
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+14 |
+15 | T = TypeVar("T")
+   |
+
+UP035 `typing.List` is deprecated, use `list` instead
+  --> legacy\result_aggregator\__init__.py:13:1
+   |
+11 | from datetime import datetime
+12 | from enum import Enum
+13 | from typing import Any, Callable, Dict, Generic, List, Optional, TypeVar, Union
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+14 |
+15 | T = TypeVar("T")
+   |
+
+F401 `typing.Dict` imported but unused
+  --> legacy\result_aggregator\__init__.py:13:35
+   |
+11 | from datetime import datetime
+12 | from enum import Enum
+13 | from typing import Any, Callable, Dict, Generic, List, Optional, TypeVar, Union
+   |                                   ^^^^
+14 |
+15 | T = TypeVar("T")
+   |
+help: Remove unused import
+
+F401 `typing.List` imported but unused
+  --> legacy\result_aggregator\__init__.py:13:50
+   |
+11 | from datetime import datetime
+12 | from enum import Enum
+13 | from typing import Any, Callable, Dict, Generic, List, Optional, TypeVar, Union
+   |                                                  ^^^^
+14 |
+15 | T = TypeVar("T")
+   |
+help: Remove unused import
+
+F401 `typing.Optional` imported but unused
+  --> legacy\result_aggregator\__init__.py:13:56
+   |
+11 | from datetime import datetime
+12 | from enum import Enum
+13 | from typing import Any, Callable, Dict, Generic, List, Optional, TypeVar, Union
+   |                                                        ^^^^^^^^
+14 |
+15 | T = TypeVar("T")
+   |
+help: Remove unused import
+
+SIM102 Use a single `if` statement instead of nested `if` statements
+   --> legacy\result_aggregator\__init__.py:350:13
+    |
+349 |           for agg_id, agg_result in self._aggregations.items():
+350 | /             if agg_result.status in (AggregationStatus.COMPLETED, AggregationStatus.FAILED):
+351 | |                 if agg_result.completed_at and (now - agg_result.completed_at) > max_age_seconds:
+    | |_________________________________________________________________________________________________^
+352 |                       to_remove.append(agg_id)
+    |
+help: Combine `if` statements using `and`
+
+UP035 `typing.Dict` is deprecated, use `dict` instead
+  --> legacy\retry_recovery\__init__.py:17:1
+   |
+15 | from dataclasses import dataclass, field
+16 | from enum import Enum
+17 | from typing import Any, Callable, Dict, List, Optional, Type, Union
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+18 |
+19 | logger = logging.getLogger(__name__)
+   |
+
+UP035 `typing.List` is deprecated, use `list` instead
+  --> legacy\retry_recovery\__init__.py:17:1
+   |
+15 | from dataclasses import dataclass, field
+16 | from enum import Enum
+17 | from typing import Any, Callable, Dict, List, Optional, Type, Union
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+18 |
+19 | logger = logging.getLogger(__name__)
+   |
+
+UP035 `typing.Type` is deprecated, use `type` instead
+  --> legacy\retry_recovery\__init__.py:17:1
+   |
+15 | from dataclasses import dataclass, field
+16 | from enum import Enum
+17 | from typing import Any, Callable, Dict, List, Optional, Type, Union
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+18 |
+19 | logger = logging.getLogger(__name__)
+   |
+
+F401 `typing.Dict` imported but unused
+  --> legacy\retry_recovery\__init__.py:17:35
+   |
+15 | from dataclasses import dataclass, field
+16 | from enum import Enum
+17 | from typing import Any, Callable, Dict, List, Optional, Type, Union
+   |                                   ^^^^
+18 |
+19 | logger = logging.getLogger(__name__)
+   |
+help: Remove unused import
+
+F401 `typing.List` imported but unused
+  --> legacy\retry_recovery\__init__.py:17:41
+   |
+15 | from dataclasses import dataclass, field
+16 | from enum import Enum
+17 | from typing import Any, Callable, Dict, List, Optional, Type, Union
+   |                                         ^^^^
+18 |
+19 | logger = logging.getLogger(__name__)
+   |
+help: Remove unused import
+
+F401 `typing.Type` imported but unused
+  --> legacy\retry_recovery\__init__.py:17:57
+   |
+15 | from dataclasses import dataclass, field
+16 | from enum import Enum
+17 | from typing import Any, Callable, Dict, List, Optional, Type, Union
+   |                                                         ^^^^
+18 |
+19 | logger = logging.getLogger(__name__)
+   |
+help: Remove unused import
+
+F401 `typing.Union` imported but unused
+  --> legacy\retry_recovery\__init__.py:17:63
+   |
+15 | from dataclasses import dataclass, field
+16 | from enum import Enum
+17 | from typing import Any, Callable, Dict, List, Optional, Type, Union
+   |                                                               ^^^^^
+18 |
+19 | logger = logging.getLogger(__name__)
+   |
+help: Remove unused import
+
+SIM102 Use a single `if` statement instead of nested `if` statements
+   --> legacy\retry_recovery\__init__.py:456:9
+    |
+454 |       def state(self) -> State:
+455 |           """Get current state."""
+456 | /         if self._state == self.State.OPEN:
+457 | |             if time.time() - self._last_failure_time >= self.recovery_timeout:
+    | |______________________________________________________________________________^
+458 |                   self._state = self.State.HALF_OPEN
+459 |                   self._success_count = 0
+    |
+help: Combine `if` statements using `and`
+
+UP035 `typing.Dict` is deprecated, use `dict` instead
+  --> legacy\retry_strategy\__init__.py:11:1
+   |
+ 9 | from dataclasses import dataclass, field
+10 | from enum import Enum
+11 | from typing import Any, Callable, Dict, Generic, List, Optional, TypeVar
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+12 |
+13 | T = TypeVar("T")
+   |
+
+UP035 `typing.List` is deprecated, use `list` instead
+  --> legacy\retry_strategy\__init__.py:11:1
+   |
+ 9 | from dataclasses import dataclass, field
+10 | from enum import Enum
+11 | from typing import Any, Callable, Dict, Generic, List, Optional, TypeVar
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+12 |
+13 | T = TypeVar("T")
+   |
+
+F401 `typing.Dict` imported but unused
+  --> legacy\retry_strategy\__init__.py:11:35
+   |
+ 9 | from dataclasses import dataclass, field
+10 | from enum import Enum
+11 | from typing import Any, Callable, Dict, Generic, List, Optional, TypeVar
+   |                                   ^^^^
+12 |
+13 | T = TypeVar("T")
+   |
+help: Remove unused import
+
+F401 `typing.Generic` imported but unused
+  --> legacy\retry_strategy\__init__.py:11:41
+   |
+ 9 | from dataclasses import dataclass, field
+10 | from enum import Enum
+11 | from typing import Any, Callable, Dict, Generic, List, Optional, TypeVar
+   |                                         ^^^^^^^
+12 |
+13 | T = TypeVar("T")
+   |
+help: Remove unused import
+
+F401 `typing.List` imported but unused
+  --> legacy\retry_strategy\__init__.py:11:50
+   |
+ 9 | from dataclasses import dataclass, field
+10 | from enum import Enum
+11 | from typing import Any, Callable, Dict, Generic, List, Optional, TypeVar
+   |                                                  ^^^^
+12 |
+13 | T = TypeVar("T")
+   |
+help: Remove unused import
+
+F401 `typing.Optional` imported but unused
+  --> legacy\retry_strategy\__init__.py:11:56
+   |
+ 9 | from dataclasses import dataclass, field
+10 | from enum import Enum
+11 | from typing import Any, Callable, Dict, Generic, List, Optional, TypeVar
+   |                                                        ^^^^^^^^
+12 |
+13 | T = TypeVar("T")
+   |
+help: Remove unused import
+
+B027 `RetryStrategy.on_success` is an empty method in an abstract base class, but has no abstract decorator
+  --> legacy\retry_strategy\__init__.py:78:5
+   |
+76 |           pass
+77 |
+78 | /     def on_success(self, context: RetryContext):
+79 | |         pass
+   | |____________^
+80 |
+81 |       def on_failure(self, context: RetryContext):
+   |
+
+B027 `RetryStrategy.on_failure` is an empty method in an abstract base class, but has no abstract decorator
+  --> legacy\retry_strategy\__init__.py:81:5
+   |
+79 |           pass
+80 |
+81 | /     def on_failure(self, context: RetryContext):
+82 | |         pass
+   | |____________^
+83 |
+84 |       def on_retry(self, context: RetryContext):
+   |
+
+B027 `RetryStrategy.on_retry` is an empty method in an abstract base class, but has no abstract decorator
+  --> legacy\retry_strategy\__init__.py:84:5
+   |
+82 |           pass
+83 |
+84 | /     def on_retry(self, context: RetryContext):
+85 | |         pass
+   | |____________^
+   |
+
+SIM102 Use a single `if` statement instead of nested `if` statements
+  --> legacy\sandbox.py:78:17
+   |
+77 |                   # 检查属性访问
+78 | /                 elif isinstance(node, ast.Attribute):
+79 | |                     if isinstance(node.value, ast.Name):
+   | |________________________________________________________^
+80 |                           attr_name = node.attr
+81 |                           if attr_name.startswith('_'):
+   |
+help: Combine `if` statements using `and`
+
+F401 `json` imported but unused
+  --> legacy\sandbox_v2\__init__.py:22:8
+   |
+20 | import asyncio
+21 | import contextlib
+22 | import json
+   |        ^^^^
+23 | import os
+24 | import subprocess
+   |
+help: Remove unused import: `json`
+
+F401 `pathlib.Path` imported but unused
+  --> legacy\sandbox_v2\__init__.py:30:21
+   |
+28 | from dataclasses import dataclass, field
+29 | from enum import Enum
+30 | from pathlib import Path
+   |                     ^^^^
+31 | from typing import Any, Dict, List, Optional, Set, Tuple
+   |
+help: Remove unused import: `pathlib.Path`
+
+UP035 `typing.Dict` is deprecated, use `dict` instead
+  --> legacy\sandbox_v2\__init__.py:31:1
+   |
+29 | from enum import Enum
+30 | from pathlib import Path
+31 | from typing import Any, Dict, List, Optional, Set, Tuple
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+
+UP035 `typing.List` is deprecated, use `list` instead
+  --> legacy\sandbox_v2\__init__.py:31:1
+   |
+29 | from enum import Enum
+30 | from pathlib import Path
+31 | from typing import Any, Dict, List, Optional, Set, Tuple
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+
+UP035 `typing.Set` is deprecated, use `set` instead
+  --> legacy\sandbox_v2\__init__.py:31:1
+   |
+29 | from enum import Enum
+30 | from pathlib import Path
+31 | from typing import Any, Dict, List, Optional, Set, Tuple
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+
+UP035 `typing.Tuple` is deprecated, use `tuple` instead
+  --> legacy\sandbox_v2\__init__.py:31:1
+   |
+29 | from enum import Enum
+30 | from pathlib import Path
+31 | from typing import Any, Dict, List, Optional, Set, Tuple
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+
+F401 `typing.Dict` imported but unused
+  --> legacy\sandbox_v2\__init__.py:31:25
+   |
+29 | from enum import Enum
+30 | from pathlib import Path
+31 | from typing import Any, Dict, List, Optional, Set, Tuple
+   |                         ^^^^
+   |
+help: Remove unused import
+
+F401 `typing.List` imported but unused
+  --> legacy\sandbox_v2\__init__.py:31:31
+   |
+29 | from enum import Enum
+30 | from pathlib import Path
+31 | from typing import Any, Dict, List, Optional, Set, Tuple
+   |                               ^^^^
+   |
+help: Remove unused import
+
+F401 `typing.Set` imported but unused
+  --> legacy\sandbox_v2\__init__.py:31:47
+   |
+29 | from enum import Enum
+30 | from pathlib import Path
+31 | from typing import Any, Dict, List, Optional, Set, Tuple
+   |                                               ^^^
+   |
+help: Remove unused import
+
+F401 `typing.Tuple` imported but unused
+  --> legacy\sandbox_v2\__init__.py:31:52
+   |
+29 | from enum import Enum
+30 | from pathlib import Path
+31 | from typing import Any, Dict, List, Optional, Set, Tuple
+   |                                                    ^^^^^
+   |
+help: Remove unused import
+
+SIM102 Use a single `if` statement instead of nested `if` statements
+   --> legacy\sandbox_v2\__init__.py:116:17
+    |
+115 |               elif isinstance(node, ast.ImportFrom):
+116 | /                 if node.module:
+117 | |                     if node.module.split(".")[0] in ("os", "sys", "subprocess",
+118 | |                                                       "socket", "threading"):
+    | |_____________________________________________________________________________^
+119 |                           warnings.append(f"Dangerous import from: {node.module}")
+    |
+help: Combine `if` statements using `and`
+
+SIM102 Use a single `if` statement instead of nested `if` statements
+   --> legacy\sandbox_v2\__init__.py:121:13
+    |
+119 |                           warnings.append(f"Dangerous import from: {node.module}")
+120 |
+121 | /             elif isinstance(node, ast.Call) and isinstance(node.func, ast.Name):
+122 | |                 if node.func.id in ("eval", "exec", "compile", "open", "__import__"):
+    | |_____________________________________________________________________________________^
+123 |                       warnings.append(f"Dangerous function call: {node.func.id}")
+    |
+help: Combine `if` statements using `and`
+
+F401 `functools.partial` imported but unused
+   --> legacy\sandbox_v2\__init__.py:153:31
+    |
+151 |         from decimal import Decimal
+152 |         from fractions import Fraction
+153 |         from functools import partial, reduce
+    |                               ^^^^^^^
+154 |         from itertools import chain, combinations, product
+    |
+help: Remove unused import
+
+F401 `functools.reduce` imported but unused
+   --> legacy\sandbox_v2\__init__.py:153:40
+    |
+151 |         from decimal import Decimal
+152 |         from fractions import Fraction
+153 |         from functools import partial, reduce
+    |                                        ^^^^^^
+154 |         from itertools import chain, combinations, product
+    |
+help: Remove unused import
+
+F401 `itertools.chain` imported but unused
+   --> legacy\sandbox_v2\__init__.py:154:31
+    |
+152 |         from fractions import Fraction
+153 |         from functools import partial, reduce
+154 |         from itertools import chain, combinations, product
+    |                               ^^^^^
+155 |
+156 |         ALLOWED_MODULES = self.config.allowed_modules
+    |
+help: Remove unused import
+
+F401 `itertools.combinations` imported but unused
+   --> legacy\sandbox_v2\__init__.py:154:38
+    |
+152 |         from fractions import Fraction
+153 |         from functools import partial, reduce
+154 |         from itertools import chain, combinations, product
+    |                                      ^^^^^^^^^^^^
+155 |
+156 |         ALLOWED_MODULES = self.config.allowed_modules
+    |
+help: Remove unused import
+
+F401 `itertools.product` imported but unused
+   --> legacy\sandbox_v2\__init__.py:154:52
+    |
+152 |         from fractions import Fraction
+153 |         from functools import partial, reduce
+154 |         from itertools import chain, combinations, product
+    |                                                    ^^^^^^^
+155 |
+156 |         ALLOWED_MODULES = self.config.allowed_modules
+    |
+help: Remove unused import
+
+B904 Within an `except` clause, raise exceptions with `raise ... from err` or `raise ... from None` to distinguish them from errors in exception handling
+   --> legacy\sandbox_v2\__init__.py:533:17
+    |
+531 |                   self._client = docker.from_env()
+532 |               except ImportError:
+533 | /                 raise ImportError(
+534 | |                     "Docker sandbox requires the docker package. "
+535 | |                     "Install it with: pip install docker"
+536 | |                 )
+    | |_________________^
+537 |           return self._client
+    |
+
+B904 Within an `except` clause, raise exceptions with `raise ... from err` or `raise ... from None` to distinguish them from errors in exception handling
+   --> legacy\sandbox_v2\__init__.py:648:17
+    |
+646 |                   self._engine = wasmtime.Engine()
+647 |               except ImportError:
+648 | /                 raise ImportError(
+649 | |                     "WASM sandbox requires wasmtime. "
+650 | |                     "Install it with: pip install wasmtime"
+651 | |                 )
+    | |_________________^
+652 |           return self._engine
+    |
+
+F401 `wasmtime` imported but unused; consider using `importlib.util.find_spec` to test for availability
+   --> legacy\sandbox_v2\__init__.py:806:20
+    |
+804 |         """Check if WASM runtime is available."""
+805 |         try:
+806 |             import wasmtime
+    |                    ^^^^^^^^
+807 |             return True
+808 |         except ImportError:
+    |
+help: Remove unused import: `wasmtime`
+
+F401 `json` imported but unused
+   --> legacy\sandbox_v2\__init__.py:897:20
+    |
+896 |         try:
+897 |             import json
+    |                    ^^^^
+898 |             import os
+899 |             import subprocess
+    |
+help: Remove unused import: `json`
+
+F401 `os` imported but unused
+   --> legacy\sandbox_v2\__init__.py:898:20
+    |
+896 |         try:
+897 |             import json
+898 |             import os
+    |                    ^^
+899 |             import subprocess
+    |
+help: Remove unused import: `os`
+
+SIM102 Use a single `if` statement instead of nested `if` statements
+   --> legacy\scheduler\simple_server.py:392:9
+    |
+390 |           required = task.required_resources
+391 |
+392 | /         if "cpu" in required and "cpu" in available:
+393 | |             if required["cpu"] > available.get("cpu", 0):
+    | |_________________________________________________________^
+394 |                   return False
+    |
+help: Combine `if` statements using `and`
+
+SIM102 Use a single `if` statement instead of nested `if` statements
+   --> legacy\scheduler\simple_server.py:396:9
+    |
+394 |                   return False
+395 |
+396 | /         if "memory" in required and "memory" in available:
+397 | |             if required["memory"] > available.get("memory", 0):
+    | |_______________________________________________________________^
+398 |                   return False
+    |
+help: Combine `if` statements using `and`
+
+SIM102 Use a single `if` statement instead of nested `if` statements
+   --> legacy\scheduler\simple_server.py:458:13
+    |
+456 |               if task.status == "pending" and task_id in self.pending_tasks:
+457 |                   self.pending_tasks.remove(task_id)
+458 | /             elif task.status == "assigned" and task.assigned_node:
+459 | |                 if task_id in self.assigned_tasks[task.assigned_node]:
+    | |______________________________________________________________________^
+460 |                       self.assigned_tasks[task.assigned_node].remove(task_id)
+    |
+help: Combine `if` statements using `and`
+
+B904 Within an `except` clause, raise exceptions with `raise ... from err` or `raise ... from None` to distinguish them from errors in exception handling
+   --> legacy\scheduler\simple_server.py:773:9
+    |
+771 |         }
+772 |     except Exception as e:
+773 |         raise HTTPException(status_code=500, detail=f"获取节点失败: {str(e)}")
+    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+774 |
+775 | @app.post("/api/nodes/activate-local")
+    |
+
+B904 Within an `except` clause, raise exceptions with `raise ... from err` or `raise ... from None` to distinguish them from errors in exception handling
+   --> legacy\scheduler\simple_server.py:821:9
+    |
+819 |         }
+820 |     except Exception as e:
+821 |         raise HTTPException(status_code=500, detail=f"激活失败: {str(e)}")
+    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+822 |
+823 | @app.post("/api/nodes/{node_id}/stop")
+    |
+
+E402 Module level import not at top of file
+   --> legacy\scheduler\simple_server.py:868:1
+    |
+866 | # 这个模块可以直接添加到文件末尾，不需要依赖原类定义
+867 |
+868 | from typing import Any
+    | ^^^^^^^^^^^^^^^^^^^^^^
+    |
+
+F401 `heapq` imported but unused
+  --> legacy\scheduler_v2\__init__.py:14:8
+   |
+12 | """
+13 | import asyncio
+14 | import heapq
+   |        ^^^^^
+15 | import math
+16 | import time
+   |
+help: Remove unused import: `heapq`
+
+F401 `math` imported but unused
+  --> legacy\scheduler_v2\__init__.py:15:8
+   |
+13 | import asyncio
+14 | import heapq
+15 | import math
+   |        ^^^^
+16 | import time
+17 | from abc import ABC, abstractmethod
+   |
+help: Remove unused import: `math`
+
+UP035 `typing.Set` is deprecated, use `set` instead
+  --> legacy\scheduler_v2\__init__.py:20:1
+   |
+18 | from dataclasses import dataclass, field
+19 | from enum import Enum
+20 | from typing import Any, Callable, Optional, Set, Tuple
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+
+UP035 `typing.Tuple` is deprecated, use `tuple` instead
+  --> legacy\scheduler_v2\__init__.py:20:1
+   |
+18 | from dataclasses import dataclass, field
+19 | from enum import Enum
+20 | from typing import Any, Callable, Optional, Set, Tuple
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+
+F401 `typing.Callable` imported but unused
+  --> legacy\scheduler_v2\__init__.py:20:25
+   |
+18 | from dataclasses import dataclass, field
+19 | from enum import Enum
+20 | from typing import Any, Callable, Optional, Set, Tuple
+   |                         ^^^^^^^^
+   |
+help: Remove unused import
+
+F401 `typing.Set` imported but unused
+  --> legacy\scheduler_v2\__init__.py:20:45
+   |
+18 | from dataclasses import dataclass, field
+19 | from enum import Enum
+20 | from typing import Any, Callable, Optional, Set, Tuple
+   |                                             ^^^
+   |
+help: Remove unused import
+
+F401 `typing.Tuple` imported but unused
+  --> legacy\scheduler_v2\__init__.py:20:50
+   |
+18 | from dataclasses import dataclass, field
+19 | from enum import Enum
+20 | from typing import Any, Callable, Optional, Set, Tuple
+   |                                                  ^^^^^
+   |
+help: Remove unused import
+
+F401 `abc.abstractmethod` imported but unused
+  --> legacy\storage\__init__.py:15:22
+   |
+13 | import json
+14 | import time
+15 | from abc import ABC, abstractmethod
+   |                      ^^^^^^^^^^^^^^
+16 | from dataclasses import dataclass, field
+17 | from datetime import datetime
+   |
+help: Remove unused import: `abc.abstractmethod`
+
+F401 `datetime.datetime` imported but unused
+  --> legacy\storage\__init__.py:17:22
+   |
+15 | from abc import ABC, abstractmethod
+16 | from dataclasses import dataclass, field
+17 | from datetime import datetime
+   |                      ^^^^^^^^
+18 | from enum import Enum
+19 | from typing import Any, Optional, Protocol, TypeVar, runtime_checkable
+   |
+help: Remove unused import: `datetime.datetime`
+
+B024 `BaseStorage` is an abstract base class, but it has no abstract methods or properties
+   --> legacy\storage\__init__.py:184:7
+    |
+184 | class BaseStorage(ABC):
+    |       ^^^^^^^^^^^
+185 |     """Base storage implementation with common utilities."""
+    |
+
+B904 Within an `except` clause, raise exceptions with `raise ... from err` or `raise ... from None` to distinguish them from errors in exception handling
+   --> legacy\storage\__init__.py:411:17
+    |
+409 |                   self._client = redis.from_url(self.redis_url)
+410 |               except ImportError:
+411 | /                 raise ImportError(
+412 | |                     "Redis storage requires the redis package. "
+413 | |                     "Install it with: pip install redis"
+414 | |                 )
+    | |_________________^
+415 |           return self._client
+    |
+
+B904 Within an `except` clause, raise exceptions with `raise ... from err` or `raise ... from None` to distinguish them from errors in exception handling
+   --> legacy\storage\distributed.py:357:17
+    |
+355 |                   )
+356 |               except ImportError:
+357 | /                 raise ImportError(
+358 | |                     "Redis storage requires the redis package. "
+359 | |                     "Install with: pip install redis"
+360 | |                 )
+    | |_________________^
+361 |           return self._client
+    |
+
+B904 Within an `except` clause, raise exceptions with `raise ... from err` or `raise ... from None` to distinguish them from errors in exception handling
+   --> legacy\storage\distributed.py:452:17
+    |
+450 |                   )
+451 |               except ImportError:
+452 | /                 raise ImportError(
+453 | |                     "etcd storage requires the etcd3 package. "
+454 | |                     "Install with: pip install etcd3"
+455 | |                 )
+    | |_________________^
+456 |           return self._client
+    |
+
+F401 `graphlib` imported but unused
+ --> legacy\task_deps\__init__.py:5:8
+  |
+3 | from __future__ import annotations
+4 |
+5 | import graphlib
+  |        ^^^^^^^^
+6 | from collections import defaultdict, deque
+7 | from dataclasses import dataclass, field
+  |
+help: Remove unused import: `graphlib`
+
+UP035 `typing.Dict` is deprecated, use `dict` instead
+  --> legacy\task_deps\__init__.py:9:1
+   |
+ 7 | from dataclasses import dataclass, field
+ 8 | from enum import Enum
+ 9 | from typing import Any, Callable, Dict, Generic, List, Optional, Set, TypeVar
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+10 |
+11 | T = TypeVar("T")
+   |
+
+UP035 `typing.List` is deprecated, use `list` instead
+  --> legacy\task_deps\__init__.py:9:1
+   |
+ 7 | from dataclasses import dataclass, field
+ 8 | from enum import Enum
+ 9 | from typing import Any, Callable, Dict, Generic, List, Optional, Set, TypeVar
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+10 |
+11 | T = TypeVar("T")
+   |
+
+UP035 `typing.Set` is deprecated, use `set` instead
+  --> legacy\task_deps\__init__.py:9:1
+   |
+ 7 | from dataclasses import dataclass, field
+ 8 | from enum import Enum
+ 9 | from typing import Any, Callable, Dict, Generic, List, Optional, Set, TypeVar
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+10 |
+11 | T = TypeVar("T")
+   |
+
+F401 `typing.Dict` imported but unused
+  --> legacy\task_deps\__init__.py:9:35
+   |
+ 7 | from dataclasses import dataclass, field
+ 8 | from enum import Enum
+ 9 | from typing import Any, Callable, Dict, Generic, List, Optional, Set, TypeVar
+   |                                   ^^^^
+10 |
+11 | T = TypeVar("T")
+   |
+help: Remove unused import
+
+F401 `typing.List` imported but unused
+  --> legacy\task_deps\__init__.py:9:50
+   |
+ 7 | from dataclasses import dataclass, field
+ 8 | from enum import Enum
+ 9 | from typing import Any, Callable, Dict, Generic, List, Optional, Set, TypeVar
+   |                                                  ^^^^
+10 |
+11 | T = TypeVar("T")
+   |
+help: Remove unused import
+
+F401 `typing.Optional` imported but unused
+  --> legacy\task_deps\__init__.py:9:56
+   |
+ 7 | from dataclasses import dataclass, field
+ 8 | from enum import Enum
+ 9 | from typing import Any, Callable, Dict, Generic, List, Optional, Set, TypeVar
+   |                                                        ^^^^^^^^
+10 |
+11 | T = TypeVar("T")
+   |
+help: Remove unused import
+
+F401 `typing.Set` imported but unused
+  --> legacy\task_deps\__init__.py:9:66
+   |
+ 7 | from dataclasses import dataclass, field
+ 8 | from enum import Enum
+ 9 | from typing import Any, Callable, Dict, Generic, List, Optional, Set, TypeVar
+   |                                                                  ^^^
+10 |
+11 | T = TypeVar("T")
+   |
+help: Remove unused import
+
+F401 `json` imported but unused
+ --> legacy\task_queue\__init__.py:5:8
+  |
+3 | from __future__ import annotations
+4 |
+5 | import json
+  |        ^^^^
+6 | import threading
+7 | import time
+  |
+help: Remove unused import: `json`
+
+F401 `collections.deque` imported but unused
+  --> legacy\task_queue\__init__.py:10:25
+   |
+ 8 | import uuid
+ 9 | from abc import ABC, abstractmethod
+10 | from collections import deque
+   |                         ^^^^^
+11 | from dataclasses import dataclass, field
+12 | from datetime import datetime
+   |
+help: Remove unused import: `collections.deque`
+
+F401 `datetime.datetime` imported but unused
+  --> legacy\task_queue\__init__.py:12:22
+   |
+10 | from collections import deque
+11 | from dataclasses import dataclass, field
+12 | from datetime import datetime
+   |                      ^^^^^^^^
+13 | from enum import Enum
+14 | from typing import Any, Callable, Generic, Optional, TypeVar
+   |
+help: Remove unused import: `datetime.datetime`
+
+F401 `typing.Optional` imported but unused
+  --> legacy\task_queue\__init__.py:14:44
+   |
+12 | from datetime import datetime
+13 | from enum import Enum
+14 | from typing import Any, Callable, Generic, Optional, TypeVar
+   |                                            ^^^^^^^^
+15 |
+16 | T = TypeVar("T")
+   |
+help: Remove unused import: `typing.Optional`
+
+B904 Within an `except` clause, raise exceptions with `raise ... from err` or `raise ... from None` to distinguish them from errors in exception handling
+   --> legacy\task_queue\__init__.py:238:17
+    |
+236 |                 )
+237 |             except ImportError:
+238 |                 raise ImportError("Redis support requires redis package")
+    |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+239 |         return self._client
+    |
+
+F401 `re` imported but unused
+ --> legacy\task_scheduler\__init__.py:7:8
+  |
+5 | import calendar
+6 | import contextlib
+7 | import re
+  |        ^^
+8 | import threading
+9 | import time
+  |
+help: Remove unused import: `re`
+
+UP035 `typing.Dict` is deprecated, use `dict` instead
+  --> legacy\task_scheduler\__init__.py:13:1
+   |
+11 | from datetime import datetime, timedelta
+12 | from enum import Enum
+13 | from typing import Any, Callable, Dict, List, Optional, Set, Tuple
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+
+UP035 `typing.List` is deprecated, use `list` instead
+  --> legacy\task_scheduler\__init__.py:13:1
+   |
+11 | from datetime import datetime, timedelta
+12 | from enum import Enum
+13 | from typing import Any, Callable, Dict, List, Optional, Set, Tuple
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+
+UP035 `typing.Set` is deprecated, use `set` instead
+  --> legacy\task_scheduler\__init__.py:13:1
+   |
+11 | from datetime import datetime, timedelta
+12 | from enum import Enum
+13 | from typing import Any, Callable, Dict, List, Optional, Set, Tuple
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+
+UP035 `typing.Tuple` is deprecated, use `tuple` instead
+  --> legacy\task_scheduler\__init__.py:13:1
+   |
+11 | from datetime import datetime, timedelta
+12 | from enum import Enum
+13 | from typing import Any, Callable, Dict, List, Optional, Set, Tuple
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+
+F401 `typing.Dict` imported but unused
+  --> legacy\task_scheduler\__init__.py:13:35
+   |
+11 | from datetime import datetime, timedelta
+12 | from enum import Enum
+13 | from typing import Any, Callable, Dict, List, Optional, Set, Tuple
+   |                                   ^^^^
+   |
+help: Remove unused import
+
+F401 `typing.List` imported but unused
+  --> legacy\task_scheduler\__init__.py:13:41
+   |
+11 | from datetime import datetime, timedelta
+12 | from enum import Enum
+13 | from typing import Any, Callable, Dict, List, Optional, Set, Tuple
+   |                                         ^^^^
+   |
+help: Remove unused import
+
+F401 `typing.Optional` imported but unused
+  --> legacy\task_scheduler\__init__.py:13:47
+   |
+11 | from datetime import datetime, timedelta
+12 | from enum import Enum
+13 | from typing import Any, Callable, Dict, List, Optional, Set, Tuple
+   |                                               ^^^^^^^^
+   |
+help: Remove unused import
+
+F401 `typing.Set` imported but unused
+  --> legacy\task_scheduler\__init__.py:13:57
+   |
+11 | from datetime import datetime, timedelta
+12 | from enum import Enum
+13 | from typing import Any, Callable, Dict, List, Optional, Set, Tuple
+   |                                                         ^^^
+   |
+help: Remove unused import
+
+F401 `typing.Tuple` imported but unused
+  --> legacy\task_scheduler\__init__.py:13:62
+   |
+11 | from datetime import datetime, timedelta
+12 | from enum import Enum
+13 | from typing import Any, Callable, Dict, List, Optional, Set, Tuple
+   |                                                              ^^^^^
+   |
+help: Remove unused import
+
+F401 `textwrap` imported but unused
+  --> legacy\test_generator\__init__.py:8:8
+   |
+ 6 | import inspect
+ 7 | import re
+ 8 | import textwrap
+   |        ^^^^^^^^
+ 9 | from dataclasses import dataclass, field
+10 | from enum import Enum
+   |
+help: Remove unused import: `textwrap`
+
+UP035 `typing.Dict` is deprecated, use `dict` instead
+  --> legacy\test_generator\__init__.py:12:1
+   |
+10 | from enum import Enum
+11 | from pathlib import Path
+12 | from typing import Any, Callable, Dict, List, Optional, Set, Tuple
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+
+UP035 `typing.List` is deprecated, use `list` instead
+  --> legacy\test_generator\__init__.py:12:1
+   |
+10 | from enum import Enum
+11 | from pathlib import Path
+12 | from typing import Any, Callable, Dict, List, Optional, Set, Tuple
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+
+UP035 `typing.Set` is deprecated, use `set` instead
+  --> legacy\test_generator\__init__.py:12:1
+   |
+10 | from enum import Enum
+11 | from pathlib import Path
+12 | from typing import Any, Callable, Dict, List, Optional, Set, Tuple
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+
+UP035 `typing.Tuple` is deprecated, use `tuple` instead
+  --> legacy\test_generator\__init__.py:12:1
+   |
+10 | from enum import Enum
+11 | from pathlib import Path
+12 | from typing import Any, Callable, Dict, List, Optional, Set, Tuple
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+
+F401 `typing.Dict` imported but unused
+  --> legacy\test_generator\__init__.py:12:35
+   |
+10 | from enum import Enum
+11 | from pathlib import Path
+12 | from typing import Any, Callable, Dict, List, Optional, Set, Tuple
+   |                                   ^^^^
+   |
+help: Remove unused import
+
+F401 `typing.List` imported but unused
+  --> legacy\test_generator\__init__.py:12:41
+   |
+10 | from enum import Enum
+11 | from pathlib import Path
+12 | from typing import Any, Callable, Dict, List, Optional, Set, Tuple
+   |                                         ^^^^
+   |
+help: Remove unused import
+
+F401 `typing.Optional` imported but unused
+  --> legacy\test_generator\__init__.py:12:47
+   |
+10 | from enum import Enum
+11 | from pathlib import Path
+12 | from typing import Any, Callable, Dict, List, Optional, Set, Tuple
+   |                                               ^^^^^^^^
+   |
+help: Remove unused import
+
+F401 `typing.Set` imported but unused
+  --> legacy\test_generator\__init__.py:12:57
+   |
+10 | from enum import Enum
+11 | from pathlib import Path
+12 | from typing import Any, Callable, Dict, List, Optional, Set, Tuple
+   |                                                         ^^^
+   |
+help: Remove unused import
+
+F401 `typing.Tuple` imported but unused
+  --> legacy\test_generator\__init__.py:12:62
+   |
+10 | from enum import Enum
+11 | from pathlib import Path
+12 | from typing import Any, Callable, Dict, List, Optional, Set, Tuple
+   |                                                              ^^^^^
+   |
+help: Remove unused import
+
+E722 Do not use bare `except`
+   --> legacy\test_registration.py:145:9
+    |
+143 |             if os.path.exists(temp_output_path):
+144 |                 os.remove(temp_output_path)
+145 |         except:
+    |         ^^^^^^
+146 |             pass
+    |
+
+E722 Do not use bare `except`
+  --> legacy\test_uac.py:19:5
+   |
+17 |     try:
+18 |         return ctypes.windll.shell32.IsUserAnAdmin()
+19 |     except:
+   |     ^^^^^^
+20 |         return False
+   |
+
+E722 Do not use bare `except`
+   --> legacy\test_uac.py:118:5
+    |
+116 |                 os.remove(temp_script)
+117 |         threading.Thread(target=delete_script, daemon=True).start()
+118 |     except:
+    |     ^^^^^^
+119 |         pass
+    |
+
+F401 `typing.Generic` imported but unused
+  --> legacy\timeout_manager\__init__.py:11:35
+   |
+ 9 | from dataclasses import dataclass, field
+10 | from enum import Enum
+11 | from typing import Any, Callable, Generic, Optional, TypeVar, Union
+   |                                   ^^^^^^^
+12 |
+13 | T = TypeVar("T")
+   |
+help: Remove unused import
+
+F401 `typing.Optional` imported but unused
+  --> legacy\timeout_manager\__init__.py:11:44
+   |
+ 9 | from dataclasses import dataclass, field
+10 | from enum import Enum
+11 | from typing import Any, Callable, Generic, Optional, TypeVar, Union
+   |                                            ^^^^^^^^
+12 |
+13 | T = TypeVar("T")
+   |
+help: Remove unused import
+
+F401 `typing.Union` imported but unused
+  --> legacy\timeout_manager\__init__.py:11:63
+   |
+ 9 | from dataclasses import dataclass, field
+10 | from enum import Enum
+11 | from typing import Any, Callable, Generic, Optional, TypeVar, Union
+   |                                                               ^^^^^
+12 |
+13 | T = TypeVar("T")
+   |
+help: Remove unused import
+
+SIM102 Use a single `if` statement instead of nested `if` statements
+   --> legacy\timeout_manager\__init__.py:234:17
+    |
+232 |           with self._lock:
+233 |               for tid, context in self._timeouts.items():
+234 | /                 if context.state in (TimeoutState.COMPLETED, TimeoutState.TIMEOUT, TimeoutState.CANCELLED):
+235 | |                     if context.end_time and (now - context.end_time) > max_age_seconds:
+    | |_______________________________________________________________________________________^
+236 |                           to_remove.append(tid)
+    |
+help: Combine `if` statements using `and`
+
+F401 `json` imported but unused
+  --> legacy\token_economy\__init__.py:20:8
+   |
+19 | import hashlib
+20 | import json
+   |        ^^^^
+21 | import time
+22 | from dataclasses import dataclass, field
+   |
+help: Remove unused import: `json`
+
+UP035 `typing.Dict` is deprecated, use `dict` instead
+  --> legacy\token_economy\__init__.py:24:1
+   |
+22 | from dataclasses import dataclass, field
+23 | from enum import Enum
+24 | from typing import Any, Callable, Dict, List, Optional, Tuple, Union
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+
+UP035 `typing.List` is deprecated, use `list` instead
+  --> legacy\token_economy\__init__.py:24:1
+   |
+22 | from dataclasses import dataclass, field
+23 | from enum import Enum
+24 | from typing import Any, Callable, Dict, List, Optional, Tuple, Union
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+
+UP035 `typing.Tuple` is deprecated, use `tuple` instead
+  --> legacy\token_economy\__init__.py:24:1
+   |
+22 | from dataclasses import dataclass, field
+23 | from enum import Enum
+24 | from typing import Any, Callable, Dict, List, Optional, Tuple, Union
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+
+F401 `typing.Callable` imported but unused
+  --> legacy\token_economy\__init__.py:24:25
+   |
+22 | from dataclasses import dataclass, field
+23 | from enum import Enum
+24 | from typing import Any, Callable, Dict, List, Optional, Tuple, Union
+   |                         ^^^^^^^^
+   |
+help: Remove unused import
+
+F401 `typing.Dict` imported but unused
+  --> legacy\token_economy\__init__.py:24:35
+   |
+22 | from dataclasses import dataclass, field
+23 | from enum import Enum
+24 | from typing import Any, Callable, Dict, List, Optional, Tuple, Union
+   |                                   ^^^^
+   |
+help: Remove unused import
+
+F401 `typing.List` imported but unused
+  --> legacy\token_economy\__init__.py:24:41
+   |
+22 | from dataclasses import dataclass, field
+23 | from enum import Enum
+24 | from typing import Any, Callable, Dict, List, Optional, Tuple, Union
+   |                                         ^^^^
+   |
+help: Remove unused import
+
+F401 `typing.Tuple` imported but unused
+  --> legacy\token_economy\__init__.py:24:57
+   |
+22 | from dataclasses import dataclass, field
+23 | from enum import Enum
+24 | from typing import Any, Callable, Dict, List, Optional, Tuple, Union
+   |                                                         ^^^^^
+   |
+help: Remove unused import
+
+F401 `typing.Union` imported but unused
+  --> legacy\token_economy\__init__.py:24:64
+   |
+22 | from dataclasses import dataclass, field
+23 | from enum import Enum
+24 | from typing import Any, Callable, Dict, List, Optional, Tuple, Union
+   |                                                                ^^^^^
+   |
+help: Remove unused import
+
+F401 `contextlib.asynccontextmanager` imported but unused
+  --> legacy\websocket_comm\__init__.py:14:24
+   |
+12 | import json
+13 | import time
+14 | from contextlib import asynccontextmanager
+   |                        ^^^^^^^^^^^^^^^^^^^
+15 | from dataclasses import dataclass, field
+16 | from enum import Enum
+   |
+help: Remove unused import: `contextlib.asynccontextmanager`
+
+UP035 `typing.Set` is deprecated, use `set` instead
+  --> legacy\websocket_comm\__init__.py:17:1
+   |
+15 | from dataclasses import dataclass, field
+16 | from enum import Enum
+17 | from typing import Any, Callable, Optional, Set
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+18 |
+19 | try:
+   |
+
+F401 `typing.Set` imported but unused
+  --> legacy\websocket_comm\__init__.py:17:45
+   |
+15 | from dataclasses import dataclass, field
+16 | from enum import Enum
+17 | from typing import Any, Callable, Optional, Set
+   |                                             ^^^
+18 |
+19 | try:
+   |
+help: Remove unused import: `typing.Set`
+
+UP035 `typing.Dict` is deprecated, use `dict` instead
+  --> legacy\workflow\__init__.py:28:1
+   |
+26 | from dataclasses import dataclass, field
+27 | from enum import Enum
+28 | from typing import Any, Callable, Dict, List, Optional, Union
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+29 |
+30 | logger = logging.getLogger(__name__)
+   |
+
+UP035 `typing.List` is deprecated, use `list` instead
+  --> legacy\workflow\__init__.py:28:1
+   |
+26 | from dataclasses import dataclass, field
+27 | from enum import Enum
+28 | from typing import Any, Callable, Dict, List, Optional, Union
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+29 |
+30 | logger = logging.getLogger(__name__)
+   |
+
+F401 `typing.Callable` imported but unused
+  --> legacy\workflow\__init__.py:28:25
+   |
+26 | from dataclasses import dataclass, field
+27 | from enum import Enum
+28 | from typing import Any, Callable, Dict, List, Optional, Union
+   |                         ^^^^^^^^
+29 |
+30 | logger = logging.getLogger(__name__)
+   |
+help: Remove unused import
+
+F401 `typing.Dict` imported but unused
+  --> legacy\workflow\__init__.py:28:35
+   |
+26 | from dataclasses import dataclass, field
+27 | from enum import Enum
+28 | from typing import Any, Callable, Dict, List, Optional, Union
+   |                                   ^^^^
+29 |
+30 | logger = logging.getLogger(__name__)
+   |
+help: Remove unused import
+
+F401 `typing.List` imported but unused
+  --> legacy\workflow\__init__.py:28:41
+   |
+26 | from dataclasses import dataclass, field
+27 | from enum import Enum
+28 | from typing import Any, Callable, Dict, List, Optional, Union
+   |                                         ^^^^
+29 |
+30 | logger = logging.getLogger(__name__)
+   |
+help: Remove unused import
+
+F401 `typing.Union` imported but unused
+  --> legacy\workflow\__init__.py:28:57
+   |
+26 | from dataclasses import dataclass, field
+27 | from enum import Enum
+28 | from typing import Any, Callable, Dict, List, Optional, Union
+   |                                                         ^^^^^
+29 |
+30 | logger = logging.getLogger(__name__)
+   |
+help: Remove unused import
+
+F401 `os` imported but unused
+  --> security_audit\__init__.py:9:8
+   |
+ 7 | import json
+ 8 | import logging
+ 9 | import os
+   |        ^^
+10 | import threading
+11 | import time
+   |
+help: Remove unused import: `os`
+
+UP035 `typing.Dict` is deprecated, use `dict` instead
+  --> security_audit\__init__.py:16:1
+   |
+14 | from enum import Enum
+15 | from pathlib import Path
+16 | from typing import Any, Dict, List, Optional
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+17 |
+18 | logger = logging.getLogger(__name__)
+   |
+
+UP035 `typing.List` is deprecated, use `list` instead
+  --> security_audit\__init__.py:16:1
+   |
+14 | from enum import Enum
+15 | from pathlib import Path
+16 | from typing import Any, Dict, List, Optional
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+17 |
+18 | logger = logging.getLogger(__name__)
+   |
+
+F401 `typing.Dict` imported but unused
+  --> security_audit\__init__.py:16:25
+   |
+14 | from enum import Enum
+15 | from pathlib import Path
+16 | from typing import Any, Dict, List, Optional
+   |                         ^^^^
+17 |
+18 | logger = logging.getLogger(__name__)
+   |
+help: Remove unused import
+
+F401 `typing.List` imported but unused
+  --> security_audit\__init__.py:16:31
+   |
+14 | from enum import Enum
+15 | from pathlib import Path
+16 | from typing import Any, Dict, List, Optional
+   |                               ^^^^
+17 |
+18 | logger = logging.getLogger(__name__)
+   |
+help: Remove unused import
+
+UP035 `typing.Dict` is deprecated, use `dict` instead
+  --> serializer\__init__.py:16:1
+   |
+14 | from enum import Enum
+15 | from pathlib import Path
+16 | from typing import Any, Callable, Dict, List, Optional, Type, TypeVar, Union
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+17 |
+18 | T = TypeVar("T")
+   |
+
+UP035 `typing.List` is deprecated, use `list` instead
+  --> serializer\__init__.py:16:1
+   |
+14 | from enum import Enum
+15 | from pathlib import Path
+16 | from typing import Any, Callable, Dict, List, Optional, Type, TypeVar, Union
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+17 |
+18 | T = TypeVar("T")
+   |
+
+UP035 `typing.Type` is deprecated, use `type` instead
+  --> serializer\__init__.py:16:1
+   |
+14 | from enum import Enum
+15 | from pathlib import Path
+16 | from typing import Any, Callable, Dict, List, Optional, Type, TypeVar, Union
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+17 |
+18 | T = TypeVar("T")
+   |
+
+F401 `typing.Dict` imported but unused
+  --> serializer\__init__.py:16:35
+   |
+14 | from enum import Enum
+15 | from pathlib import Path
+16 | from typing import Any, Callable, Dict, List, Optional, Type, TypeVar, Union
+   |                                   ^^^^
+17 |
+18 | T = TypeVar("T")
+   |
+help: Remove unused import
+
+F401 `typing.List` imported but unused
+  --> serializer\__init__.py:16:41
+   |
+14 | from enum import Enum
+15 | from pathlib import Path
+16 | from typing import Any, Callable, Dict, List, Optional, Type, TypeVar, Union
+   |                                         ^^^^
+17 |
+18 | T = TypeVar("T")
+   |
+help: Remove unused import
+
+F401 `typing.Optional` imported but unused
+  --> serializer\__init__.py:16:47
+   |
+14 | from enum import Enum
+15 | from pathlib import Path
+16 | from typing import Any, Callable, Dict, List, Optional, Type, TypeVar, Union
+   |                                               ^^^^^^^^
+17 |
+18 | T = TypeVar("T")
+   |
+help: Remove unused import
+
+F401 `typing.Type` imported but unused
+  --> serializer\__init__.py:16:57
+   |
+14 | from enum import Enum
+15 | from pathlib import Path
+16 | from typing import Any, Callable, Dict, List, Optional, Type, TypeVar, Union
+   |                                                         ^^^^
+17 |
+18 | T = TypeVar("T")
+   |
+help: Remove unused import
+
+F401 `typing.Union` imported but unused
+  --> serializer\__init__.py:16:72
+   |
+14 | from enum import Enum
+15 | from pathlib import Path
+16 | from typing import Any, Callable, Dict, List, Optional, Type, TypeVar, Union
+   |                                                                        ^^^^^
+17 |
+18 | T = TypeVar("T")
+   |
+help: Remove unused import
+
+B904 Within an `except` clause, raise exceptions with `raise ... from err` or `raise ... from None` to distinguish them from errors in exception handling
+   --> serializer\__init__.py:129:13
+    |
+127 |             return json_str.encode("utf-8")
+128 |         except Exception as e:
+129 |             raise SerializationError(f"JSON serialization failed: {e}")
+    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+130 |
+131 |     def deserialize(self, data: bytes) -> Any:
+    |
+
+B904 Within an `except` clause, raise exceptions with `raise ... from err` or `raise ... from None` to distinguish them from errors in exception handling
+   --> serializer\__init__.py:136:13
+    |
+134 |                 return json.loads(data.decode("utf-8"), object_hook=self._object_hook)
+135 |         except Exception as e:
+136 |             raise DeserializationError(f"JSON deserialization failed: {e}")
+    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+
+B904 Within an `except` clause, raise exceptions with `raise ... from err` or `raise ... from None` to distinguish them from errors in exception handling
+   --> serializer\__init__.py:153:13
+    |
+151 |                 return pickle.dumps(obj, protocol=self.protocol)
+152 |         except Exception as e:
+153 |             raise SerializationError(f"Pickle serialization failed: {e}")
+    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+154 |
+155 |     def deserialize(self, data: bytes) -> Any:
+    |
+
+B904 Within an `except` clause, raise exceptions with `raise ... from err` or `raise ... from None` to distinguish them from errors in exception handling
+   --> serializer\__init__.py:160:13
+    |
+158 |                 return pickle.loads(data)
+159 |         except Exception as e:
+160 |             raise DeserializationError(f"Pickle deserialization failed: {e}")
+    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+
+B904 Within an `except` clause, raise exceptions with `raise ... from err` or `raise ... from None` to distinguish them from errors in exception handling
+   --> serializer\__init__.py:178:17
+    |
+176 |                 self._msgpack = msgpack
+177 |             except ImportError:
+178 |                 raise ImportError("MessagePack support requires msgpack package")
+    |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+179 |
+180 |     def serialize(self, obj: Any) -> bytes:
+    |
+
+B904 Within an `except` clause, raise exceptions with `raise ... from err` or `raise ... from None` to distinguish them from errors in exception handling
+   --> serializer\__init__.py:186:13
+    |
+184 |                 return self._msgpack.packb(obj, use_bin_type=True)
+185 |         except Exception as e:
+186 |             raise SerializationError(f"MessagePack serialization failed: {e}")
+    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+187 |
+188 |     def deserialize(self, data: bytes) -> Any:
+    |
+
+B904 Within an `except` clause, raise exceptions with `raise ... from err` or `raise ... from None` to distinguish them from errors in exception handling
+   --> serializer\__init__.py:194:13
+    |
+192 |                 return self._msgpack.unpackb(data, raw=False)
+193 |         except Exception as e:
+194 |             raise DeserializationError(f"MessagePack deserialization failed: {e}")
+    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+
+ARG004 Unused static method argument: `username`
+   --> src\core\entities\folder.py:192:9
+    |
+190 |         base_path: str,
+191 |         user_id: str,
+192 |         username: str
+    |         ^^^^^^^^
+193 |     ) -> dict[FolderType, Folder]:
+194 |         """
+    |
+
+B904 Within an `except` clause, raise exceptions with `raise ... from err` or `raise ... from None` to distinguish them from errors in exception handling
+  --> src\infrastructure\repositories\redis_node_repository.py:42:17
+   |
+40 |                   self._client = redis.from_url(self.redis_url)
+41 |               except ImportError:
+42 | /                 raise ImportError(
+43 | |                     "Redis storage requires the redis package. "
+44 | |                     "Install it with: pip install redis"
+45 | |                 )
+   | |_________________^
+46 |           return self._client
+   |
+
+B904 Within an `except` clause, raise exceptions with `raise ... from err` or `raise ... from None` to distinguish them from errors in exception handling
+  --> src\infrastructure\repositories\redis_task_repository.py:42:17
+   |
+40 |                   self._client = redis.from_url(self.redis_url)
+41 |               except ImportError:
+42 | /                 raise ImportError(
+43 | |                     "Redis storage requires the redis package. "
+44 | |                     "Install it with: pip install redis"
+45 | |                 )
+   | |_________________^
+46 |           return self._client
+   |
+
+E722 Do not use bare `except`
+   --> src\infrastructure\sandbox\sandbox.py:213:9
+    |
+211 |             )
+212 |             return result.returncode == 0
+213 |         except:
+    |         ^^^^^^
+214 |             return False
+    |
+
+E722 Do not use bare `except`
+   --> src\infrastructure\sandbox\sandbox.py:317:9
+    |
+315 |             )
+316 |             return 'runsc' in result.stdout
+317 |         except:
+    |         ^^^^^^
+318 |             return False
+    |
+
+E722 Do not use bare `except`
+   --> src\infrastructure\sandbox\sandbox.py:421:9
+    |
+419 |             )
+420 |             return result.returncode == 0
+421 |         except:
+    |         ^^^^^^
+422 |             return False
+    |
+
+E722 Do not use bare `except`
+   --> src\infrastructure\sandbox\sandbox.py:470:9
+    |
+468 |             )
+469 |             return result.returncode == 0
+470 |         except:
+    |         ^^^^^^
+471 |             return False
+    |
+
+SIM102 Use a single `if` statement instead of nested `if` statements
+  --> src\infrastructure\scheduler\scheduler.py:72:9
+   |
+70 |           required = task.required_resources
+71 |
+72 | /         if "cpu" in required and "cpu" in available:
+73 | |             if required["cpu"] > available.get("cpu", 0):
+   | |_________________________________________________________^
+74 |                   return False
+   |
+help: Combine `if` statements using `and`
+
+SIM102 Use a single `if` statement instead of nested `if` statements
+  --> src\infrastructure\scheduler\scheduler.py:76:9
+   |
+74 |                   return False
+75 |
+76 | /         if "memory" in required and "memory" in available:
+77 | |             if required["memory"] > available.get("memory", 0):
+   | |_______________________________________________________________^
+78 |                   return False
+   |
+help: Combine `if` statements using `and`
+
+E722 Do not use bare `except`
+  --> src\infrastructure\utils\api_utils.py:89:17
+   |
+87 |                     if isinstance(error_data, dict) and "error" in error_data:
+88 |                         error_msg = error_data["error"]
+89 |                 except:
+   |                 ^^^^^^
+90 |                     pass
+91 |                 return False, {"error": error_msg, "text": response.text, "status_code": response.status_code}
+   |
+
+E722 Do not use bare `except`
+   --> src\infrastructure\utils\api_utils.py:143:17
+    |
+141 |                     if isinstance(error_data, dict) and "error" in error_data:
+142 |                         error_msg = error_data["error"]
+143 |                 except:
+    |                 ^^^^^^
+144 |                     pass
+145 |                 return APIResult.fail(error_msg, response.status_code)
+    |
+
+B904 Within an `except` clause, raise exceptions with `raise ... from err` or `raise ... from None` to distinguish them from errors in exception handling
+   --> src\infrastructure\utils\api_utils.py:199:25
+    |
+197 |                         current_delay *= backoff
+198 |                     else:
+199 |                         raise last_exception
+    |                         ^^^^^^^^^^^^^^^^^^^^
+200 |
+201 |             raise last_exception
+    |
+
+F401 `distributed_task_v2.create_task_from_template` imported but unused; consider using `importlib.util.find_spec` to test for availability
+   --> tests\e2e\test_system.py:116:69
+    |
+114 |         """Test Map-Reduce distributed task execution."""
+115 |         try:
+116 |             from distributed_task_v2 import DistributedTaskBuilder, create_task_from_template
+    |                                                                     ^^^^^^^^^^^^^^^^^^^^^^^^^
+117 |         except ImportError:
+118 |             pytest.skip("distributed_task_v2 not available")
+    |
+help: Remove unused import: `distributed_task_v2.create_task_from_template`
+
+F401 `websocket_comm.WebSocketMessage` imported but unused; consider using `importlib.util.find_spec` to test for availability
+   --> tests\e2e\test_system.py:219:74
+    |
+217 |         """Test WebSocket connection to scheduler."""
+218 |         try:
+219 |             from websocket_comm import MessageType, NodeWebSocketClient, WebSocketMessage
+    |                                                                          ^^^^^^^^^^^^^^^^
+220 |         except ImportError:
+221 |             pytest.skip("websocket_comm not available")
+    |
+help: Remove unused import: `websocket_comm.WebSocketMessage`
+
+F401 `file_drop_and_recovery.FileDropManager` imported but unused; consider using `importlib.util.find_spec` to test for availability
+  --> web_interface.py:39:40
+   |
+38 | try:
+39 |     from file_drop_and_recovery import FileDropManager, create_file_drop_task_interface
+   |                                        ^^^^^^^^^^^^^^^
+40 |     FILE_DROP_AVAILABLE = True
+41 | except ImportError:
+   |
+help: Remove unused import
+
+F401 `file_drop_and_recovery.create_file_drop_task_interface` imported but unused; consider using `importlib.util.find_spec` to test for availability
+  --> web_interface.py:39:57
+   |
+38 | try:
+39 |     from file_drop_and_recovery import FileDropManager, create_file_drop_task_interface
+   |                                                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+40 |     FILE_DROP_AVAILABLE = True
+41 | except ImportError:
+   |
+help: Remove unused import
+
+F401 `distributed_task.DISTRIBUTED_TASK_TEMPLATES` imported but unused; consider using `importlib.util.find_spec` to test for availability
+   --> web_interface_academic.py:168:34
+    |
+167 | try:
+168 |     from distributed_task import DISTRIBUTED_TASK_TEMPLATES, DistributedTaskManager
+    |                                  ^^^^^^^^^^^^^^^^^^^^^^^^^^
+169 |     DISTRIBUTED_TASK_AVAILABLE = True
+170 | except ImportError:
+    |
+help: Remove unused import
+
+F401 `distributed_task.DistributedTaskManager` imported but unused; consider using `importlib.util.find_spec` to test for availability
+   --> web_interface_academic.py:168:62
+    |
+167 | try:
+168 |     from distributed_task import DISTRIBUTED_TASK_TEMPLATES, DistributedTaskManager
+    |                                                              ^^^^^^^^^^^^^^^^^^^^^^
+169 |     DISTRIBUTED_TASK_AVAILABLE = True
+170 | except ImportError:
+    |
+help: Remove unused import
+
+F401 `file_drop_and_recovery.FileDropManager` imported but unused; consider using `importlib.util.find_spec` to test for availability
+   --> web_interface_academic.py:174:40
+    |
+173 | try:
+174 |     from file_drop_and_recovery import FileDropManager, create_file_drop_task_interface
+    |                                        ^^^^^^^^^^^^^^^
+175 |     FILE_DROP_AVAILABLE = True
+176 | except ImportError:
+    |
+help: Remove unused import
+
+F401 `file_drop_and_recovery.create_file_drop_task_interface` imported but unused; consider using `importlib.util.find_spec` to test for availability
+   --> web_interface_academic.py:174:57
+    |
+173 | try:
+174 |     from file_drop_and_recovery import FileDropManager, create_file_drop_task_interface
+    |                                                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+175 |     FILE_DROP_AVAILABLE = True
+176 | except ImportError:
+    |
+help: Remove unused import
+
+F401 `legacy.distributed_task.DISTRIBUTED_TASK_TEMPLATES` imported but unused; consider using `importlib.util.find_spec` to test for availability
+   --> web_interface_modern.py:285:41
+    |
+284 | try:
+285 |     from legacy.distributed_task import DISTRIBUTED_TASK_TEMPLATES, DistributedTaskManager
+    |                                         ^^^^^^^^^^^^^^^^^^^^^^^^^^
+286 |     DISTRIBUTED_TASK_AVAILABLE = True
+287 | except ImportError:
+    |
+help: Remove unused import
+
+F401 `legacy.distributed_task.DistributedTaskManager` imported but unused; consider using `importlib.util.find_spec` to test for availability
+   --> web_interface_modern.py:285:69
+    |
+284 | try:
+285 |     from legacy.distributed_task import DISTRIBUTED_TASK_TEMPLATES, DistributedTaskManager
+    |                                                                     ^^^^^^^^^^^^^^^^^^^^^^
+286 |     DISTRIBUTED_TASK_AVAILABLE = True
+287 | except ImportError:
+    |
+help: Remove unused import
+
+F401 `legacy.file_drop_and_recovery.FileDropManager` imported but unused; consider using `importlib.util.find_spec` to test for availability
+   --> web_interface_modern.py:291:47
+    |
+290 | try:
+291 |     from legacy.file_drop_and_recovery import FileDropManager, create_file_drop_task_interface
+    |                                               ^^^^^^^^^^^^^^^
+292 |     FILE_DROP_AVAILABLE = True
+293 | except ImportError:
+    |
+help: Remove unused import
+
+F401 `legacy.file_drop_and_recovery.create_file_drop_task_interface` imported but unused; consider using `importlib.util.find_spec` to test for availability
+   --> web_interface_modern.py:291:64
+    |
+290 | try:
+291 |     from legacy.file_drop_and_recovery import FileDropManager, create_file_drop_task_interface
+    |                                                                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+292 |     FILE_DROP_AVAILABLE = True
+293 | except ImportError:
+    |
+help: Remove unused import
+
+Found 298 errors.
+[*] 4 fixable with the `--fix` option.

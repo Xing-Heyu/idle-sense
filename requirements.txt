@@ -3,20 +3,46 @@
 # ============================================
 
 # [CORE] Platform-specific idle detection
-psutil>=5.9.0                # System monitoring (CPU, memory, battery)
+psutil>=5.9.0,<6.0.0         # System monitoring (CPU, memory, battery)
 
 # [SCHEDULER] FastAPI server for task distribution
-fastapi>=0.104.0             # Web framework for scheduler
+fastapi>=0.104.0,<1.0.0      # Web framework for scheduler
 uvicorn[standard]>=0.24.0    # ASGI server for FastAPI
-python-multipart>=0.0.6      # Form parsing for FastAPI (optional but recommended)
+python-multipart>=0.0.6      # Form parsing for FastAPI
 
 # [CLIENT] Node client for task execution
-requests>=2.31.0             # HTTP client for communicating with scheduler
+requests>=2.31.0,<3.0.0      # HTTP client for communicating with scheduler
 
-# [OPTIONAL] Development tools (not required for production)
+# [CONFIG] Configuration management
+pyyaml>=6.0                  # YAML configuration file parsing
+pydantic>=2.0.0              # Data validation
+pydantic-settings>=2.0.0     # Settings management (BaseSettings moved here in Pydantic v2)
+
+# [DI] Dependency Injection
+dependency-injector>=4.41.0  # Dependency injection container
+
+# [WEB] Web interface (Streamlit)
+streamlit>=1.28.0            # Web UI framework
+plotly>=5.18.0               # Interactive charts
+pandas>=2.0.0                # Data manipulation for charts
+
+# [SANDBOX] Sandbox isolation (optional)
+# docker>=6.0.0              # Docker SDK for container sandbox
+# wasmtime>=10.0.0           # WebAssembly runtime
+
+# [STORAGE] Distributed storage (optional)
+# redis>=5.0.0               # Redis client for distributed storage
+# etcd3>=0.12.0              # etcd client for configuration
+aiosqlite>=0.19.0            # Async SQLite for persistent storage
+
+# [P2P] P2P networking (optional)
+# upnpclient>=1.0.3          # UPnP for NAT traversal
+
+# [DEV] Development tools (not required for production)
 # pytest>=7.4.0              # Testing framework
 # black>=23.0.0              # Code formatting
 # flake8>=6.0.0              # Code linting
+# mypy>=1.0.0                # Type checking
 # types-requests>=2.31.0     # Type stubs for requests
 
 # [CLOUD] Cloud deployment considerations

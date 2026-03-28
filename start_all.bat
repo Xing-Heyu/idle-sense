@@ -1,46 +1,51 @@
 @echo off
-echo ========================================================
-echo ⚡ 闲置计算加速器 - 自动启动脚本
-echo ========================================================
+chcp 65001 >nul
+echo ========================================
+echo   Idle-Sense - Quick Start
+echo ========================================
 echo.
 
-echo 📁 项目目录: %CD%
+REM Check Python
+python --version >nul 2>&1
+if errorlevel 1 (
+    echo [ERROR] Python not found. Please install Python 3.9+
+    pause
+    exit /b 1
+)
+
+echo [1/4] Checking dependencies...
+pip show streamlit >nul 2>&1
+if errorlevel 1 (
+    echo [2/4] Installing dependencies...
+    pip install -r requirements.txt
+) else (
+    echo [2/4] Dependencies OK
+)
+
+echo [3/4] Starting scheduler...
+start "Scheduler" /min python -m legacy.scheduler.simple_server
+
+echo Waiting for scheduler...
+ping -n 6 127.0.0.1 >nul
+
+REM Check if scheduler is running
+python -c "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')" >nul 2>&1
+if errorlevel 1 (
+    echo [WARN] Scheduler may have failed to start
+    echo You can start manually: python -m legacy.scheduler.simple_server
+) else (
+    echo [OK] Scheduler running at: http://localhost:8000
+)
+
+echo [4/4] Starting Web UI...
+echo.
+echo ========================================
+echo   Started successfully!
+echo ========================================
+echo.
+echo Web UI: http://localhost:8501
+echo Scheduler: http://localhost:8000
+echo Press Ctrl+C to stop
 echo.
 
-echo 🚀 启动调度中心...
-start "调度中心" python scheduler/simple_server.py
-echo.
-
-echo ⏳ 等待调度中心启动...
-timeout /t 5 /nobreak >nul
-
-echo 🚀 启动节点客户端...
-start "节点客户端" python node/simple_client.py
-echo.
-
-echo ⏳ 等待节点客户端启动...
-timeout /t 3 /nobreak >nul
-
-echo 🚀 启动网页界面...
-start "网页界面" streamlit run web_interface.py
-echo.
-
-echo ========================================================
-echo 🎉 所有组件启动完成！
-echo ========================================================
-echo.
-echo 📊 服务状态:
-echo   • 调度中心: http://localhost:8000
-echo   • 网页界面: http://localhost:8501
-echo   • 节点客户端: 正在运行
-echo.
-echo 💡 使用说明:
-echo   1. 打开浏览器访问 http://localhost:8501
-echo   2. 在网页界面提交计算任务
-echo   3. 节点客户端会自动执行任务
-echo   4. 关闭此窗口会停止所有服务
-echo.
-echo ========================================================
-echo.
-
-pause
+streamlit run src/presentation/streamlit/app.py

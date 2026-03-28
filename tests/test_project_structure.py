@@ -1,14 +1,19 @@
 import os
+
 import pytest
 
 REQUIRED_PATHS = [
-    ("idle_sense/__init__.py", "file"),
-    ("idle_sense/core.py", "file"),
-    ("scheduler/simple_server.py", "file"),
-    ("node/simple_client.py", "file"),
+    ("legacy/idle_sense/__init__.py", "file"),
+    ("legacy/idle_sense/core.py", "file"),
+    ("legacy/scheduler/simple_server.py", "file"),
+    ("legacy/node/simple_client.py", "file"),
     ("requirements.txt", "file"),
     ("pyproject.toml", "file"),
     ("LICENSE", "file"),
+    ("src/__init__.py", "file"),
+    ("src/core/__init__.py", "file"),
+    ("src/infrastructure/__init__.py", "file"),
+    ("config/settings.py", "file"),
 ]
 
 @pytest.mark.parametrize("path,path_type", REQUIRED_PATHS)

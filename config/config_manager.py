@@ -1,205 +1,196 @@
 """
-config/config_manager.py
-配置管理器 - 实现配置继承和类型转换
+Unified Configuration manager for centralized configuration management.
+
+Provides:
+- Single source of truth for configuration values
+- Environment variable support
+- YAML configuration file support
+- Default values with fallback
+- Type-safe access with proper error handling
+
+Usage:
+    from config_manager import get_config, set_config
+
+    # Get nested config value
+    config = get_config("scheduler.url")
+
+    # Or set a config value
+    config.set_config("scheduler.url", "http://localhost:8000")
 """
 
+import json
 import os
-import yaml
-from typing import Any, Dict, Optional, Union
 from pathlib import Path
-from .default_settings import DEFAULTS
+from typing import Any, Callable, Optional
+
+import yaml
+
+
+class ConfigError(Exception):
+    """Configuration related errors."""
+    pass
+
 
 class ConfigManager:
-    """配置管理器，负责加载和合并配置"""
-    
-    def __init__(self, config_file: Optional[str] = None):
-        self.config_file = config_file
-        self._config_cache: Dict[str, Any] = {}
-        
-        # 配置搜索路径
-        self.search_paths = [
-            config_file,
-            "config.yaml",
-            "config/config.yaml",
-            Path.home() / ".idle-accelerator" / "config.yaml",
-            "/etc/idle-accelerator/config.yaml"
-        ]
-    
-    def load_config(self) -> Dict[str, Any]:
-        """加载并合并所有配置源"""
-        # 1. 加载默认配置
-        config = self._load_defaults()
-        
-        # 2. 加载YAML配置文件
-        yaml_config = self._load_yaml_config()
-        config = self._deep_merge(config, yaml_config)
-        
-        # 3. 加载环境变量
-        env_config = self._load_env_vars()
-        config = self._deep_merge(config, env_config)
-        
-        self._config_cache = config
-        return config
-    
-    def _load_defaults(self) -> Dict[str, Any]:
-        """加载Python默认配置"""
-        # 将DEFAULTS对象转换为嵌套字典
-        defaults_dict = {}
-        for key, value in DEFAULTS.items():
-            if hasattr(value, '__dict__'):
-                # 如果是类实例，转换其属性
-                defaults_dict[key] = {
-                    k: v for k, v in value.__dict__.items() 
-                    if not k.startswith('_')
-                }
-            else:
-                defaults_dict[key] = value
-        return defaults_dict
-    
-    def _load_yaml_config(self) -> Dict[str, Any]:
-        """加载YAML配置文件"""
-        config_file = self._find_config_file()
-        if not config_file or not os.path.exists(config_file):
-            return {}
-        
+    """
+    Unified configuration manager for centralized configuration management.
+
+    Provides:
+    - Single source of truth for configuration values
+    - Environment variable support
+    - YAML configuration file support
+    - Default values with fallback
+    - Type-safe access with proper error handling
+    """
+
+    _instance = None
+    _config: dict[str, Any] = {}
+    _config_file: Optional[Path] = None
+    _env_prefix: str = ""
+    _defaults: dict[str, Any] = {}
+
+    DEFAULT_CONFIG_FILES = [
+        "config/config.yaml",
+        "config/.env",
+    ]
+
+    ENV_TYPE_PARSERS: dict[str, Callable[[str], Any]] = {
+        "s": str,
+        "i": int,
+        "f": float,
+        "b": lambda x: x.lower() in ("true", "1", "yes"),
+    }
+
+    def __init__(self, config_file: Optional[str] = None, env_prefix: str = "IDLE_"):
+        self._config_file = Path(config_file) if config_file else None
+        self._env_prefix = env_prefix
+        self._defaults = {}
+        self._config = {}
+        self._load_config()
+
+    def _load_config(self) -> dict[str, Any]:
+        if self._config_file and self._config_file.exists():
+            try:
+                with open(self._config_file, encoding="utf-8") as f:
+                    config_data = yaml.safe_load(f)
+                    if config_data:
+                        self._config.update(config_data)
+            except yaml.YAMLError as e:
+                raise ConfigError(f"Invalid YAML in config file: {e}") from e
+            except Exception as e:
+                raise ConfigError(f"Error loading config file: {e}") from e
+
+        if self._env_prefix:
+            for key, value in os.environ.items():
+                if key.startswith(self._env_prefix):
+                    config_key = key[len(self._env_prefix):]
+                    self._config[config_key] = self._parse_env_value(value)
+
+        return self._config
+
+    def _parse_env_value(self, value: str) -> Any:
+        if value.startswith(("s:", "i:", "f:", "b:")):
+            type_prefix, actual_value = value[0], value[2:]
+            parser = self.ENV_TYPE_PARSERS.get(type_prefix)
+            if parser:
+                try:
+                    return parser(actual_value)
+                except (ValueError, TypeError):
+                    return actual_value
         try:
-            with open(config_file, 'r', encoding='utf-8') as f:
-                return yaml.safe_load(f) or {}
-        except Exception as e:
-            print(f"Warning: Failed to load config file {config_file}: {e}")
-            return {}
-    
-    def _find_config_file(self) -> Optional[str]:
-        """查找配置文件"""
-        for path in self.search_paths:
-            if path and os.path.exists(path):
-                return str(path)
-        return None
-    
-    def _load_env_vars(self) -> Dict[str, Any]:
-        """从环境变量加载配置"""
-        env_config = {}
-        
-        # 环境变量前缀映射
-        env_prefixes = {
-            'SCHEDULER_': ['scheduler'],
-            'NODE_': ['node'],
-            'WEB_': ['web'],
-            'MONITORING_': ['monitoring'],
-            'REDIS_': ['scheduler', 'redis']
-        }
-        
-        for env_key, env_value in os.environ.items():
-            # 处理每个前缀
-            for prefix, config_path in env_prefixes.items():
-                if env_key.startswith(prefix):
-                    # 转换环境变量名：SCHEDULER_PORT -> scheduler.port
-                    config_key = env_key[len(prefix):].lower()
-                    
-                    # 转换值类型
-                    converted_value = self._convert_env_value(env_value)
-                    
-                    # 构建嵌套字典路径
-                    current = env_config
-                    for path_part in config_path[:-1]:
-                        if path_part not in current:
-                            current[path_part] = {}
-                        current = current[path_part]
-                    
-                    # 设置最终值
-                    if config_path[-1] not in current:
-                        current[config_path[-1]] = {}
-                        current[config_path[-1]][config_key] = converted_value
-        
-        return env_config
-    
-    def _convert_env_value(self, value: str) -> Any:
-        """转换环境变量值为适当类型"""
-        # 布尔值
-        if value.lower() in ('true', 'yes', '1'):
-            return True
-        if value.lower() in ('false', 'no', '0'):
-            return False
-        
-        # 整数
-        if value.isdigit():
-            return int(value)
-        
-        # 浮点数
-        try:
-            return float(value)
-        except ValueError:
-            pass
-        
-        # 列表（逗号分隔）
-        if ',' in value:
-            return [self._convert_env_value(v.strip()) for v in value.split(',')]
-        
-        # 默认返回字符串
-        return value
-    
-    def _deep_merge(self, base: Dict, override: Dict) -> Dict:
-        """深度合并两个字典"""
-        result = base.copy()
-        
-        for key, value in override.items():
-            if key in result and isinstance(result[key], dict) and isinstance(value, dict):
-                # 递归合并嵌套字典
-                result[key] = self._deep_merge(result[key], value)
-            else:
-                # 覆盖或添加新键
-                result[key] = value
-        
+            return json.loads(value)
+        except (json.JSONDecodeError, TypeError):
+            return value
+
+    def get(self, key: str, default: Any = None) -> Any:
+        """
+        Get a configuration value.
+
+        Args:
+            key: Configuration key (dot-separated for nested access)
+            default: Default value if key not found
+
+        Returns:
+            Configuration value
+        """
+        if key in self._config:
+            return self._config[key]
+
+        env_key = f"{self._env_prefix}{key}"
+        env_value = os.environ.get(env_key)
+        if env_value is not None:
+            return self._parse_env_value(env_value)
+
+        return self._defaults.get(key, default)
+
+    def set(self, key: str, value: Any, override: bool = True) -> None:
+        """
+        Set a configuration value.
+
+        Args:
+            key: Configuration key
+            value: Configuration value
+            override: If True, override existing value
+        """
+        if override or key not in self._config:
+            self._config[key] = value
+
+    def get_all(self) -> dict[str, Any]:
+        """
+        Get all configuration values.
+
+        Returns:
+            Dictionary of all configuration values
+        """
+        result = dict(self._config)
+        result.update(self._defaults)
         return result
-    
-    def get(self, key_path: str, default: Any = None) -> Any:
-        """获取配置值，支持点分隔路径"""
-        if not self._config_cache:
-            self.load_config()
-        
-        # 分割路径：scheduler.port -> ['scheduler', 'port']
-        parts = key_path.split('.')
-        
-        current = self._config_cache
-        for part in parts:
-            if isinstance(current, dict) and part in current:
-                current = current[part]
-            else:
-                return default
-        
-        return current
 
-# 全局配置管理器实例
+    def load_defaults(self, defaults: Optional[dict[str, Any]] = None) -> None:
+        """Load default configuration values."""
+        if defaults:
+            self._defaults = defaults
+        self._load_config()
+
+        for key, value in self._defaults.items():
+            if key not in self._config:
+                self._config[key] = value
+
+    def get_config_files(self) -> list[Path]:
+        """Get list of configuration files."""
+        return [self._config_file] if self._config_file else []
+
+    def get_env_prefix(self) -> str:
+        """Get environment variable prefix."""
+        return self._env_prefix
+
+    def get_defaults(self) -> dict[str, Any]:
+        """Get default configuration values."""
+        return dict(self._defaults)
+
+    def get_stats(self) -> dict[str, Any]:
+        """
+        Get configuration statistics.
+
+        Returns:
+            Dictionary with statistics
+        """
+        return {
+            "config_file": str(self._config_file) if self._config_file else None,
+            "env_prefix": self._env_prefix,
+            "defaults": dict(self._defaults),
+            "config": dict(self._config),
+        }
+
+
+def get_config(key: str, default: Any = None) -> Any:
+    """Get a configuration value from the global config manager."""
+    return _config_manager.get(key, default)
+
+
+def set_config(key: str, value: Any, override: bool = True) -> None:
+    """Set a configuration value in the global config manager."""
+    _config_manager.set(key, value, override)
+
+
 _config_manager = ConfigManager()
-
-def get_config(key_path: str = "", default: Any = None) -> Any:
-    """获取配置的便捷函数"""
-    if key_path:
-        return _config_manager.get(key_path, default)
-    return _config_manager.load_config()
-
-def reload_config(config_file: Optional[str] = None) -> Dict[str, Any]:
-    """重新加载配置"""
-    global _config_manager
-    _config_manager = ConfigManager(config_file)
-    return _config_manager.load_config()
-  # 在任何文件中使用配置
-
-# 方法1: 直接获取配置值
-from config.config_manager import get_config
-
-# 获取调度中心端口
-port = get_config("scheduler.port")  # 返回: 8000
-
-# 获取节点检查间隔
-check_interval = get_config("node.idle_detection.check_interval")  # 返回: 30
-
-# 方法2: 获取整个配置
-config = get_config()  # 返回完整配置字典
-
-# 方法3: 代码中使用
-import os
-from config.default_settings import SCHEDULER
-
-# 优先使用环境变量，否则用默认值
-port = int(os.getenv("SCHEDULER_PORT", SCHEDULER.PORT))

@@ -23,12 +23,12 @@ class SchedulerDefaults:
     PORT = 8000
     LOG_LEVEL = "INFO"
     LOG_FILE = str(LOG_DIR / "scheduler.log")
-    
+
     # 任务队列
     MAX_QUEUE_SIZE = 1000
     RESULT_TTL = 3600  # 1小时
     CLEANUP_INTERVAL = 60
-    
+
     # 公平调度
     SCHEDULING_POLICY = "fair_priority"
     FAIR_PRIORITY_WEIGHTS = {
@@ -41,7 +41,7 @@ class SchedulerDefaults:
     NEWCOMER_BASE_BONUS = 20
     STARVATION_THRESHOLD = 300  # 5分钟
     COOLDOWN_PERIOD = 1800  # 30分钟
-    
+
     # 节点管理
     HEARTBEAT_INTERVAL = 30
     TIMEOUT_THRESHOLD = 90
@@ -53,34 +53,32 @@ class NodeDefaults:
     # 调度中心连接
     SCHEDULER_URL = "http://localhost:8000"
     NODE_NAME = os.environ.get("HOSTNAME", "unknown-node")
-    
+
     # 闲置检测
     CHECK_INTERVAL = 30
     IDLE_THRESHOLD = 300  # 5分钟
     CPU_THRESHOLD = 30.0
     MEMORY_THRESHOLD = 70.0
     DISK_THRESHOLD = 85.0
-    
+
     # 安全限制
     MAX_TASK_TIME = 300  # 5分钟
-    MAX_MEMORY_MB = 1024  # 1GB
-    MAX_DISK_MB = 100
     NETWORK_ACCESS = False
     AUTO_CLEANUP = True
-    
+
     # 资源限制
     MAX_CPU_CORES = 2.0
     MAX_MEMORY_MB = 4096  # 4GB
     MAX_DISK_MB = 1024  # 1GB
     RESERVE_CPU = 0.5
     RESERVE_MEMORY_MB = 1024  # 1GB
-    
+
     # 心跳
     HEARTBEAT_INTERVAL = 30
-    
+
     # 日志
     LOG_FILE = str(LOG_DIR / "node.log")
-    
+
     # 允许的安全模块（当网络访问禁用时）
     ALLOWED_MODULES = [
         "math", "random", "datetime", "time",
@@ -100,7 +98,7 @@ class WebDefaults:
     AUTO_REFRESH = True
     REFRESH_INTERVAL = 10
     MAX_HISTORY = 50
-    
+
     # 传统Web（备用）
     TRADITIONAL_PORT = 8080
 
@@ -116,13 +114,13 @@ class PathDefaults:
     """路径默认配置"""
     # 任务临时目录
     TASK_TEMP_DIR = str(PROJECT_ROOT / "tmp" / "tasks")
-    
+
     # 结果存储
     RESULTS_DIR = str(DATA_DIR / "results")
-    
+
     # 配置文件
     CONFIG_FILE = str(CONFIG_DIR / "config.yaml")
-    
+
     # PID文件（用于进程管理）
     PID_DIR = str(PROJECT_ROOT / "tmp" / "pids")
 
@@ -132,14 +130,14 @@ class SecurityDefaults:
     # 沙箱配置
     SANDBOX_TYPE = "tempdir"  # tempdir, docker, none
     TEMP_DIR = "/tmp/idle_tasks"
-    
+
     # 进程限制
     ISOLATE_PROCESS = True
     DROP_PRIVILEGES = True
-    
+
     # 网络限制
     ALLOWED_HOSTS = ["localhost", "127.0.0.1"]
-    
+
     # 输入验证
     MAX_CODE_SIZE = 10000  # 最大代码大小（字符）
     MAX_INPUT_SIZE = 1024  # 最大输入数据大小（KB）

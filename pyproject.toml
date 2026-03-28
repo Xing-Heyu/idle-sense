@@ -3,28 +3,199 @@ requires = ["setuptools>=61.0"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "idle-sense"
-version = "0.1.0"
-description = "Cross-platform idle state detection for computers"
+name = "idle-accelerator"
+version = "1.0.0"
+description = "Cross-platform distributed computing platform utilizing idle computer resources"
 readme = "README.md"
 license = {text = "MIT License"}
 authors = [
-    {name = "你的名字"},
-    {name = "队友A名字"},
-    {name = "队友B名字"}
+    {name = "Xing-Heyu"},
 ]
-requires-python = ">=3.8"
+requires-python = ">=3.9"
+keywords = ["distributed-computing", "idle-detection", "task-scheduler", "python"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Topic :: System :: Distributed Computing",
+]
 
 dependencies = [
     "psutil>=5.9.0",
 ]
 
 [project.optional-dependencies]
-dev = [
-    "pytest>=7.0.0",
-    "black>=23.0.0",
+scheduler = [
+    "fastapi>=0.104.0",
+    "uvicorn[standard]>=0.24.0",
+    "python-multipart>=0.0.6",
+    "redis>=4.5.0",
 ]
 
+node = [
+    "requests>=2.31.0",
+]
+
+web = [
+    "streamlit>=1.28.0",
+    "plotly>=5.18.0",
+    "pandas>=2.0.0",
+]
+
+dev = [
+    "pytest>=7.0.0",
+    "pytest-cov>=4.0.0",
+    "pytest-asyncio>=0.21.0",
+    "pytest-mock>=3.11.0",
+    "black>=23.0.0",
+    "ruff>=0.1.0",
+    "mypy>=1.0.0",
+    "pre-commit>=3.0.0",
+    "types-requests>=2.31.0",
+    "types-psutil>=5.9.0",
+]
+
+all = [
+    "idle-accelerator[scheduler,node,web,dev]",
+]
+
+[project.scripts]
+idle-scheduler = "scheduler.simple_server:main"
+idle-node = "node.simple_client:main"
+
 [project.urls]
-Homepage = "https://github.com/Xing-Heyu/idle-sense"
-Repository = "https://github.com/Xing-Heyu/idle-sense"
+Homepage = "https://github.com/Xing-Heyu/idle-accelerator"
+Repository = "https://github.com/Xing-Heyu/idle-accelerator"
+Documentation = "https://github.com/Xing-Heyu/idle-accelerator/tree/main/docs"
+
+[tool.setuptools.packages.find]
+include = ["idle_sense*", "scheduler*", "node*", "config*", "user_management*"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py39"
+
+[tool.ruff.lint]
+select = [
+    "E",
+    "W",
+    "F",
+    "I",
+    "B",
+    "C4",
+    "UP",
+    "ARG",
+    "SIM",
+]
+
+ignore = [
+    "E501",
+    "B008",
+    "B905",
+    "ARG001",
+    "ARG002",
+    "SIM108",
+]
+
+[tool.ruff.lint.isort]
+known-first-party = ["idle_sense", "scheduler", "node", "config", "user_management"]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/*" = ["ARG", "S101"]
+"examples/*" = ["ARG", "T201"]
+"demo/*" = ["ARG", "T201"]
+
+[tool.black]
+line-length = 100
+target-version = ['py38', 'py39', 'py310', 'py311']
+include = '\.pyi?$'
+exclude = '''
+/(
+    \.git
+    | \.hg
+    | \.mypy_cache
+    | \.tox
+    | \.venv
+    | _build
+    | buck-out
+    | build
+    | dist
+    | node_data
+    | local_users
+)/
+'''
+
+[tool.mypy]
+python_version = "3.9"
+warn_return_any = true
+warn_unused_configs = true
+ignore_missing_imports = true
+show_error_codes = true
+show_column_numbers = true
+pretty = true
+
+[[tool.mypy.overrides]]
+module = "tests.*"
+disallow_untyped_defs = false
+
+[[tool.mypy.overrides]]
+module = [
+    "psutil.*",
+    "streamlit.*",
+    "plotly.*",
+    "pandas.*",
+]
+ignore_missing_imports = true
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+addopts = "-v --tb=short --strict-markers -ra"
+asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "function"
+markers = [
+    "slow: marks tests as slow (deselect with '-m \"not slow\"')",
+    "integration: marks integration tests",
+    "e2e: marks end-to-end tests",
+    "windows: marks Windows-only tests",
+    "macos: marks macOS-only tests",
+    "asyncio: mark test as async",
+]
+filterwarnings = [
+    "ignore::DeprecationWarning",
+    "ignore::PendingDeprecationWarning",
+]
+
+[tool.coverage.run]
+source = ["idle_sense", "scheduler", "node", "config"]
+branch = true
+omit = [
+    "tests/*",
+    "examples/*",
+    "demo/*",
+    "*/__pycache__/*",
+]
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "def __repr__",
+    "raise AssertionError",
+    "raise NotImplementedError",
+    "if __name__ == .__main__.:",
+    "if TYPE_CHECKING:",
+    "@abstractmethod",
+]
+show_missing = true
+precision = 2
+
+[tool.coverage.html]
+directory = "htmlcov"

@@ -5,10 +5,14 @@ services:
     build: .
     container_name: idle-accelerator-scheduler
     ports:
-      - "8000:8000"
+      - "${HOST_PORT:-8000}:8000"
     environment:
       - SCHEDULER_HOST=0.0.0.0
       - SCHEDULER_PORT=8000
+      - PORT=8000
+    volumes:
+      - ${DATA_ROOT:-./data}:/app/data
+      - ${USER_DATA_ROOT:-./user_data}:/app/user_data
     restart: unless-stopped
     networks:
       - idle-network
