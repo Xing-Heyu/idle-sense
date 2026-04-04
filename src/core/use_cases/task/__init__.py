@@ -7,6 +7,7 @@ task - 任务用例模块
 - delete_task_use_case: 删除任务用例
 - cancel_task_use_case: 取消任务用例
 - get_task_status_use_case: 获取任务状态用例
+- task_with_token_economy: 集成代币经济的任务用例
 """
 
 from .cancel_task_use_case import (
@@ -34,6 +35,14 @@ from .submit_task_use_case import (
     SubmitTaskResponse,
     SubmitTaskUseCase,
 )
+from .task_with_token_economy import (
+    CompleteTaskWithTokenEconomyUseCase,
+    CompleteTaskWithTokenRequest,
+    CompleteTaskWithTokenResponse,
+    SubmitTaskWithTokenEconomyUseCase,
+    SubmitTaskWithTokenRequest,
+    SubmitTaskWithTokenResponse,
+)
 
 __all__ = [
     "SubmitTaskUseCase",
@@ -51,4 +60,10 @@ __all__ = [
     "GetTaskStatusUseCase",
     "GetTaskStatusRequest",
     "GetTaskStatusResponse",
+    "SubmitTaskWithTokenEconomyUseCase",
+    "SubmitTaskWithTokenRequest",
+    "SubmitTaskWithTokenResponse",
+    "CompleteTaskWithTokenEconomyUseCase",
+    "CompleteTaskWithTokenRequest",
+    "CompleteTaskWithTokenResponse",
 ]

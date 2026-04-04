@@ -5,13 +5,51 @@
 - localStorage 恢复
 - URL 参数恢复
 - 会话清理
+- 支持可配置后端（内存/Redis）
 """
 
 import hashlib
 import json
+import os
 from typing import Any, Optional
 
 import streamlit as st
+
+from .session_backend import (
+    FileSessionBackend,
+    MemorySessionBackend,
+    RedisSessionBackend,
+    SessionBackend,
+    SessionBackendFactory,
+)
+
+
+class SessionConfig:
+    """会话配置"""
+
+    def __init__(
+        self,
+        backend_type: str = "file",
+        redis_url: Optional[str] = None,
+        redis_key_prefix: str = "session:",
+        session_ttl: int = 3600,
+    ):
+        self.backend_type = backend_type
+        self.redis_url = redis_url or os.environ.get(
+            "IDLE_SESSION_REDIS_URL", "redis://localhost:6379/0"
+        )
+        self.redis_key_prefix = redis_key_prefix
+        self.session_ttl = session_ttl
+
+    @classmethod
+    def from_env(cls) -> "SessionConfig":
+        """从环境变量创建配置"""
+        return cls(
+            backend_type=os.environ.get("IDLE_SESSION_BACKEND", "file"),
+            redis_url=os.environ.get("IDLE_SESSION_REDIS_URL"),
+            redis_key_prefix=os.environ.get("IDLE_SESSION_REDIS_PREFIX", "session:"),
+            session_ttl=int(os.environ.get("IDLE_SESSION_TTL", "3600")),
+        )
 
 
 class SessionManager:
@@ -20,6 +58,47 @@ class SessionManager:
     SESSION_KEY = "user_session"
     HISTORY_KEY = "task_history"
     LOCAL_STORAGE_KEY = "idle_accelerator_session"
+
+    _backend: Optional[SessionBackend] = None
+    _config: Optional[SessionConfig] = None
+
+    @classmethod
+    def configure(cls, config: Optional[SessionConfig] = None) -> None:
+        """
+        配置会话管理器
+
+        Args:
+            config: 会话配置，None 则从环境变量读取
+        """
+        cls._config = config or SessionConfig.from_env()
+        cls._backend = SessionBackendFactory.create_backend(
+            backend_type=cls._config.backend_type,
+            redis_url=cls._config.redis_url,
+            key_prefix=cls._config.redis_key_prefix,
+            default_ttl=cls._config.session_ttl,
+        )
+
+    @classmethod
+    def get_backend(cls) -> SessionBackend:
+        """获取会话后端"""
+        if cls._backend is None:
+            cls.configure()
+        return cls._backend
+
+    @classmethod
+    def get_config(cls) -> SessionConfig:
+        """获取会话配置"""
+        if cls._config is None:
+            cls.configure()
+        return cls._config
+
+    @classmethod
+    def _get_session_id(cls) -> str:
+        """获取当前会话ID"""
+        session = st.session_state.get(cls.SESSION_KEY)
+        if session and "user_id" in session:
+            return session["user_id"]
+        return "anonymous"
 
     @staticmethod
     def init_session_state():
@@ -50,18 +129,51 @@ class SessionManager:
     @staticmethod
     def set_user_session(user_id: str, username: str, **kwargs):
         """设置用户会话"""
-        st.session_state[SessionManager.SESSION_KEY] = {
+        session_data = {
             "user_id": user_id,
             "username": username,
             **kwargs
         }
+        st.session_state[SessionManager.SESSION_KEY] = session_data
+
+        backend = SessionManager.get_backend()
+        config = SessionManager.get_config()
+        backend.set_session(user_id, session_data, ttl=config.session_ttl)
 
     @staticmethod
     def clear_user_session():
         """清除用户会话"""
+        session = st.session_state.get(SessionManager.SESSION_KEY)
+        if session and "user_id" in session:
+            backend = SessionManager.get_backend()
+            backend.delete_session(session["user_id"])
+
         st.session_state[SessionManager.SESSION_KEY] = None
         st.session_state[SessionManager.HISTORY_KEY] = []
         st.session_state["active_node_id"] = None
+
+    @staticmethod
+    def restore_session_from_backend(user_id: str) -> bool:
+        """
+        从后端存储恢复会话
+
+        Args:
+            user_id: 用户ID
+
+        Returns:
+            是否恢复成功
+        """
+        if st.session_state.get(SessionManager.SESSION_KEY):
+            return False
+
+        backend = SessionManager.get_backend()
+        session_data = backend.get_session(user_id)
+
+        if session_data:
+            st.session_state[SessionManager.SESSION_KEY] = session_data
+            return True
+
+        return False
 
     @staticmethod
     def add_task_to_history(task_id: str, task_type: str = "单节点任务", **kwargs):
@@ -164,5 +276,23 @@ class SessionManager:
         hash_value = hashlib.md5(username.encode()).hexdigest()[:8]
         return f"local_{hash_value}"
 
+    @staticmethod
+    def get_backend_type() -> str:
+        """获取当前后端类型"""
+        backend = SessionManager.get_backend()
+        if isinstance(backend, RedisSessionBackend):
+            return "redis"
+        if isinstance(backend, FileSessionBackend):
+            return "file"
+        return "memory"
 
-__all__ = ["SessionManager"]
+    @staticmethod
+    def is_redis_connected() -> bool:
+        """检查 Redis 是否连接"""
+        backend = SessionManager.get_backend()
+        if isinstance(backend, RedisSessionBackend):
+            return backend.is_connected
+        return False
+
+
+__all__ = ["SessionManager", "SessionConfig"]

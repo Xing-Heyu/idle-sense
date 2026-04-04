@@ -347,6 +347,45 @@ class TokenEconomySettings(BaseSettings):
     )
 
 
+class PersistenceSettings(BaseSettings):
+    """持久化配置"""
+
+    model_config = SettingsConfigDict(
+        env_prefix="PERSISTENCE_",
+        env_file=".env",
+        env_file_encoding="utf-8",
+        extra="ignore"
+    ) if PYDANTIC_V2 else {}
+
+    DB_PATH: str = Field(
+        default="",
+        description="数据库文件路径（为空则使用 persistence 模块默认路径）"
+    )
+    STORAGE_BACKEND: str = Field(
+        default="sqlite",
+        description="持久化存储后端类型: sqlite, memory"
+    )
+    TOKEN_ECONOMY_PERSISTENCE: bool = Field(
+        default=True,
+        description="是否启用代币经济系统持久化"
+    )
+    SESSION_BACKEND_TYPE: str = Field(
+        default="file",
+        description="会话存储后端类型: file, memory, redis"
+    )
+    BACKUP_ENABLED: bool = Field(
+        default=False,
+        description="是否启用自动备份"
+    )
+    DATA_RETENTION_DAYS: int = Field(
+        default=30,
+        ge=1,
+        le=365,
+        description="数据保留天数"
+
+    )
+
+
 class Settings(BaseSettings):
     """
     主配置类 - 整合所有配置
@@ -377,6 +416,7 @@ class Settings(BaseSettings):
     DISTRIBUTED: DistributedTaskSettings = Field(default_factory=DistributedTaskSettings)
     SECURITY: SecuritySettings = Field(default_factory=SecuritySettings)
     TOKEN: TokenEconomySettings = Field(default_factory=TokenEconomySettings)
+    PERSISTENCE: PersistenceSettings = Field(default_factory=PersistenceSettings)
 
     # 兼容旧代码的快捷属性
     @property
@@ -415,6 +455,7 @@ class Settings(BaseSettings):
             "DISTRIBUTED": self.DISTRIBUTED.model_dump() if PYDANTIC_V2 else self.DISTRIBUTED.dict(),
             "SECURITY": self.SECURITY.model_dump() if PYDANTIC_V2 else self.SECURITY.dict(),
             "TOKEN": self.TOKEN.model_dump() if PYDANTIC_V2 else self.TOKEN.dict(),
+            "PERSISTENCE": self.PERSISTENCE.model_dump() if PYDANTIC_V2 else self.PERSISTENCE.dict(),
         }
 
 
@@ -444,6 +485,7 @@ __all__ = [
     "DistributedTaskSettings",
     "SecuritySettings",
     "TokenEconomySettings",
+    "PersistenceSettings",
     "settings",
     "get_settings",
 ]

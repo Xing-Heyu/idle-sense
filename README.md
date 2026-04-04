@@ -3,6 +3,8 @@
 [![Python 3.9+](https://img.shields.io/badge/python-3.9+-blue.svg)](https://www.python.org/downloads/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
+[![Version: v1.0.0](https://img.shields.io/badge/version-v1.0.0-green.svg)](https://github.com/Xing-Heyu/idle-sense)
+[![Status: Beta](https://img.shields.io/badge/status-Beta%20阶段后期-orange.svg)](https://github.com/Xing-Heyu/idle-sense)
 
 **让全球闲置算力不再浪费**
 
@@ -17,6 +19,16 @@ Idle-Sense 是一个分布式计算平台，能够智能检测个人电脑的闲
 - 🌐 **P2P分布式网络** - 去中心化节点发现和任务分发
 - 📊 **Web管理界面** - 直观的任务提交、监控和管理
 
+## 🗄️ 数据持久化
+
+| 组件 | 存储方式 | 状态 |
+|------|---------|------|
+| 调度器任务 | SQLite + 内存缓存 | ✅ 已实现 |
+| 节点信息 | SQLite + 内存缓存 | ✅ 已实现 |
+| 代币经济 | SQLite（原子事务） | ✅ 已实现 |
+| 用户数据 | JSON 文件 | ✅ 已实现 |
+| 会话管理 | 文件 / Redis | ✅ 已实现（默认文件） |
+
 ## 🚀 快速开始
 
 ### 安装
@@ -29,6 +41,8 @@ cd idle-sense
 # 安装依赖
 pip install -r requirements.txt
 ```
+
+> **首次运行**：系统会自动创建 `data/` 目录，用于存放 SQLite 数据库文件、用户数据及会话信息。无需手动初始化。
 
 ### 启动调度中心
 
@@ -50,8 +64,19 @@ streamlit run src/presentation/streamlit/app.py
 
 访问 http://localhost:8501 打开Web管理界面。
 
+## ⚙️ 环境变量
+
+| 变量名 | 默认值 | 说明 |
+|--------|-------|------|
+| `IDLESENSE_DATA_DIR` | `./data` | 数据存储根目录 |
+| `IDLESENSE_DB_PATH` | `./data/idle_sense.db` | SQLite 数据库路径 |
+| `IDLESENSE_SESSION_BACKEND` | `file` | 会话后端：`file` 或 `redis` |
+| `IDLESENSE_REDIS_URL` | - | Redis 连接 URL（仅 redis 后端时需要） |
+| `IDLESENSE_CACHE_TTL` | `300` | 内存缓存过期时间（秒） |
+
 ## 📖 文档
 
+- [项目介绍](项目介绍文档.md) - 完整项目介绍与规划
 - [快速入门指南](docs/QUICKSTART.md) - 5分钟快速上手
 - [用户指南](USER_GUIDE.md) - 详细使用说明
 - [API参考](docs/API_REFERENCE.md) - 完整API文档

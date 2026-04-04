@@ -210,6 +210,9 @@ class ProgressTracker:
             return
 
         stage = self._stage_progress[key]
+        # 第一个chunk完成时将状态设为running
+        if stage.status == "pending":
+            stage.status = "running"
         stage.completed_chunks += 1
         if stage.total_chunks > 0:
             stage.progress = stage.completed_chunks / stage.total_chunks

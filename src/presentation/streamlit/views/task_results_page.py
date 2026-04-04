@@ -139,7 +139,7 @@ def render(user_id: Optional[str] = None):
         with col1:
             st.metric("总结果数", len(all_results))
         with col2:
-            nodes_used = set(r.get("assigned_node") for r in all_results if r.get("assigned_node"))
+            nodes_used = {r.get("assigned_node") for r in all_results if r.get("assigned_node")}
             st.metric("使用节点数", len(nodes_used))
         with col3:
             total_size = sum(len(str(r.get("result", ""))) for r in all_results)

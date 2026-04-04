@@ -46,6 +46,9 @@ def _render_user_status():
         st.success(f"✅ 已登录: {username}")
         st.caption(f"ID: {user_id[:12]}...")
 
+        _render_token_balance(user_id)
+        _render_reputation(user_id)
+
         if st.button("🚪 退出登录", use_container_width=True):
             SessionManager.clear_localstorage()
             st.session_state.user_session = None
@@ -168,6 +171,46 @@ def _render_debug_mode():
             for key in list(st.session_state.keys()):
                 del st.session_state[key]
             st.rerun()
+
+
+def _render_token_balance(user_id: str):
+    """渲染代币余额"""
+    token_service = container.token_economy_service
+    account_info = token_service.get_account_info(user_id)
+
+    st.subheader("💰 代币余额")
+    col1, col2 = st.columns(2)
+    with col1:
+        st.metric("可用余额", f"{account_info['balance']:.2f} CMP")
+    with col2:
+        st.metric("质押", f"{account_info['staked']:.2f} CMP")
+
+    st.caption(f"总收益: {account_info['total_earned']:.2f} CMP | 总消费: {account_info['total_spent']:.2f} CMP")
+
+
+def _render_reputation(user_id: str):
+    """渲染声誉信息"""
+    token_service = container.token_economy_service
+    account_info = token_service.get_account_info(user_id)
+    reputation = account_info.get('reputation', 50.0)
+
+    st.subheader("⭐ 声誉等级")
+
+    tier_colors = {
+        "Platinum": "#E5E4E2",
+        "Gold": "#FFD700",
+        "Silver": "#C0C0C0",
+        "Bronze": "#CD7F32",
+        "Untrusted": "#808080"
+    }
+
+    tier = account_info.get('tier', 'Bronze')
+    color = tier_colors.get(tier, "#808080")
+
+    st.progress(reputation / 100, text=f"声誉: {reputation:.1f}/100")
+    st.markdown(f"<p style='color: {color}; font-weight: bold;'>等级: {tier}</p>", unsafe_allow_html=True)
+
+    st.caption(f"完成任务: {account_info['tasks_completed']} | 失败: {account_info['tasks_failed']}")
 
 
 __all__ = ["render_sidebar"]

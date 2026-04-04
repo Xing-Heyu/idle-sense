@@ -241,9 +241,8 @@ class MessageCipher:
         """Decrypt and verify a message."""
         if encrypted.signature:
             sender_pub_key = identity.get_trusted_public_key(encrypted.sender_id)
-            if sender_pub_key:
-                if not identity.verify(encrypted.ciphertext, encrypted.signature, sender_pub_key):
-                    return None
+            if sender_pub_key and not identity.verify(encrypted.ciphertext, encrypted.signature, sender_pub_key):
+                return None
 
         return self.decrypt(encrypted.nonce, encrypted.ciphertext, encrypted.sender_id.encode())
 

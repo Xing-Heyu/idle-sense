@@ -5,14 +5,24 @@ scheduler/simple_server.py
 
 import os
 import sys
+import atexit
 import threading
 import time
 import uuid
+import asyncio
+import concurrent.futures
 from collections import defaultdict
 from typing import Any, Optional
 
-from fastapi import BackgroundTasks, Body, FastAPI, HTTPException
+from fastapi import BackgroundTasks, Body, FastAPI, HTTPException, Request
 from pydantic import BaseModel
+
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
+try:
+    from src.infrastructure.security.rate_limiter import setup_rate_limiting  # noqa: F401
+    RATE_LIMITING_AVAILABLE = True
+except ImportError:
+    RATE_LIMITING_AVAILABLE = False
 
 # 导入统一沙箱（新架构）
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
@@ -563,6 +573,272 @@ class OptimizedMemoryStorage:
 
             return {"success": True, "message": f"节点 {node_id} 已停止"}
 
+# ==================== 持久化存储统一包装类 ====================
+class PersistentSchedulerStorage:
+    """
+    统一持久化存储包装类
+
+    组合 PersistentTaskStorage (任务) 和 PersistentNodeStorage (节点)，
+    提供与 OptimizedMemoryStorage 完全相同的同步接口。
+    内部通过线程池桥接 PersistentNodeStorage 的异步方法。
+    """
+
+    def __init__(self, db_path=None):
+        from src.infrastructure.persistence.persistent_task_storage import PersistentTaskStorage
+        from src.infrastructure.persistence.persistent_node_storage import PersistentNodeStorage
+
+        self.task_storage = PersistentTaskStorage(db_path=db_path)
+        self.node_storage = PersistentNodeStorage(db_path=db_path)
+
+        self.server_id = str(uuid.uuid4())[:8]
+        self.lock = threading.RLock()
+
+        self._node_executor: Optional[concurrent.futures.ThreadPoolExecutor] = None
+        _executor_lock = threading.Lock()
+
+        self._stats = {
+            "tasks_processed": 0,
+            "tasks_failed": 0,
+            "nodes_registered": 0,
+            "nodes_dropped": 0,
+            "last_cleanup": time.time()
+        }
+
+    def init_sync(self):
+        """同步初始化：启动时调用，初始化任务和节点存储"""
+        print("[持久化] 正在初始化 SQLite 持久化存储...")
+        try:
+            self.task_storage.init_sync()
+            print("[持久化] 任务存储初始化完成")
+        except Exception as e:
+            print(f"[持久化] 任务存储初始化失败: {e}")
+            raise
+
+        try:
+            self._run_node_async(self.node_storage._ensure_init())
+            print("[持久化] 节点存储初始化完成")
+        except Exception as e:
+            print(f"[持久化] 节点存储初始化失败: {e}")
+            raise
+
+        print(f"[持久化] 存储后端: SQLite | 服务器ID: {self.server_id}")
+        return self
+
+    def shutdown(self):
+        """优雅关闭：刷新缓存并关闭数据库连接"""
+        print("[持久化] 正在关闭持久化存储...")
+        try:
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+            try:
+                loop.run_until_complete(self.task_storage.close())
+            finally:
+                loop.close()
+        except Exception as e:
+            print(f"[持久化] 关闭任务存储异常: {e}")
+
+        try:
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+            try:
+                loop.run_until_complete(self.node_storage.close())
+            finally:
+                loop.close()
+        except Exception as e:
+            print(f"[持久化] 关闭节点存储异常: {e}")
+
+        if self._node_executor:
+            self._node_executor.shutdown(wait=False)
+            self._node_executor = None
+
+        print("[持久化] 持久化存储已关闭")
+
+    def _run_node_async(self, coro):
+        """在专用线程中运行节点存储的异步协程"""
+        if self._node_executor is None:
+            self._node_executor = concurrent.futures.ThreadPoolExecutor(
+                max_workers=1, thread_name_prefix="persistent_node_storage"
+            )
+
+        def _run_in_thread(c):
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+            try:
+                return loop.run_until_complete(c)
+            finally:
+                loop.close()
+
+        future = self._node_executor.submit(_run_in_thread, coro)
+        return future.result(timeout=30)
+
+    # ========== 任务管理方法（委托给 task_storage）==========
+    def add_task(self, code: str, timeout: int = 300, resources: Optional[dict] = None, user_id: Optional[str] = None) -> int:
+        return self.task_storage.add_task(code, timeout, resources, user_id)
+
+    def get_task_for_node(self, node_id: str) -> Optional[Any]:
+        return self.task_storage.get_task_for_node(node_id)
+
+    def complete_task(self, task_id: int, result: str, node_id: Optional[str] = None) -> bool:
+        return self.task_storage.complete_task(task_id, result, node_id)
+
+    def get_task_status(self, task_id: int) -> Optional[dict[str, Any]]:
+        return self.task_storage.get_task_status(task_id)
+
+    def get_all_results(self) -> list[dict[str, Any]]:
+        return self.task_storage.get_all_results()
+
+    def delete_task(self, task_id: int) -> dict[str, Any]:
+        return self.task_storage.delete_task(task_id)
+
+    # ========== 节点管理方法（委托给 node_storage，同步包装）==========
+    def register_node(self, registration) -> bool:
+        from src.infrastructure.persistence.persistent_node_storage import NodeRegistration as PNodeRegistration
+        reg = PNodeRegistration(
+            node_id=registration.node_id,
+            capacity=registration.capacity,
+            tags={str(k): str(v) for k, v in (registration.tags or {}).items()},
+        )
+        result = self._run_node_async(self.node_storage.register_node(reg))
+        if result:
+            self._stats["nodes_registered"] += 1
+        return result
+
+    def update_node_heartbeat(self, heartbeat) -> bool:
+        from src.infrastructure.persistence.persistent_node_storage import NodeHeartbeat as PNodeHeartbeat
+        hb = PNodeHeartbeat(
+            node_id=heartbeat.node_id,
+            current_load=heartbeat.current_load,
+            is_idle=heartbeat.is_idle,
+            is_available=getattr(heartbeat, 'is_available', True),
+            available_resources=heartbeat.available_resources,
+        )
+        return self._run_node_async(self.node_storage.update_node_heartbeat(hb))
+
+    def _get_node_status(self, node_id: str) -> dict[str, Any]:
+        """获取节点状态 - 三状态判断（兼容 OptimizedMemoryStorage 接口）"""
+        node_data = self._run_node_async(self.node_storage.get_node(node_id))
+        if node_data is None:
+            return {"status": "offline", "reason": "not_registered"}
+
+        status_str = node_data.get("status", "offline")
+        is_idle = node_data.get("is_idle", False)
+        is_available = node_data.get("is_available", True)
+
+        if status_str == "offline":
+            return {"status": "offline", "reason": "no_heartbeat"}
+        elif not is_available:
+            return {"status": "online_unavailable", "reason": "node_unavailable"}
+        elif not is_idle:
+            return {"status": "online_busy", "reason": "user_active"}
+        else:
+            return {"status": "online_available", "reason": "idle_and_ready"}
+
+    def _update_node_status_cache(self, node_id: str, forced_status: Optional[str] = None):
+        pass
+
+    def get_available_nodes(self, include_busy: bool = False) -> list[dict[str, Any]]:
+        raw_nodes = self._run_node_async(self.node_storage.get_available_nodes(include_busy=include_busy))
+        result = []
+        for n in raw_nodes:
+            status_info = self._get_node_status(n.get("node_id", ""))
+            result.append({
+                "node_id": n.get("node_id", ""),
+                "is_online": status_info["status"] != "offline",
+                "is_idle": n.get("is_idle", False),
+                "status": status_info["status"],
+                "status_details": status_info,
+                "capacity": n.get("capacity", {}),
+                "tags": n.get("tags", {}),
+                "last_heartbeat": n.get("last_heartbeat", 0),
+                "current_load": n.get("current_load", {}),
+                "available_resources": n.get("available_resources", {}),
+            })
+        return result
+
+    def cleanup_dead_nodes(self, timeout_seconds: int = 180) -> int:
+        task_cleaned = self.task_storage.cleanup_dead_nodes(timeout_seconds)
+        node_cleaned = self._run_node_async(self.node_storage.cleanup_dead_nodes(timeout_seconds))
+        self._stats["nodes_dropped"] += node_cleaned
+        self._stats["last_cleanup"] = time.time()
+        return task_cleaned + node_cleaned
+
+    def stop_node(self, node_id: str) -> dict[str, Any]:
+        result = self._run_node_async(self.node_storage.stop_node(node_id))
+        if result.get("success"):
+            self._stats["nodes_dropped"] += 1
+        return result
+
+    # ========== 兼容属性（供外部直接访问）==========
+    @property
+    def tasks(self):
+        return self.task_storage._cache
+
+    @property
+    def task_id_counter(self):
+        return self.task_storage._task_id_counter
+
+    @task_id_counter.setter
+    def task_id_counter(self, value):
+        self.task_storage._task_id_counter = value
+
+    @property
+    def nodes(self):
+        return {}
+
+    @property
+    def node_heartbeats(self):
+        return {}
+
+    @property
+    def node_status(self):
+        return {}
+
+    @property
+    def pending_tasks(self):
+        return self.task_storage._pending_tasks
+
+    @property
+    def assigned_tasks(self):
+        return self.task_storage._assigned_tasks
+
+    # ========== API 方法 ==========
+    def get_system_stats(self) -> dict[str, Any]:
+        task_stats = self.task_storage.get_system_stats()
+        with self.lock:
+            all_nodes = self._run_node_async(self.node_storage.get_all_nodes())
+            total_nodes = len(all_nodes)
+            online_nodes = sum(1 for n in all_nodes if n.get("status") != "offline")
+            available_nodes = sum(1 for n in all_nodes if n.get("status") != "offline" and n.get("is_idle", False))
+
+            return {
+                "tasks": task_stats.get("tasks", {}),
+                "nodes": {
+                    "total": total_nodes,
+                    "online": online_nodes,
+                    "available": available_nodes,
+                    "offline": total_nodes - online_nodes,
+                },
+                "scheduler": self._stats,
+                "persistence": task_stats.get("persistence", {}),
+            }
+
+    def _is_node_online(self, node_id: str) -> bool:
+        status = self._get_node_status(node_id)
+        return status["status"] != "offline"
+
+    def _schedule_tasks(self):
+        pass
+
+    def _can_node_handle_task(self, node_info: dict, task: Any) -> bool:
+        return True
+
+    def _calculate_match_score(self, node_info: dict, task: Any) -> float:
+        return 1.0
+
+    def _update_node_load(self, node_id: str, task: Any, operation: str):
+        pass
+
+
 # ==================== FastAPI 应用 ====================
 app = FastAPI(
     title="优化版闲置计算调度器",
@@ -570,8 +846,69 @@ app = FastAPI(
     version="2.2.0"
 )
 
-# 初始化存储
-storage = OptimizedMemoryStorage()
+rate_limiter = None
+if RATE_LIMITING_AVAILABLE:
+    try:
+        from slowapi import Limiter
+        from slowapi.errors import RateLimitExceeded
+        from slowapi.util import get_remote_address
+        
+        limiter = Limiter(
+            key_func=get_remote_address,
+            default_limits=["60/minute"],
+        )
+        app.state.limiter = limiter
+        
+        @app.exception_handler(RateLimitExceeded)
+        async def rate_limit_handler(request: Request, exc: RateLimitExceeded):
+            from slowapi import _rate_limit_exceeded_handler
+            response = _rate_limit_exceeded_handler(request, exc)
+            return response
+        
+        rate_limiter = limiter
+        print("[调度器] 限流中间件已启用")
+    except Exception as e:
+        print(f"[警告] 限流器初始化失败: {e}")
+
+def rate_limit(limit_value: str):
+    """限流装饰器辅助函数"""
+    def decorator(func):
+        if rate_limiter:
+            return rate_limiter.limit(limit_value)(func)
+        return func
+    return decorator
+
+# 初始化存储（支持持久化后端选择）
+backend = os.getenv("STORAGE_BACKEND", "sqlite").strip().lower()
+_storage_instance = None
+
+if backend == "sqlite":
+    print("[调度器] 存储后端: SQLite (持久化模式)")
+    try:
+        _storage_instance = PersistentSchedulerStorage()
+        _storage_instance.init_sync()
+        atexit.register(_shutdown_persistent_storage)
+    except Exception as e:
+        print(f"[警告] SQLite 持久化初始化失败: {e}")
+        print("[警告] 自动降级到内存存储 (memory backend)")
+        _storage_instance = OptimizedMemoryStorage()
+elif backend == "memory":
+    print("[调度器] 存储后端: Memory (内存模式)")
+    _storage_instance = OptimizedMemoryStorage()
+else:
+    print(f"[警告] 未知的存储后端 '{backend}'，使用默认内存存储")
+    _storage_instance = OptimizedMemoryStorage()
+
+storage = _storage_instance
+
+
+def _shutdown_persistent_storage():
+    """关闭钩子：优雅关闭持久化存储"""
+    if isinstance(storage, PersistentSchedulerStorage):
+        try:
+            storage.shutdown()
+        except Exception as e:
+            print(f"[警告] 持久化存储关闭异常: {e}")
 
 # 初始化沙箱（优先使用新架构）
 if SANDBOX_AVAILABLE:
@@ -595,8 +932,20 @@ def startup_event():
     print("=" * 60)
     print("优化版任务调度器 v2.2.0")
     print(f"服务器ID: {storage.server_id}")
-    print("功能: 节点三状态判断、智能调度、稳定显示")
+    print(f"存储后端: {backend}")
+    if isinstance(storage, PersistentSchedulerStorage):
+        persistence_info = storage.get_system_stats().get("persistence", {})
+        print(f"数据库路径: {persistence_info.get('db_path', 'N/A')}")
+        print(f"缓存任务数: {persistence_info.get('cached_tasks', 0)}")
+    print("功能: 节点三状态判断、智能调度、稳定显示、SQLite持久化")
     print("=" * 60)
+
+
+@app.on_event("shutdown")
+def shutdown_event():
+    """关闭事件"""
+    if isinstance(storage, PersistentSchedulerStorage):
+        storage.shutdown()
 
 # ==================== API端点 ====================
 @app.get("/")
@@ -627,8 +976,9 @@ async def health_check():
     }
 
 @app.post("/submit")
-async def submit_task(submission: TaskSubmission, background_tasks: BackgroundTasks):
-    """提交任务"""
+@rate_limit("10/minute")
+async def submit_task(request: Request, submission: TaskSubmission, background_tasks: BackgroundTasks):
+    """提交任务 - 限流: 10次/分钟"""
     if not submission.code.strip():
         raise HTTPException(status_code=400, detail="代码不能为空")
 
@@ -723,8 +1073,9 @@ async def get_stats():
 
 # ==================== 节点管理API ====================
 @app.post("/api/nodes/register")
-async def register_node(registration: NodeRegistration):
-    """注册节点"""
+@rate_limit("5/minute")
+async def register_node(request: Request, registration: NodeRegistration):
+    """注册节点 - 限流: 5次/分钟"""
     success = storage.register_node(registration)
     if not success:
         raise HTTPException(status_code=500, detail="注册失败")
@@ -778,8 +1129,9 @@ async def list_nodes(online_only: bool = True):
         raise HTTPException(status_code=500, detail=f"获取节点失败: {str(e)}") from e
 
 @app.post("/api/nodes/activate-local")
-async def activate_local_node(config: dict = Body(...)):
-    """激活本地节点"""
+@rate_limit("5/minute")
+async def activate_local_node(request: Request, config: dict = Body(...)):
+    """激活本地节点 - 限流: 5次/分钟"""
     try:
         import uuid
         node_id = f"local-{uuid.uuid4().hex[:8]}-{int(time.time())}"

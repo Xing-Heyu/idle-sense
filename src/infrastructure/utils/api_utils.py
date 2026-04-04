@@ -196,9 +196,9 @@ def retry_on_failure(
                         time.sleep(current_delay)
                         current_delay *= backoff
                     else:
-                        raise last_exception from e
+                        raise
 
-            raise last_exception from last_exception
+            raise last_exception from None
 
         return wrapper
     return decorator

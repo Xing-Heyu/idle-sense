@@ -41,10 +41,19 @@ except ImportError:
 from config.settings import get_settings
 from legacy.token_economy import TokenEconomy
 from src.core.services import IdleDetectionService, PermissionService, TokenEconomyService
+from src.core.services.contribution_proof_service import ContributionProofService
+from src.core.services.merit_rank_service import MeritRankEngine
 from src.core.use_cases.auth import LoginUseCase, RegisterUseCase
 from src.core.use_cases.system import CreateFoldersUseCase, FolderService
+from src.core.use_cases.task import (
+    CompleteTaskWithTokenEconomyUseCase,
+    SubmitTaskWithTokenEconomyUseCase,
+)
 from src.infrastructure.audit import AuditLogger
 from src.infrastructure.external import DistributedTaskClient, SchedulerClient
+from src.infrastructure.persistence import ensure_data_dirs, get_db_path
+from src.infrastructure.persistence.persistent_node_storage import PersistentNodeStorage
+from src.infrastructure.persistence.persistent_task_storage import PersistentTaskStorage
 from src.infrastructure.repositories import (
     FileUserRepository,
     InMemoryNodeRepository,
@@ -54,9 +63,14 @@ from src.infrastructure.repositories import (
     SQLiteNodeRepository,
     SQLiteTaskRepository,
 )
+from src.infrastructure.repositories.sqlite_token_repository import SQLiteTokenRepository
 from src.infrastructure.sandbox import IsolationLevel, SandboxConfig, SandboxFactory
 from src.infrastructure.scheduler import AdvancedScheduler, SchedulingPolicy, SimpleScheduler
 from src.infrastructure.utils import MemoryCache
+from src.presentation.streamlit.utils.session_backend import (
+    FileSessionBackend,
+    SessionBackendFactory,
+)
 
 
 def create_node_repository(backend: str, config):
@@ -85,6 +99,43 @@ def create_task_repository(backend: str, config):
         )
     else:
         return InMemoryTaskRepository()
+
+
+def create_persistent_task_storage(persistence_config, storage_config):
+    """创建持久化任务存储实例"""
+    if persistence_config.STORAGE_BACKEND == "memory":
+        return None
+    db_path = persistence_config.DB_PATH or str(get_db_path())
+    storage = PersistentTaskStorage(db_path=db_path)
+    storage.init_sync()
+    return storage
+
+
+def create_persistent_node_storage(persistence_config, storage_config):
+    """创建持久化节点存储实例"""
+    if persistence_config.STORAGE_BACKEND == "memory":
+        return None
+    db_path = persistence_config.DB_PATH or str(get_db_path())
+    return PersistentNodeStorage(db_path=db_path)
+
+
+def create_token_repository(persistence_config, storage_config):
+    """创建代币仓储实例"""
+    if not persistence_config.TOKEN_ECONOMY_PERSISTENCE:
+        return None
+    db_path = persistence_config.DB_PATH or str(get_db_path())
+    return SQLiteTokenRepository(db_path=db_path)
+
+
+def create_session_backend(persistence_config, storage_config):
+    """创建会话后端实例"""
+    session_dir = str(storage_config.TEMP_DIR / "sessions") if hasattr(storage_config.TEMP_DIR, '__truediv__') else "data/sessions"
+    return SessionBackendFactory.create_backend(
+        backend_type=persistence_config.SESSION_BACKEND_TYPE,
+        redis_url=storage_config.REDIS_URL,
+        default_ttl=3600,
+        session_dir=session_dir,
+    )
 
 
 class Container(containers.DeclarativeContainer if DEPENDENCY_INJECTOR_AVAILABLE else object):
@@ -129,6 +180,10 @@ class Container(containers.DeclarativeContainer if DEPENDENCY_INJECTOR_AVAILABLE
             TokenEconomyService,
             token_economy=token_economy
         )
+
+        merit_rank_engine = providers.Singleton(MeritRankEngine)
+
+        contribution_proof_service = providers.Singleton(ContributionProofService)
 
         idle_detection_service = providers.Singleton(
             IdleDetectionService,
@@ -175,6 +230,35 @@ class Container(containers.DeclarativeContainer if DEPENDENCY_INJECTOR_AVAILABLE
             users_dir=config.provided.STORAGE.USERS_DIR
         )
 
+        persistence_settings = providers.Singleton(
+            lambda c: c.PERSISTENCE,
+            config=config
+        )
+
+        persistent_task_storage = providers.Singleton(
+            create_persistent_task_storage,
+            persistence_config=persistence_settings,
+            config=config.provided.STORAGE
+        )
+
+        persistent_node_storage = providers.Singleton(
+            create_persistent_node_storage,
+            persistence_config=persistence_settings,
+            config=config.provided.STORAGE
+        )
+
+        token_repository = providers.Singleton(
+            create_token_repository,
+            persistence_config=persistence_settings,
+            config=config.provided.STORAGE
+        )
+
+        session_backend = providers.Singleton(
+            create_session_backend,
+            persistence_config=persistence_settings,
+            config=config.provided.STORAGE
+        )
+
         audit_logger = providers.Singleton(
             AuditLogger,
             db_path="audit.db"
@@ -198,6 +282,24 @@ class Container(containers.DeclarativeContainer if DEPENDENCY_INJECTOR_AVAILABLE
         create_folders_use_case = providers.Factory(
             CreateFoldersUseCase,
             folder_service=folder_service
+        )
+
+        submit_task_with_token_use_case = providers.Factory(
+            SubmitTaskWithTokenEconomyUseCase,
+            task_repository=task_repository,
+            scheduler_service=scheduler_client,
+            token_economy_service=token_economy_service,
+            audit_logger=audit_logger
+        )
+
+        complete_task_with_token_use_case = providers.Factory(
+            CompleteTaskWithTokenEconomyUseCase,
+            task_repository=task_repository,
+            scheduler_service=scheduler_client,
+            token_economy_service=token_economy_service,
+            merit_rank_engine=merit_rank_engine,
+            contribution_proof_service=contribution_proof_service,
+            audit_logger=audit_logger
         )
 
         try:
@@ -227,6 +329,8 @@ class Container(containers.DeclarativeContainer if DEPENDENCY_INJECTOR_AVAILABLE
             )
             self._token_economy = TokenEconomy()
             self._token_economy_service = TokenEconomyService(self._token_economy)
+            self._merit_rank_engine = MeritRankEngine()
+            self._contribution_proof_service = ContributionProofService()
             self._idle_detection_service = IdleDetectionService(
                 idle_threshold_sec=self._config.TOKEN.UPTIME_REWARD_INTERVAL
             )
@@ -250,6 +354,19 @@ class Container(containers.DeclarativeContainer if DEPENDENCY_INJECTOR_AVAILABLE
             self._user_repository = FileUserRepository(
                 users_dir=self._config.STORAGE.USERS_DIR
             )
+            self._persistence_settings = self._config.PERSISTENCE
+            self._persistent_task_storage = create_persistent_task_storage(
+                self._persistence_settings, self._config.STORAGE
+            )
+            self._persistent_node_storage = create_persistent_node_storage(
+                self._persistence_settings, self._config.STORAGE
+            )
+            self._token_repository = create_token_repository(
+                self._persistence_settings, self._config.STORAGE
+            )
+            self._session_backend = create_session_backend(
+                self._persistence_settings, self._config.STORAGE
+            )
             self._audit_logger = AuditLogger(db_path="audit.db")
             self._register_use_case = RegisterUseCase(
                 self._user_repository,
@@ -259,6 +376,20 @@ class Container(containers.DeclarativeContainer if DEPENDENCY_INJECTOR_AVAILABLE
             self._permission_service = PermissionService()
             self._folder_service = FolderService()
             self._create_folders_use_case = CreateFoldersUseCase(self._folder_service)
+            self._submit_task_with_token_use_case = SubmitTaskWithTokenEconomyUseCase(
+                self._task_repository,
+                self._scheduler_client,
+                self._token_economy_service,
+                self._audit_logger
+            )
+            self._complete_task_with_token_use_case = CompleteTaskWithTokenEconomyUseCase(
+                self._task_repository,
+                self._scheduler_client,
+                self._token_economy_service,
+                self._merit_rank_engine,
+                self._contribution_proof_service,
+                self._audit_logger
+            )
             try:
                 from legacy.distributed_task import DistributedTaskManager
                 manager = DistributedTaskManager(self._config.SCHEDULER.URL)
@@ -285,6 +416,14 @@ class Container(containers.DeclarativeContainer if DEPENDENCY_INJECTOR_AVAILABLE
         @property
         def token_economy_service(self):
             return self._token_economy_service
+
+        @property
+        def merit_rank_engine(self):
+            return self._merit_rank_engine
+
+        @property
+        def contribution_proof_service(self):
+            return self._contribution_proof_service
 
         @property
         def idle_detection_service(self):
@@ -319,6 +458,26 @@ class Container(containers.DeclarativeContainer if DEPENDENCY_INJECTOR_AVAILABLE
             return self._user_repository
 
         @property
+        def persistence_settings(self):
+            return self._persistence_settings
+
+        @property
+        def persistent_task_storage(self):
+            return self._persistent_task_storage
+
+        @property
+        def persistent_node_storage(self):
+            return self._persistent_node_storage
+
+        @property
+        def token_repository(self):
+            return self._token_repository
+
+        @property
+        def session_backend(self):
+            return self._session_backend
+
+        @property
         def audit_logger(self):
             return self._audit_logger
 
@@ -341,6 +500,14 @@ class Container(containers.DeclarativeContainer if DEPENDENCY_INJECTOR_AVAILABLE
         @property
         def create_folders_use_case(self):
             return self._create_folders_use_case
+
+        @property
+        def submit_task_with_token_use_case(self):
+            return self._submit_task_with_token_use_case
+
+        @property
+        def complete_task_with_token_use_case(self):
+            return self._complete_task_with_token_use_case
 
         @property
         def distributed_task_client(self):
@@ -384,6 +551,10 @@ __all__ = [
     "DEPENDENCY_INJECTOR_AVAILABLE",
     "create_node_repository",
     "create_task_repository",
+    "create_persistent_task_storage",
+    "create_persistent_node_storage",
+    "create_token_repository",
+    "create_session_backend",
 ]
 
 if DEPENDENCY_INJECTOR_AVAILABLE:

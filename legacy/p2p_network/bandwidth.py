@@ -154,9 +154,8 @@ class BandwidthManager:
             self._stats["throttled_count"] += 1
             return False
 
-        if connection_id and connection_id in self._connection_buckets:
-            if not self._connection_buckets[connection_id].consume(size):
-                return False
+        if connection_id and connection_id in self._connection_buckets and not self._connection_buckets[connection_id].consume(size):
+            return False
 
         return True
 
@@ -165,9 +164,8 @@ class BandwidthManager:
         if not self.download_bucket.consume(size):
             return False
 
-        if connection_id and connection_id in self._connection_buckets:
-            if not self._connection_buckets[connection_id].consume(size):
-                return False
+        if connection_id and connection_id in self._connection_buckets and not self._connection_buckets[connection_id].consume(size):
+            return False
 
         return True
 

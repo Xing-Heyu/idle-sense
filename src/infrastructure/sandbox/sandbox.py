@@ -580,13 +580,13 @@ class WASMSandbox(BaseSandbox):
     def _check_wasm(self) -> bool:
         if self.runtime == "wasmer":
             try:
-                import wasmer
+                import wasmer  # noqa: F401
                 return True
             except ImportError:
                 pass
         elif self.runtime == "wasmtime":
             try:
-                import wasmtime
+                import wasmtime  # noqa: F401
                 return True
             except ImportError:
                 pass
@@ -604,13 +604,13 @@ class WASMSandbox(BaseSandbox):
     def _compile_python_to_wasm(self, code: str) -> Optional[bytes]:
         try:
             try:
-                import pyodide
+                import pyodide  # noqa: F401
                 return self._compile_with_pyodide(code)
             except ImportError:
                 pass
 
             try:
-                import rustpython
+                import rustpython  # noqa: F401
                 return self._compile_with_rustpython(code)
             except ImportError:
                 pass
@@ -689,7 +689,7 @@ class WASMSandbox(BaseSandbox):
     def _execute_with_wasmer(self, code: str, start_time: float) -> ExecutionResult:
         try:
             import wasmer
-            from wasmer import Instance, Memory, Module, Store
+            from wasmer import Instance, Module, Store  # noqa: F401
 
             wasm_bytes = self._compile_python_to_wasm(code)
             if wasm_bytes is None:

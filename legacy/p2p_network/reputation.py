@@ -234,12 +234,11 @@ class ReputationManager:
         if not reputation:
             return
 
-        if reputation.trust_score < self.config.BLACKLIST_THRESHOLD:
-            if node_id not in self.blacklist:
-                self.blacklist.add(node_id)
-                reputation.is_blacklisted = True
-                reputation.blacklist_reason = "Low trust score"
-                self._stats["nodes_blacklisted"] += 1
+        if reputation.trust_score < self.config.BLACKLIST_THRESHOLD and node_id not in self.blacklist:
+            self.blacklist.add(node_id)
+            reputation.is_blacklisted = True
+            reputation.blacklist_reason = "Low trust score"
+            self._stats["nodes_blacklisted"] += 1
 
     def _update_stats(self):
         """Update statistics."""

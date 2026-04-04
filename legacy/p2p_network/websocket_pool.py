@@ -353,9 +353,8 @@ class WebSocketConnectionPool:
 
         for peer_id in targets:
             conn = self._get_available_connection(peer_id)
-            if conn:
-                if await self.send_message(conn.connection_id, message):
-                    success_count += 1
+            if conn and await self.send_message(conn.connection_id, message):
+                success_count += 1
 
         return success_count
 
@@ -406,9 +405,8 @@ class WebSocketConnectionPool:
             for conn_id, conn in list(self._connections.items()):
                 if conn.state == ConnectionState.ERROR:
                     await self.reconnect(conn_id)
-                elif conn.state == ConnectionState.CONNECTED:
-                    if conn.idle_time > self.config.idle_timeout:
-                        await self.release_connection(conn_id)
+                elif conn.state == ConnectionState.CONNECTED and conn.idle_time > self.config.idle_timeout:
+                    await self.release_connection(conn_id)
 
     async def _run_cleanup(self):
         """Cleanup idle connections."""

@@ -7,7 +7,7 @@ RBAC 权限模型
 from dataclasses import dataclass, field
 from enum import Enum
 from functools import wraps
-from typing import Any, Callable, Set
+from typing import Any, Callable
 
 
 class Permission(Enum):
@@ -35,7 +35,7 @@ class Role:
     """角色定义"""
 
     name: str
-    permissions: Set[Permission] = field(default_factory=set)
+    permissions: set[Permission] = field(default_factory=set)
     description: str = ""
 
     def has_permission(self, permission: Permission) -> bool:
@@ -112,7 +112,7 @@ class PermissionService:
     """
 
     def __init__(self):
-        self.user_roles: dict[str, Set[str]] = {}
+        self.user_roles: dict[str, set[str]] = {}
         self._lock = None
 
     def assign_role(self, user_id: str, role_name: str) -> bool:
@@ -144,10 +144,10 @@ class PermissionService:
 
         return False
 
-    def get_user_permissions(self, user_id: str) -> Set[Permission]:
+    def get_user_permissions(self, user_id: str) -> set[Permission]:
         """获取用户所有权限"""
         user_roles = self.user_roles.get(user_id, set())
-        permissions: Set[Permission] = set()
+        permissions: set[Permission] = set()
 
         for role_name in user_roles:
             role = ROLES.get(role_name)

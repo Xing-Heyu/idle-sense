@@ -179,10 +179,8 @@ class InputValidator:
         }
 
         for node in ast.walk(tree):
-            if isinstance(node, ast.Call):
-                if isinstance(node.func, ast.Name):
-                    if node.func.id in dangerous_builtins:
-                        result.add_error(f"禁止调用危险函数: {node.func.id}")
+            if isinstance(node, ast.Call) and isinstance(node.func, ast.Name) and node.func.id in dangerous_builtins:
+                result.add_error(f"禁止调用危险函数: {node.func.id}")
 
             elif isinstance(node, ast.Attribute):
                 if node.attr in dangerous_attrs:
@@ -194,11 +192,10 @@ class InputValidator:
                     if module_name in {'os', 'sys', 'subprocess', 'socket', 'pickle', 'marshal'}:
                         result.add_error(f"禁止导入危险模块: {module_name}")
 
-            elif isinstance(node, ast.ImportFrom):
-                if node.module:
-                    module_name = node.module.split('.')[0]
-                    if module_name in {'os', 'sys', 'subprocess', 'socket', 'pickle', 'marshal'}:
-                        result.add_error(f"禁止从危险模块导入: {module_name}")
+            elif isinstance(node, ast.ImportFrom) and node.module:
+                module_name = node.module.split('.')[0]
+                if module_name in {'os', 'sys', 'subprocess', 'socket', 'pickle', 'marshal'}:
+                    result.add_error(f"禁止从危险模块导入: {module_name}")
 
     def validate_task_input(
         self,
@@ -289,9 +286,8 @@ class InputValidator:
             result.add_error(f"字段 '{field_name}' 的值 '{value}' 不在允许的选项中: {choices}")
 
         pattern = schema.get("pattern")
-        if pattern and isinstance(value, str):
-            if not re.match(pattern, value):
-                result.add_error(f"字段 '{field_name}' 的值 '{value}' 不匹配模式: {pattern}")
+        if pattern and isinstance(value, str) and not re.match(pattern, value):
+            result.add_error(f"字段 '{field_name}' 的值 '{value}' 不匹配模式: {pattern}")
 
         custom_validator = schema.get("custom")
         if custom_validator and callable(custom_validator):

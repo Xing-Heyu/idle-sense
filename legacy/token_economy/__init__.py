@@ -16,7 +16,9 @@ References:
 - Buterin, "A Next-Generation Smart Contract Platform" (2014)
 """
 
+import asyncio
 import hashlib
+import os
 import time
 from dataclasses import dataclass, field
 from enum import Enum
@@ -463,6 +465,122 @@ class StakingManager:
         }
 
 
+_PERSISTENCE_ENABLED = os.getenv("TOKEN_ECONOMY_PERSISTENCE", "true").lower() in ("true", "1", "yes")
+
+
+class TokenEconomyPersistenceAdapter:
+    """Bridge between synchronous TokenEconomy and asynchronous SQLiteTokenRepository.
+
+    Wraps SQLiteTokenRepository to provide a sync interface that TokenEconomy
+    can call. All async operations are internally resolved via asyncio.
+    """
+
+    def __init__(self, repository):
+        self._repo = repository
+        self._enabled = _PERSISTENCE_ENABLED
+        self._loop: Optional[asyncio.AbstractEventLoop] = None
+        self._stake_id_map: dict[str, int] = {}
+
+    def _get_loop(self) -> asyncio.AbstractEventLoop:
+        if self._loop is None or self._loop.is_closed():
+            try:
+                self._loop = asyncio.get_running_loop()
+            except RuntimeError:
+                self._loop = asyncio.new_event_loop()
+                asyncio.set_event_loop(self._loop)
+        return self._loop
+
+    def _run_async(self, coro):
+        if not self._enabled:
+            return None
+        try:
+            loop = self._get_loop()
+            if loop.is_running():
+                import concurrent.futures
+                with concurrent.futures.ThreadPoolExecutor(max_workers=1) as pool:
+                    future = pool.submit(asyncio.run, coro)
+                    return future.result(timeout=30)
+            else:
+                return loop.run_until_complete(coro)
+        except Exception as e:
+            return None
+
+    @property
+    def enabled(self) -> bool:
+        return self._enabled
+
+    def ensure_account(self, address: str) -> Optional[Any]:
+        return self._run_async(self._repo.get_or_create_account(address))
+
+    def persist_reward(self, to_address: str, amount: float, from_address: str = "treasury",
+                       reward_type: str = "reward") -> Optional[Any]:
+        return self._run_async(
+            self._repo.add_transaction(
+                to_user_id=to_address,
+                amount=amount,
+                tx_type="reward",
+                from_user_id=from_address,
+                description=f"token_economy:{reward_type}",
+            )
+        )
+
+    def persist_transfer(self, from_address: str, to_address: str,
+                         amount: float, tx_type: str = "transfer") -> Optional[Any]:
+        return self._run_async(
+            self._repo.transfer(
+                from_user_id=from_address,
+                to_user_id=to_address,
+                amount=amount,
+                tx_type=tx_type,
+            )
+        )
+
+    def persist_deposit(self, address: str, amount: float) -> Optional[Any]:
+        return self._run_async(
+            self._repo.add_transaction(
+                to_user_id=address,
+                amount=amount,
+                tx_type="deposit",
+                description="token_economy:deposit",
+            )
+        )
+
+    def persist_withdraw(self, address: str, amount: float) -> Optional[Any]:
+        return self._run_async(
+            self._repo.transfer(
+                from_user_id=address,
+                to_user_id="external",
+                amount=amount,
+                tx_type="withdraw",
+            )
+        )
+
+    def persist_stake(self, address: str, amount: float) -> Optional[Any]:
+        result = self._run_async(self._repo.stake(address, amount))
+        if result and hasattr(result, 'id'):
+            self._stake_id_map[address] = result.id
+        return result
+
+    def persist_unstake(self, address: str) -> Optional[Any]:
+        stake_id = self._stake_id_map.get(address)
+        if stake_id is None:
+            return None
+        try:
+            result = self._run_async(self._repo.unstake(stake_id))
+            if result:
+                self._stake_id_map.pop(address, None)
+            return result
+        except Exception:
+            return None
+
+    def get_persisted_balance(self, address: str) -> Optional[float]:
+        result = self._run_async(self._repo.get_balance(address))
+        return result
+
+    def close(self):
+        self._run_async(self._repo.close())
+
+
 class TokenEconomy:
     """Main token economy system for distributed computing platform.
 
@@ -473,7 +591,7 @@ class TokenEconomy:
     TOKEN_SYMBOL = "CMP"
     INITIAL_SUPPLY = 1_000_000_000.0
 
-    def __init__(self):
+    def __init__(self, repository=None):
         self.pricing = PricingEngine()
         self.reputation = ReputationSystem()
         self.staking = StakingManager()
@@ -484,8 +602,15 @@ class TokenEconomy:
         self._total_supply = self.INITIAL_SUPPLY
         self._treasury_address = "treasury"
 
+        self._persistence: Optional[TokenEconomyPersistenceAdapter] = None
+        if repository is not None:
+            self._persistence = TokenEconomyPersistenceAdapter(repository)
+
         self._create_account(self._treasury_address)
         self._accounts[self._treasury_address].balance = self.INITIAL_SUPPLY
+
+        if self._persistence:
+            self._persistence.ensure_account(self._treasury_address)
 
     def _generate_tx_id(self) -> str:
         return hashlib.sha256(f"{time.time()}:{len(self._transactions)}".encode()).hexdigest()[:16]
@@ -493,6 +618,8 @@ class TokenEconomy:
     def _create_account(self, address: str) -> Account:
         if address not in self._accounts:
             self._accounts[address] = Account(address=address)
+            if self._persistence:
+                self._persistence.ensure_account(address)
         return self._accounts[address]
 
     def get_account(self, address: str) -> Optional[Account]:
@@ -536,6 +663,10 @@ class TokenEconomy:
         )
 
         self._transactions.append(tx)
+
+        if self._persistence and from_account:
+            self._persistence.persist_transfer(from_address, to_address, amount, tx_type="transfer")
+
         return tx
 
     def deposit(self, address: str, amount: float) -> Transaction:
@@ -551,6 +682,9 @@ class TokenEconomy:
 
         account.balance += amount
         self._transactions.append(tx)
+
+        if self._persistence:
+            self._persistence.persist_deposit(address, amount)
 
         return tx
 
@@ -570,6 +704,10 @@ class TokenEconomy:
         )
 
         self._transactions.append(tx)
+
+        if self._persistence:
+            self._persistence.persist_withdraw(address, amount)
+
         return tx
 
     def stake(self, address: str, amount: float) -> tuple[bool, Optional[Transaction]]:
@@ -590,6 +728,8 @@ class TokenEconomy:
         )
 
         self._transactions.append(tx)
+        if self._persistence:
+            self._persistence.persist_stake(address, amount)
         return True, tx
 
     def unstake(self, address: str, amount: Optional[float] = None) -> tuple[float, Optional[Transaction]]:
@@ -610,6 +750,8 @@ class TokenEconomy:
         )
 
         self._transactions.append(tx)
+        if self._persistence:
+            self._persistence.persist_unstake(address)
         return unstaked, tx
 
     def create_task_payment(
@@ -714,6 +856,14 @@ class TokenEconomy:
         )
 
         self._transactions.append(tx)
+
+        if self._persistence:
+            self._persistence.persist_reward(
+                to_address=worker_address,
+                amount=actual_reward,
+                from_address="escrow",
+                reward_type="task_reward",
+            )
 
         return actual_reward, tx
 
@@ -897,6 +1047,14 @@ class TokenEconomy:
 
         self._transactions.append(tx)
 
+        if self._persistence:
+            self._persistence.persist_reward(
+                to_address=node_id,
+                amount=reward_amount,
+                from_address=self._treasury_address,
+                reward_type="uptime",
+            )
+
         self.reputation.update_reputation(
             node_account,
             ReputationAction.UPTIME_GOOD
@@ -958,5 +1116,6 @@ __all__ = [
     "PricingEngine",
     "ReputationSystem",
     "StakingManager",
+    "TokenEconomyPersistenceAdapter",
     "TokenEconomy",
 ]

@@ -75,13 +75,11 @@ class CodeSandbox:
                             }
 
                 # 检查属性访问
-                elif isinstance(node, ast.Attribute) and isinstance(node.value, ast.Name):
-                    attr_name = node.attr
-                    if attr_name.startswith('_'):
-                        return {
-                            'safe': False,
-                            'error': f'禁止访问私有属性: {attr_name}'
-                        }
+                elif isinstance(node, ast.Attribute) and isinstance(node.value, ast.Name) and node.attr.startswith('_'):
+                    return {
+                        'safe': False,
+                        'error': f'禁止访问私有属性: {node.attr}'
+                    }
 
             return {'safe': True, 'message': '代码安全检查通过'}
 

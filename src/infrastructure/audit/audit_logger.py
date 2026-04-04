@@ -22,11 +22,26 @@ class AuditAction(Enum):
     USER_REGISTER = "user:register"
 
     TASK_SUBMIT = "task:submit"
+    TASK_COMPLETE = "task:complete"
     TASK_CANCEL = "task:cancel"
     TASK_DELETE = "task:delete"
 
     NODE_ACTIVATE = "node:activate"
     NODE_STOP = "node:stop"
+
+    TOKEN_DEPOSIT = "token:deposit"
+    TOKEN_WITHDRAW = "token:withdraw"
+    TOKEN_TRANSFER = "token:transfer"
+    TOKEN_STAKE = "token:stake"
+    TOKEN_UNSTAKE = "token:unstake"
+    TOKEN_REWARD = "token:reward"
+    TOKEN_PAYMENT = "token:payment"
+
+    REPUTATION_UPDATE = "reputation:update"
+    REPUTATION_PENALTY = "reputation:penalty"
+
+    CONTRIBUTION_PROOF_CREATE = "contribution_proof:create"
+    CONTRIBUTION_PROOF_VERIFY = "contribution_proof:verify"
 
     SYSTEM_CONFIG_CHANGE = "system:config_change"
 
@@ -114,8 +129,8 @@ class AuditLogger:
         self,
         action: AuditAction,
         user_id: str,
-        resource_type: str,
-        resource_id: str,
+        resource_type: str = "system",
+        resource_id: str = "system",
         details: Optional[dict[str, Any]] = None,
         ip_address: Optional[str] = None,
         user_agent: Optional[str] = None,

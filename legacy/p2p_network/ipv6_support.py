@@ -196,9 +196,8 @@ class IPv6Support:
         if family is None:
             family = self._get_preferred_family()
 
-        if family == AddressFamily.IPv6:
-            if not self._ipv6_available:
-                family = AddressFamily.IPv4
+        if family == AddressFamily.IPv6 and not self._ipv6_available:
+            family = AddressFamily.IPv4
 
         addr_family = socket.AF_INET6 if family == AddressFamily.IPv6 else socket.AF_INET
 
