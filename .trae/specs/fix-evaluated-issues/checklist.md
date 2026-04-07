@@ -1,0 +1,14 @@
+- [x] `.gitignore` 包含 `*.db` 排除规则，`audit.db` 不再被 git 跟踪
+- [x] `rate_limiter.py` 中 `except ImportError` 和 `except Exception` 均记录 `logging.warning` 级别日志
+- [x] `simple_server.py` CORS 配置从环境变量 `CORS_ALLOWED_ORIGINS` 读取，开发环境默认 `*`
+- [x] `allow_origins=["*"]` 时 `allow_credentials=False`，指定具体域名时 `allow_credentials=True`
+- [x] `config/.env.example` 中已删除 `REQUIRE_AUTH=false` 和 `ALLOWED_ORIGINS=*`，已添加 `CORS_ALLOWED_ORIGINS=*`
+- [x] `docs/DEPLOYMENT.md` 中已删除 `REQUIRE_AUTH` 和 `ALLOWED_ORIGINS` 相关说明
+- [x] `scripts/setup_scheduler.sh` 中已删除 `REQUIRE_AUTH=false` 和 `ALLOWED_ORIGINS=*` 行
+- [x] `.github/workflows/ci.yml` 中所有步骤不再使用 `|| true` 容错
+- [x] `.github/workflows/ci.yml` 安全扫描 `exit-code` 为 `1`
+- [x] `.github/workflows/ci.yml` Python 版本矩阵不包含 3.8
+- [x] `TokenEncryption` 加密时 salt 与密文一起存储，解密时从存储数据提取 salt
+- [x] `TokenEncryption` 向后兼容旧格式数据
+- [x] `config/settings.py` 提供 `clear_settings_cache()` 函数
+- [x] 所有单元测试通过，无回归

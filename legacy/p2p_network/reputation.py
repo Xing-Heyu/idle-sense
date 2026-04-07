@@ -132,7 +132,7 @@ class ReputationConfig:
 class ReputationManager:
     """
     Manages node reputation in the P2P network.
-    
+
     Features:
     - EigenTrust-inspired trust calculation
     - Event-based reputation updates
@@ -169,12 +169,12 @@ class ReputationManager:
     ) -> float:
         """
         Record a reputation event for a node.
-        
+
         Args:
             node_id: The node ID
             event_type: Type of event
             details: Additional details
-            
+
         Returns:
             The new trust score
         """
@@ -292,11 +292,11 @@ class ReputationManager:
     def select_best_peers(self, count: int = 5, exclude: set[str] = None) -> list[str]:
         """
         Select the best peers based on reputation.
-        
+
         Args:
             count: Number of peers to select
             exclude: Set of node IDs to exclude
-            
+
         Returns:
             List of node IDs sorted by reputation
         """
@@ -321,16 +321,16 @@ class ReputationManager:
     def calculate_eigen_trust(self, iterations: int = 10) -> dict[str, float]:
         """
         Calculate global trust scores using EigenTrust algorithm.
-        
+
         Args:
             iterations: Number of iterations for convergence
-            
+
         Returns:
             Dictionary of node_id -> global trust score
         """
         nodes = list(set(
             list(self.trust_matrix.keys()) +
-            [n for d in self.trust_matrix.values() for n in d.keys()]
+            [n for d in self.trust_matrix.values() for n in d]
         ))
 
         if not nodes:

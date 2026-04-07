@@ -222,7 +222,7 @@ def render_sidebar():
                 with col2:
                     st.metric(f"声誉 ({account['tier']})", f"{account['reputation']:.0f}")
 
-            if st.button("退出登录", use_container_width=True):
+            if st.button("退出登录", width="stretch"):
                 st.markdown("<script>localStorage.removeItem('idle_accelerator_session');</script>", unsafe_allow_html=True)
                 st.session_state.user_session = None
                 st.query_params.clear()
@@ -231,7 +231,7 @@ def render_sidebar():
             st.warning("🔒 未登录")
             username = st.text_input("用户名", key="sidebar_username")
 
-            if st.button("快速登录", use_container_width=True) and username:
+            if st.button("快速登录", width="stretch") and username:
                 user_id = f"local_{hashlib.md5(username.encode()).hexdigest()[:8]}"
                 session_data = {"username": username, "user_id": user_id}
                 st.session_state.user_session = session_data
@@ -283,7 +283,7 @@ def render_task_submission():
             placeholder="# 在这里编写代码\nprint('Hello, IdleSense!')"
         )
 
-        if st.button("✨ 提交任务", use_container_width=True, type="primary"):
+        if st.button("✨ 提交任务", width="stretch", type="primary"):
             if not code.strip():
                 st.toast("⚠️ 请输入代码", icon="⚠️")
             else:
@@ -341,7 +341,7 @@ def render_task_monitor():
 
             if results_data:
                 df = pd.DataFrame(results_data)
-                st.dataframe(df, use_container_width=True, hide_index=True)
+                st.dataframe(df, width="stretch", hide_index=True)
         else:
             st.info("暂无已完成的任务")
     else:
@@ -358,7 +358,7 @@ def render_node_management():
     col1, col2 = st.columns(2)
 
     with col1:
-        if st.button("🚀 激活本机节点", use_container_width=True, type="primary"):
+        if st.button("🚀 激活本机节点", width="stretch", type="primary"):
             user_id = st.session_state.user_session.get("user_id") if st.session_state.user_session else None
             client = get_scheduler_client()
 
@@ -381,7 +381,7 @@ def render_node_management():
     with col2:
         local_node_id = st.session_state.get("local_node_id")
         if local_node_id:
-            if st.button("🛑 停止本机节点", use_container_width=True):
+            if st.button("🛑 停止本机节点", width="stretch"):
                 client = get_scheduler_client()
                 success, result = client.stop_node(local_node_id)
 
@@ -392,7 +392,7 @@ def render_node_management():
                 else:
                     st.toast("❌ 停止失败", icon="❌")
         else:
-            st.button("🛑 停止本机节点", use_container_width=True, disabled=True)
+            st.button("🛑 停止本机节点", width="stretch", disabled=True)
 
     st.markdown("---")
 
@@ -415,7 +415,7 @@ def render_node_management():
                 })
 
             df = pd.DataFrame(node_data)
-            st.dataframe(df, use_container_width=True, hide_index=True)
+            st.dataframe(df, width="stretch", hide_index=True)
 
             col1, col2, col3 = st.columns(3)
             with col1:
@@ -506,7 +506,7 @@ def render_task_results():
     if st.session_state.task_history:
         import pandas as pd
         df = pd.DataFrame(st.session_state.task_history)
-        st.dataframe(df, use_container_width=True, hide_index=True)
+        st.dataframe(df, width="stretch", hide_index=True)
     else:
         st.info("暂无任务历史记录")
 

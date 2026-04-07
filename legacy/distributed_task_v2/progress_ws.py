@@ -13,6 +13,7 @@ from collections import defaultdict
 from dataclasses import dataclass, field
 from enum import Enum
 from typing import Any, Callable, Optional
+import contextlib
 
 
 class MessageType(Enum):
@@ -297,10 +298,8 @@ class ProgressTracker:
     def unsubscribe(self, task_id: str, callback: Callable):
         """Unsubscribe from progress updates."""
         if task_id in self._subscribers:
-            try:
+            with contextlib.suppress(ValueError):
                 self._subscribers[task_id].remove(callback)
-            except ValueError:
-                pass
 
     def _notify(self, update: ProgressUpdate):
         """Notify subscribers of an update."""
@@ -309,10 +308,8 @@ class ProgressTracker:
             self._history[update.task_id].pop(0)
 
         for callback in self._subscribers.get(update.task_id, []):
-            try:
+            with contextlib.suppress(Exception):
                 callback(update)
-            except Exception:
-                pass
 
     def get_task_progress(self, task_id: str) -> Optional[TaskProgress]:
         """Get task progress."""

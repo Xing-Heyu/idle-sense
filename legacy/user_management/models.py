@@ -1,5 +1,6 @@
 import hashlib
 import os
+import secrets
 import uuid
 from datetime import datetime
 from typing import Any
@@ -17,9 +18,6 @@ def verify_password(password: str, stored_hash: str, salt: bytes) -> bool:
     """验证密码"""
     computed_hash, _ = hash_password(password, salt)
     return secrets.compare_digest(computed_hash, stored_hash)
-
-
-import secrets
 
 
 class User:
@@ -108,9 +106,7 @@ class UserQuota:
         self._reset_daily_if_needed()
         if self.daily_tasks_limit > 0 and self.daily_usage >= self.daily_tasks_limit:
             return False
-        if self.concurrent_tasks_limit > 0 and self.current_tasks >= self.concurrent_tasks_limit:
-            return False
-        return True
+        return not (self.concurrent_tasks_limit > 0 and self.current_tasks >= self.concurrent_tasks_limit)
 
     def get_rejection_reason(self) -> str | None:
         """获取拒绝原因"""

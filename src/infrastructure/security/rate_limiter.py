@@ -7,8 +7,11 @@ API 请求限流模块
 from dataclasses import dataclass
 from functools import wraps
 from typing import Callable, Optional
+import logging
 
 from fastapi import FastAPI, Request
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -60,9 +63,9 @@ class RateLimiter:
             self._app = app
 
         except ImportError:
-            pass
-        except Exception:
-            pass
+            logger.warning("slowapi 未安装，API 限流功能不可用。请运行: pip install slowapi")
+        except Exception as e:
+            logger.warning("限流器初始化失败: %s，API 限流功能不可用", e)
 
     @property
     def limiter(self):

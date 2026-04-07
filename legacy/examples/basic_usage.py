@@ -22,10 +22,7 @@ def monitor_idle_status(interval: int = 30):
         while True:
             current_time = time.strftime("%Y-%m-%d %H:%M:%S")
 
-            if is_idle():
-                status = "🔵 闲置中（可安全贡献算力）"
-            else:
-                status = "🔴 使用中（请勿打扰）"
+            status = "🔵 闲置中（可安全贡献算力）" if is_idle() else "🔴 使用中（请勿打扰）"
 
             print(f"[{current_time}] {status}")
             time.sleep(interval)

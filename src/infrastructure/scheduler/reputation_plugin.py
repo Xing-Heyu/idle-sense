@@ -13,14 +13,14 @@ from src.infrastructure.scheduler import PriorityPlugin, TaskInfo, NodeInfo
 class ReputationPriorityPlugin(PriorityPlugin):
     """
     声誉优先级插件
-    
+
     基于节点声誉计算调度优先级分数
     """
 
     def __init__(self, merit_rank_engine: MeritRankEngine):
         """
         初始化声誉优先级插件
-        
+
         Args:
             merit_rank_engine: MeritRank 声誉引擎实例
         """
@@ -29,23 +29,23 @@ class ReputationPriorityPlugin(PriorityPlugin):
     def calculate_score(self, task: TaskInfo, node: NodeInfo) -> float:
         """
         计算任务在节点上的优先级分数
-        
+
         分数组成:
         - 基础分: 0.5
         - 声誉分: 0.3 * (声誉 / 100)
         - 在线时间分: 0.2 * (如果节点在线)
-        
+
         Args:
             task: 任务信息
             node: 节点信息
-            
+
         Returns:
             优先级分数 (0.0 - 1.0)
         """
         score = 0.5
 
         node_address = node.node_id
-        
+
         reputation = self._merit_rank.get_reputation(node_address)
         reputation_score = (reputation / 100.0) * 0.3
         score += reputation_score
@@ -62,10 +62,10 @@ class ReputationPriorityPlugin(PriorityPlugin):
     def is_node_trusted(self, node_id: str) -> bool:
         """
         检查节点是否可信
-        
+
         Args:
             node_id: 节点ID
-            
+
         Returns:
             是否可信
         """
@@ -75,14 +75,14 @@ class ReputationPriorityPlugin(PriorityPlugin):
 class ReputationPredicate:
     """
     声誉谓词
-    
+
     检查节点声誉是否满足任务要求
     """
 
     def __init__(self, merit_rank_engine: MeritRankEngine, min_reputation: float = 40.0):
         """
         初始化声誉谓词
-        
+
         Args:
             merit_rank_engine: MeritRank 声誉引擎实例
             min_reputation: 最小声誉要求
@@ -93,11 +93,11 @@ class ReputationPredicate:
     def evaluate(self, task: TaskInfo, node: NodeInfo) -> bool:
         """
         评估节点是否满足声誉要求
-        
+
         Args:
             task: 任务信息
             node: 节点信息
-            
+
         Returns:
             是否满足要求
         """

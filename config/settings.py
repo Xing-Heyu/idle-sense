@@ -461,14 +461,13 @@ class Settings(BaseSettings):
 
 @lru_cache
 def get_settings() -> Settings:
-    """
-    获取配置实例（单例模式）
-
-    使用 lru_cache 确保配置只加载一次
-    """
     settings = Settings()
     settings.ensure_directories()
     return settings
+
+
+def clear_settings_cache() -> None:
+    get_settings.cache_clear()
 
 
 # 全局配置实例
@@ -488,4 +487,5 @@ __all__ = [
     "PersistenceSettings",
     "settings",
     "get_settings",
+    "clear_settings_cache",
 ]

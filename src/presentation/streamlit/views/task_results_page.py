@@ -69,7 +69,7 @@ def render(user_id: Optional[str] = None):
                 })
 
             results_df = pd.DataFrame(results_data)
-            st.dataframe(results_df, use_container_width=True, hide_index=True)
+            st.dataframe(results_df, width="stretch", hide_index=True)
 
             st.markdown("---")
 

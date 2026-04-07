@@ -59,12 +59,12 @@ class PermissionValidator:
 def require_permission(get_resource_user_id: Callable[..., str]):
     """
     权限验证装饰器
-    
+
     用法:
         @require_permission(lambda args, kwargs: kwargs.get('user_id'))
         def delete_task(task_id: str, user_id: str):
             ...
-    
+
     Args:
         get_resource_user_id: 从函数参数中获取资源所属用户ID的函数
     """
@@ -90,7 +90,7 @@ def require_permission(get_resource_user_id: Callable[..., str]):
 def require_session(func: Callable) -> Callable:
     """
     会话验证装饰器 - 仅验证会话有效性，不验证资源所有权
-    
+
     用法:
         @require_session
         def get_my_tasks(session_id: str):

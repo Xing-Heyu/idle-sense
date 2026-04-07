@@ -75,45 +75,71 @@ class INodeRepository(ABC):
         pass
 
     @abstractmethod
-    def list_all(self) -> list[Node]:
+    def list_all(self, limit: int = 100, offset: int = 0) -> list[Node]:
         """
         获取所有节点
 
+        Args:
+            limit: 返回记录的最大数量，默认100
+            offset: 偏移量，默认0
+
         Returns:
             节点实体列表
+
+        Raises:
+            ValueError: 参数非法时抛出
         """
         pass
 
     @abstractmethod
-    def list_by_status(self, status: NodeStatus) -> list[Node]:
+    def list_by_status(self, status: NodeStatus, limit: int = 100, offset: int = 0) -> list[Node]:
         """
         获取指定状态的节点列表
 
         Args:
             status: 节点状态
+            limit: 返回记录的最大数量，默认100
+            offset: 偏移量，默认0
 
         Returns:
             节点实体列表
+
+        Raises:
+            ValueError: 参数非法时抛出
         """
         pass
 
     @abstractmethod
-    def list_online(self) -> list[Node]:
+    def list_online(self, limit: int = 100, offset: int = 0) -> list[Node]:
         """
         获取所有在线节点
 
+        Args:
+            limit: 返回记录的最大数量，默认100
+            offset: 偏移量，默认0
+
         Returns:
             节点实体列表
+
+        Raises:
+            ValueError: 参数非法时抛出
         """
         pass
 
     @abstractmethod
-    def list_idle(self) -> list[Node]:
+    def list_idle(self, limit: int = 100, offset: int = 0) -> list[Node]:
         """
         获取所有空闲节点
 
+        Args:
+            limit: 返回记录的最大数量，默认100
+            offset: 偏移量，默认0
+
         Returns:
             节点实体列表
+
+        Raises:
+            ValueError: 参数非法时抛出
         """
         pass
 

@@ -15,6 +15,30 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from enum import Enum
 from typing import Any, Callable, Generic, Optional, TypeVar
+from legacy.distributed_task_v2.dag_engine import (
+    Checkpoint,
+    DAGBuilder,
+    DAGExecutionEngine,
+    DAGTask,
+    StageStatus,
+)
+from legacy.distributed_task_v2.dag_engine import (
+    Stage as DAGStage,
+)
+from legacy.distributed_task_v2.dag_engine import (
+    TaskChunk as DAGTaskChunk,
+)
+from legacy.distributed_task_v2.dag_engine import (
+    TaskStatus as DAGTaskStatus,
+)
+from legacy.distributed_task_v2.fault_tolerance import (
+    CircuitBreaker,
+    FailureType,
+    FaultToleranceManager,
+    RetryConfig,
+    RetryPolicy,
+    StragglerDetector,
+)
 
 T = TypeVar("T")
 R = TypeVar("R")
@@ -204,10 +228,7 @@ class RangePartitioner(Partitioner):
 
         for i in range(num_partitions):
             start = i * chunk_size
-            if i < num_partitions - 1:
-                end = start + chunk_size
-            else:
-                end = len(sorted_data)
+            end = start + chunk_size if i < num_partitions - 1 else len(sorted_data)
             partitions[i] = sorted_data[start:end]
 
         return partitions
@@ -545,31 +566,6 @@ def create_task_from_template(
 
     return builder.build()
 
-
-from legacy.distributed_task_v2.dag_engine import (
-    Checkpoint,
-    DAGBuilder,
-    DAGExecutionEngine,
-    DAGTask,
-    StageStatus,
-)
-from legacy.distributed_task_v2.dag_engine import (
-    Stage as DAGStage,
-)
-from legacy.distributed_task_v2.dag_engine import (
-    TaskChunk as DAGTaskChunk,
-)
-from legacy.distributed_task_v2.dag_engine import (
-    TaskStatus as DAGTaskStatus,
-)
-from legacy.distributed_task_v2.fault_tolerance import (
-    CircuitBreaker,
-    FailureType,
-    FaultToleranceManager,
-    RetryConfig,
-    RetryPolicy,
-    StragglerDetector,
-)
 
 __all__ = [
     "DependencyType",

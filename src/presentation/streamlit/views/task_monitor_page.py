@@ -70,7 +70,7 @@ def render(user_id: Optional[str] = None):
 
             if results_data:
                 results_df = pd.DataFrame(results_data)
-                st.dataframe(results_df, use_container_width=True, hide_index=True)
+                st.dataframe(results_df, width="stretch", hide_index=True)
 
                 selected_task_id = st.selectbox("选择任务查看完整结果", [r["任务ID"] for r in results_data])
 
@@ -133,7 +133,7 @@ def render(user_id: Optional[str] = None):
             filtered_history = history_df
 
         if not filtered_history.empty:
-            st.dataframe(filtered_history, use_container_width=True, hide_index=True)
+            st.dataframe(filtered_history, width="stretch", hide_index=True)
 
             st.subheader("🗑️ 任务删除")
 

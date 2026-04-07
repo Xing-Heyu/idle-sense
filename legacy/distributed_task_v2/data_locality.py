@@ -100,7 +100,7 @@ class LocalityScore:
 class DataLocalityManager:
     """
     Manages data locality for distributed task scheduling.
-    
+
     Features:
     - Track data locations across nodes
     - Calculate locality scores for task assignment
@@ -200,11 +200,11 @@ class DataLocalityManager:
     ) -> LocalityScore:
         """
         Calculate locality score for a node given required data.
-        
+
         Args:
             node_id: The node to evaluate
             required_data: List of data IDs required by the task
-            
+
         Returns:
             LocalityScore with level and score
         """
@@ -298,16 +298,16 @@ class DataLocalityManager:
         """Calculate the network transfer cost."""
         cost = 0.0
 
-        for data_id in local:
+        for _ in local:
             cost += self.network_costs["same_node"]
 
-        for data_id in rack_local:
+        for _ in rack_local:
             cost += self.network_costs["same_rack"]
 
-        for data_id in dc_local:
+        for _ in dc_local:
             cost += self.network_costs["same_data_center"]
 
-        for data_id in remote:
+        for _ in remote:
             cost += self.network_costs["remote"]
 
         return cost
@@ -319,11 +319,11 @@ class DataLocalityManager:
     ) -> Optional[str]:
         """
         Select the best node for a task based on data locality.
-        
+
         Args:
             required_data: List of data IDs required by the task
             available_nodes: List of available node IDs (all if None)
-            
+
         Returns:
             The best node ID or None
         """
@@ -371,11 +371,11 @@ class DataLocalityManager:
     ) -> list[LocalityScore]:
         """
         Get locality recommendations for all available nodes.
-        
+
         Args:
             required_data: List of data IDs required by the task
             available_nodes: List of available node IDs
-            
+
         Returns:
             List of LocalityScores sorted by score
         """
@@ -396,11 +396,11 @@ class DataLocalityManager:
     ) -> list[str]:
         """
         Recommend optimal nodes for data placement.
-        
+
         Args:
             data_id: The data ID to place
             replication_factor: Number of replicas
-            
+
         Returns:
             List of recommended node IDs
         """
@@ -412,7 +412,7 @@ class DataLocalityManager:
         needed = replication_factor - len(current_nodes)
 
         candidates = [
-            node_id for node_id in self.nodes.keys()
+            node_id for node_id in self.nodes
             if node_id not in current_nodes
         ]
 
@@ -463,7 +463,7 @@ class DataLocalityManager:
             "total_size_bytes": 0,
         }
 
-        for data_id, locations in self.data_locations.items():
+        for _, locations in self.data_locations.items():
             stats["replication_counts"][len(locations)] += 1
             for loc in locations:
                 stats["total_size_bytes"] += loc.size_bytes

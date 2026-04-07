@@ -44,7 +44,7 @@ def render(user_id: Optional[str] = None):
 
             if nodes_data:
                 nodes_df = pd.DataFrame(nodes_data)
-                st.dataframe(nodes_df, use_container_width=True, hide_index=True)
+                st.dataframe(nodes_df, width="stretch", hide_index=True)
             else:
                 st.info("暂无活跃节点")
 
@@ -94,7 +94,7 @@ def render(user_id: Optional[str] = None):
         node_cpu = st.slider("分配CPU核心数", 0.5, 16.0, 4.0, 0.5, key="node_cpu")
         node_memory = st.slider("分配内存(MB)", 512, 32768, 4096, 512, key="node_memory")
 
-        if st.button("🚀 激活节点", type="primary", use_container_width=True):
+        if st.button("🚀 激活节点", type="primary", width="stretch"):
             with st.spinner("激活中..."):
                 success, result = client.activate_local_node(
                     cpu_limit=node_cpu,
@@ -119,7 +119,7 @@ def render(user_id: Optional[str] = None):
         if st.session_state.get("active_node_id"):
             st.info(f"当前节点: {st.session_state.active_node_id[:12]}...")
 
-            if st.button("🛑 停止节点", type="secondary", use_container_width=True):
+            if st.button("🛑 停止节点", type="secondary", width="stretch"):
                 with st.spinner("停止中..."):
                     success, result = client.stop_node(st.session_state.active_node_id)
 

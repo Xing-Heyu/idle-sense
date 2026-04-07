@@ -19,6 +19,7 @@ from collections import defaultdict
 from dataclasses import dataclass, field
 from enum import Enum
 from typing import Any, Callable, Optional
+import contextlib
 
 
 class TaskStatus(Enum):
@@ -193,7 +194,7 @@ class Checkpoint:
 class DAGExecutionEngine:
     """
     DAG Execution Engine for distributed task processing.
-    
+
     Features:
     - Stage-based execution with dependency resolution
     - Parallel chunk execution within stages
@@ -247,10 +248,8 @@ class DAGExecutionEngine:
         self._running = False
         for task in self._tasks_list:
             task.cancel()
-            try:
+            with contextlib.suppress(asyncio.CancelledError):
                 await task
-            except asyncio.CancelledError:
-                pass
         self._tasks_list = []
 
     def submit_task(self, task: DAGTask) -> str:
@@ -426,7 +425,7 @@ class DAGExecutionEngine:
         if not task:
             return False
 
-        for checkpoint_key, checkpoint in self.checkpoints.items():
+        for _, checkpoint in self.checkpoints.items():
             if checkpoint.task_id == task_id:
                 for stage in task.stages:
                     if stage.stage_id == checkpoint.stage_id:

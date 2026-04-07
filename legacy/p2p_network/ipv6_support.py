@@ -116,7 +116,7 @@ class IPAddress:
 class IPv6Support:
     """
     IPv6 support utilities.
-    
+
     Features:
     - IPv6 address validation
     - Dual-stack socket creation

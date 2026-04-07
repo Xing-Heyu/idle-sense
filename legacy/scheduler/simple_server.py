@@ -852,19 +852,19 @@ if RATE_LIMITING_AVAILABLE:
         from slowapi import Limiter
         from slowapi.errors import RateLimitExceeded
         from slowapi.util import get_remote_address
-        
+
         limiter = Limiter(
             key_func=get_remote_address,
             default_limits=["60/minute"],
         )
         app.state.limiter = limiter
-        
+
         @app.exception_handler(RateLimitExceeded)
         async def rate_limit_handler(request: Request, exc: RateLimitExceeded):
             from slowapi import _rate_limit_exceeded_handler
             response = _rate_limit_exceeded_handler(request, exc)
             return response
-        
+
         rate_limiter = limiter
         print("[调度器] 限流中间件已启用")
     except Exception as e:
@@ -877,6 +877,14 @@ def rate_limit(limit_value: str):
             return rate_limiter.limit(limit_value)(func)
         return func
     return decorator
+
+def _shutdown_persistent_storage():
+    """关闭钩子：优雅关闭持久化存储"""
+    if isinstance(storage, PersistentSchedulerStorage):
+        try:
+            storage.shutdown()
+        except Exception as e:
+            print(f"[警告] 持久化存储关闭异常: {e}")
 
 # 初始化存储（支持持久化后端选择）
 backend = os.getenv("STORAGE_BACKEND", "sqlite").strip().lower()
@@ -901,14 +909,6 @@ else:
 
 storage = _storage_instance
 
-
-def _shutdown_persistent_storage():
-    """关闭钩子：优雅关闭持久化存储"""
-    if isinstance(storage, PersistentSchedulerStorage):
-        try:
-            storage.shutdown()
-        except Exception as e:
-            print(f"[警告] 持久化存储关闭异常: {e}")
 
 # 初始化沙箱（优先使用新架构）
 if SANDBOX_AVAILABLE:
@@ -1196,14 +1196,17 @@ async def delete_task_api(task_id: int):
 # ==================== CORS 支持 ====================
 try:
     from fastapi.middleware.cors import CORSMiddleware
+    _cors_origins_str = os.getenv("CORS_ALLOWED_ORIGINS", "*")
+    _cors_origins = [o.strip() for o in _cors_origins_str.split(",") if o.strip()]
+    _allow_all = "*" in _cors_origins
     app.add_middleware(
         CORSMiddleware,
-        allow_origins=["*"],
-        allow_credentials=True,
+        allow_origins=["*"] if _allow_all else _cors_origins,
+        allow_credentials=not _allow_all,
         allow_methods=["*"],
         allow_headers=["*"],
     )
-    print("[调度器] CORS中间件已启用")
+    print(f"[调度器] CORS中间件已启用 (origins={_cors_origins})")
 except ImportError:
     print("[调度器] CORS中间件不可用")
 

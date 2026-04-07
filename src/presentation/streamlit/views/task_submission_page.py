@@ -35,42 +35,42 @@ def _parse_data_input(data_type: str, data_input: str) -> Any:
 def _parse_uploaded_file(uploaded_file, file_type: str) -> tuple[bool, Any, str]:
     """
     解析上传的文件
-    
+
     Returns:
         (是否成功, 数据, 错误消息)
     """
     try:
         content = uploaded_file.read()
-        
+
         if file_type == "JSON":
             if isinstance(content, bytes):
                 content = content.decode("utf-8")
             data = json.loads(content)
             return True, data, ""
-            
+
         elif file_type == "CSV":
             if isinstance(content, bytes):
                 content = content.decode("utf-8")
             reader = csv.reader(io.StringIO(content))
             data = [row for row in reader]
             return True, data, ""
-            
+
         elif file_type == "TXT (文本列表)":
             if isinstance(content, bytes):
                 content = content.decode("utf-8")
             data = [line.strip() for line in content.split("\n") if line.strip()]
             return True, data, ""
-            
+
         elif file_type == "TXT (数字列表)":
             if isinstance(content, bytes):
                 content = content.decode("utf-8")
             data = [float(x.strip()) if "." in x.strip() else int(x.strip()) 
                    for x in content.replace("\n", ",").split(",") if x.strip()]
             return True, data, ""
-            
+
         else:
             return False, None, "不支持的文件类型"
-            
+
     except json.JSONDecodeError as e:
         return False, None, f"JSON 解析错误: {e}"
     except ValueError as e:
@@ -84,7 +84,7 @@ def _render_data_preview(data: Any, max_items: int = 20) -> None:
     if data is None:
         st.warning("暂无数据")
         return
-        
+
     if isinstance(data, list):
         st.write(f"**数据类型**: 列表 | **数据量**: {len(data)} 项")
         if len(data) > 0:
@@ -92,7 +92,7 @@ def _render_data_preview(data: Any, max_items: int = 20) -> None:
             st.json(preview_data)
             if len(data) > max_items:
                 st.info(f"仅显示前 {max_items} 项，共 {len(data)} 项")
-                
+
     elif isinstance(data, dict):
         st.write(f"**数据类型**: 字典 | **键数量**: {len(data)} 个")
         preview_data = dict(list(data.items())[:max_items])
@@ -134,7 +134,7 @@ def _render_single_node_task(user_id: Optional[str]):
 
     col_btn1, col_btn2 = st.columns(2)
     with col_btn1:
-        if st.button("✨ 提交任务", use_container_width=True, type="primary"):
+        if st.button("✨ 提交任务", width="stretch", type="primary"):
             if not code.strip():
                 st.toast("⚠️ 请输入Python代码", icon="⚠️")
             else:
@@ -168,7 +168,7 @@ def _render_single_node_task(user_id: Optional[str]):
                         st.toast(f"❌ 提交失败: {result.get('error', '未知错误')}", icon="❌")
 
     with col_btn2:
-        if st.button("⚡ 加速提交 (高优先级)", use_container_width=True):
+        if st.button("⚡ 加速提交 (高优先级)", width="stretch"):
             if not code.strip():
                 st.toast("⚠️ 请输入Python代码", icon="⚠️")
             else:
@@ -295,7 +295,7 @@ def _render_distributed_task(user_id: Optional[str]):
                     st.session_state['manual_task_data'] = _parse_data_input("键值对", data_input)
                     st.session_state['manual_data_type'] = "键值对"
                     st.success("✅ 数据已确认！")
-                    
+
         elif data_type == "JSON 数据":
             data_input = st.text_area(
                 "输入 JSON 数据",
@@ -311,13 +311,13 @@ def _render_distributed_task(user_id: Optional[str]):
                         st.success("✅ 数据已确认！")
                     except json.JSONDecodeError as e:
                         st.error(f"JSON 格式错误: {e}")
-        
+
         if 'manual_task_data' in st.session_state and st.session_state['manual_task_data']:
             task_data = st.session_state['manual_task_data']
             st.markdown("---")
             st.subheader("📊 数据预览")
             _render_data_preview(task_data)
-            
+
             col1, col2 = st.columns([1, 3])
             with col1:
                 if st.button("🗑️ 清除数据", key="clear_manual_data"):
@@ -327,40 +327,40 @@ def _render_distributed_task(user_id: Optional[str]):
 
     else:
         st.info("📁 支持多种文件格式：JSON、CSV、TXT（文本列表/数字列表）")
-        
+
         file_type = st.selectbox(
             "选择文件类型",
             ["JSON", "CSV", "TXT (文本列表)", "TXT (数字列表)"],
             help="根据文件内容选择正确的类型",
             key="file_type_selector"
         )
-        
+
         uploaded_file = st.file_uploader(
             "选择文件",
             type=["json", "csv", "txt"],
             help=f"上传 {file_type} 格式的文件",
             key="file_uploader_widget"
         )
-        
+
         if uploaded_file:
             st.write(f"📄 **文件名**: {uploaded_file.name}")
             st.write(f"📊 **文件大小**: {uploaded_file.size / 1024:.2f} KB")
-            
+
             if st.button("✅ 确认上传并解析", type="primary", key="confirm_file_upload"):
                 with st.spinner("解析文件中..."):
                     success, data, error_msg = _parse_uploaded_file(uploaded_file, file_type)
-                    
+
                     if success:
                         task_data = data
                         st.success(f"✅ 文件解析成功！")
                         st.session_state['uploaded_task_data'] = task_data
                     else:
                         st.error(f"❌ {error_msg}")
-        
+
         if 'uploaded_task_data' in st.session_state and st.session_state['uploaded_task_data']:
             task_data = st.session_state['uploaded_task_data']
             _render_data_preview(task_data)
-            
+
             if st.button("🗑️ 清除已上传数据", key="clear_uploaded_data"):
                 st.session_state['uploaded_task_data'] = None
                 st.rerun()
@@ -432,9 +432,9 @@ print(f"合并完成，总共处理了 {total_count} 项数据")
         )
 
     col_btn1, col_btn2 = st.columns(2)
-    
+
     with col_btn1:
-        if st.button("🚀 提交分布式任务", type="primary", use_container_width=True):
+        if st.button("🚀 提交分布式任务", type="primary", width="stretch"):
             if not task_name or not task_description:
                 st.error("请填写任务名称和描述")
             elif task_data is None:
@@ -467,7 +467,7 @@ __MERGED_RESULT__ = {"all_data": all_results}
 
                     if success:
                         task_id = result.get("task_id")
-                        
+
                         if priority > 0:
                             cost_info = container.token_economy_service.estimate_task_cost(
                                 max_parallel_chunks, 4096, 600, priority
@@ -499,9 +499,9 @@ __MERGED_RESULT__ = {"all_data": all_results}
                             st.metric("数据项数量", len(task_data) if isinstance(task_data, (list, dict)) else 1)
                     else:
                         st.error(f"❌ 提交失败: {result.get('error', '未知错误')}")
-    
+
     with col_btn2:
-        if st.button("⚡ 加速提交 (高优先级)", use_container_width=True):
+        if st.button("⚡ 加速提交 (高优先级)", width="stretch"):
             if not task_name or not task_description:
                 st.error("请填写任务名称和描述")
             elif task_data is None:
@@ -535,11 +535,11 @@ __MERGED_RESULT__ = {"all_data": all_results}
                     if success:
                         task_id = result.get("task_id")
                         high_priority = min(priority + 5, 10)
-                        
+
                         cost_info = container.token_economy_service.estimate_task_cost(
                             max_parallel_chunks, 4096, 600, high_priority
                         )
-                        
+
                         st.success(f"✅ 加速分布式任务提交成功！任务ID: `{task_id}` | 预估费用: {cost_info['final_price']} CMP")
 
                         if 'task_history' not in st.session_state:

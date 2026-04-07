@@ -65,7 +65,7 @@ class CompleteTaskWithTokenResponse:
 class SubmitTaskWithTokenEconomyUseCase:
     """
     集成代币经济的任务提交流程
-    
+
     功能：
     1. 估算任务成本
     2. 检查用户余额
@@ -89,10 +89,10 @@ class SubmitTaskWithTokenEconomyUseCase:
     def execute(self, request: SubmitTaskWithTokenRequest) -> SubmitTaskWithTokenResponse:
         """
         执行带代币经济的任务提交
-        
+
         Args:
             request: 任务提交请求
-            
+
         Returns:
             提交响应
         """
@@ -197,7 +197,7 @@ class SubmitTaskWithTokenEconomyUseCase:
 class CompleteTaskWithTokenEconomyUseCase:
     """
     集成代币经济的任务完成流程
-    
+
     功能：
     1. 完成任务
     2. 计算并发放奖励
@@ -225,10 +225,10 @@ class CompleteTaskWithTokenEconomyUseCase:
     def execute(self, request: CompleteTaskWithTokenRequest) -> CompleteTaskWithTokenResponse:
         """
         执行任务完成并发放奖励
-        
+
         Args:
             request: 完成任务请求
-            
+
         Returns:
             完成响应
         """

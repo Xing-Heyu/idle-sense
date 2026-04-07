@@ -49,7 +49,7 @@ def _render_user_status():
         _render_token_balance(user_id)
         _render_reputation(user_id)
 
-        if st.button("🚪 退出登录", use_container_width=True):
+        if st.button("🚪 退出登录", width="stretch"):
             SessionManager.clear_localstorage()
             st.session_state.user_session = None
             st.session_state.task_history = []
@@ -58,7 +58,7 @@ def _render_user_status():
         st.warning("🔒 未登录")
         username = st.text_input("用户名", key="sidebar_username")
 
-        if st.button("快速登录", use_container_width=True) and username:
+        if st.button("快速登录", width="stretch") and username:
             use_case = container.login_use_case
             response = use_case.execute(LoginRequest(username_or_id=username))
 
@@ -118,7 +118,7 @@ def _render_node_controls():
         st.success("🟢 节点已激活")
         st.caption(f"ID: {st.session_state.active_node_id[:12]}...")
 
-        if st.button("🛑 停止节点", use_container_width=True):
+        if st.button("🛑 停止节点", width="stretch"):
             success, result = client.stop_node(st.session_state.active_node_id)
             if success:
                 st.session_state.active_node_id = None
@@ -128,7 +128,7 @@ def _render_node_controls():
             else:
                 st.error(f"停止失败: {result.get('error', '未知错误')}")
     else:
-        if st.button("🚀 激活节点", use_container_width=True, type="primary"):
+        if st.button("🚀 激活节点", width="stretch", type="primary"):
             success, result = client.activate_local_node(
                 cpu_limit=4.0,
                 memory_limit=4096,
@@ -167,7 +167,7 @@ def _render_debug_mode():
     if debug_mode:
         st.info("调试模式已启用")
 
-        if st.button("清除Session", use_container_width=True):
+        if st.button("清除Session", width="stretch"):
             for key in list(st.session_state.keys()):
                 del st.session_state[key]
             st.rerun()

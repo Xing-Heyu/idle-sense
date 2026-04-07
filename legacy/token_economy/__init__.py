@@ -326,10 +326,7 @@ class ReputationSystem:
         base_trust = account.reputation / 100.0
 
         total_tasks = account.tasks_completed + account.tasks_failed
-        if total_tasks > 0:
-            success_rate = account.tasks_completed / total_tasks
-        else:
-            success_rate = 0.5
+        success_rate = account.tasks_completed / total_tasks if total_tasks > 0 else 0.5
 
         trust_score = base_trust * 0.6 + success_rate * 0.4
 

@@ -10,6 +10,7 @@
 """
 
 import contextlib
+import logging
 import os
 import subprocess
 import sys
@@ -485,11 +486,17 @@ class FirecrackerSandbox(BaseSandbox):
                 execution_time=time.time() - start_time
             )
 
-        vm_id = f"idle_{os.getpid()}_{int(time.time())}"
-        socket_path = f"/tmp/firecracker_{vm_id}.sock"
-        code_file = f"/tmp/code_{vm_id}.py"
+        vm_id = None
+        socket_path = None
+        code_file = None
+        config_file = None
+        fc_process = None
 
         try:
+            vm_id = f"idle_{os.getpid()}_{int(time.time())}"
+            socket_path = f"/tmp/firecracker_{vm_id}.sock"
+            code_file = f"/tmp/code_{vm_id}.py"
+
             with open(code_file, 'w', encoding='utf-8') as f:
                 f.write(code)
 
@@ -509,7 +516,7 @@ class FirecrackerSandbox(BaseSandbox):
 
             time.sleep(0.5)
 
-            try:
+            with contextlib.suppress(Exception):
                 subprocess.run(
                     ['curl', '--unix-socket', socket_path,
                      '-X', 'PUT', 'http://localhost/machine-config',
@@ -518,8 +525,6 @@ class FirecrackerSandbox(BaseSandbox):
                     capture_output=True,
                     timeout=5
                 )
-            except Exception:
-                pass
 
             fc_process.wait(timeout=self.config.timeout)
 
@@ -556,9 +561,15 @@ class FirecrackerSandbox(BaseSandbox):
                 execution_time=time.time() - start_time
             )
         finally:
-            for path in [socket_path, code_file, f"/tmp/firecracker_config_{vm_id}.json"]:
-                with contextlib.suppress(BaseException):
-                    os.unlink(path)
+            if fc_process:
+                with contextlib.suppress(Exception):
+                    fc_process.terminate()
+                    fc_process.wait()
+
+            for path in [code_file, config_file, socket_path]:
+                if path and os.path.exists(path):
+                    with contextlib.suppress(Exception):
+                        os.unlink(path)
 
 
 class WASMSandbox(BaseSandbox):
@@ -576,6 +587,8 @@ class WASMSandbox(BaseSandbox):
         self.runtime = runtime
         self._wasm_available = self._check_wasm()
         self._runtime_module = None
+        self._code_validator = CodeValidator()
+        self._logger = logging.getLogger(__name__)
 
     def _check_wasm(self) -> bool:
         if self.runtime == "wasmer":
@@ -686,6 +699,81 @@ class WASMSandbox(BaseSandbox):
                 execution_time=time.time() - start_time
             )
 
+    def _safe_execute_python(self, python_code: str) -> tuple[bool, str]:
+        """
+        安全执行Python代码（AST白名单验证 + 进程隔离）
+
+        使用CodeValidator进行AST级别的安全验证，
+        然后通过subprocess在隔离进程中执行代码。
+
+        Args:
+            python_code: 要执行的Python代码
+
+        Returns:
+            tuple: (是否成功, 结果或错误信息)
+        """
+        self._logger.warning(
+            f"[安全审计] 代码执行尝试 - 长度: {len(python_code)} 字符, "
+            f"时间戳: {time.strftime('%Y-%m-%d %H:%M:%S')}"
+        )
+
+        validation_result = self._code_validator.validate(python_code)
+
+        if not validation_result.is_safe:
+            error_msg = f"安全验证失败: {'; '.join(validation_result.errors)}"
+            self._logger.error(
+                f"[安全警告] 代码执行被阻止 - 原因: {error_msg}"
+            )
+            return False, error_msg
+
+        if validation_result.warnings:
+            self._logger.warning(
+                f"[安全提示] 代码包含潜在风险: {'; '.join(validation_result.warnings)}"
+            )
+
+        import tempfile
+        with tempfile.NamedTemporaryFile(mode='w', suffix='.py', delete=False, encoding='utf-8') as f:
+            f.write(python_code)
+            temp_file = f.name
+
+        try:
+            env = os.environ.copy()
+            env.pop('PYTHONPATH', None)
+            env.pop('PYTHONHOME', None)
+            env['__PYTHON_SANDBOX'] = '1'
+
+            result = subprocess.run(
+                [sys.executable, '-S', temp_file],
+                capture_output=True,
+                text=True,
+                timeout=self.config.timeout,
+                env=env,
+                cwd=tempfile.gettempdir()
+            )
+
+            if result.returncode == 0:
+                output = result.stdout.strip() or "OK"
+                self._logger.info(
+                    f"[安全审计] 代码执行成功 - 安全级别: {validation_result.security_level.value}"
+                )
+                return True, output
+            else:
+                error_msg = result.stderr.strip() or f"Exit code {result.returncode}"
+                self._logger.error(f"[安全审计] 代码执行异常: {error_msg}")
+                return False, error_msg
+
+        except subprocess.TimeoutExpired:
+            error_msg = f"执行超时（{self.config.timeout}秒）"
+            self._logger.error(f"[安全审计] 代码执行超时: {error_msg}")
+            return False, error_msg
+        except Exception as e:
+            error_msg = f"执行错误: {str(e)}"
+            self._logger.error(f"[安全审计] 代码执行异常: {error_msg}")
+            return False, error_msg
+        finally:
+            with contextlib.suppress(BaseException):
+                os.unlink(temp_file)
+
     def _execute_with_wasmer(self, code: str, start_time: float) -> ExecutionResult:
         try:
             import wasmer
@@ -711,10 +799,9 @@ class WASMSandbox(BaseSandbox):
                     decoded = bytes(data).decode('utf-8')
                     import base64
                     python_code = base64.b64decode(decoded).decode('utf-8')
-                    local_vars = {}
-                    exec(python_code, {"__builtins__": {}}, local_vars)
-                    output_buffer.append(str(local_vars.get('result', 'OK')))
-                    return 0
+                    success, result = self._safe_execute_python(python_code)
+                    output_buffer.append(result)
+                    return 0 if success else 1
                 except Exception as e:
                     output_buffer.append(str(e))
                     return 1
@@ -772,10 +859,9 @@ class WASMSandbox(BaseSandbox):
                     decoded = bytes(data).decode('utf-8')
                     import base64
                     python_code = base64.b64decode(decoded).decode('utf-8')
-                    local_vars = {}
-                    exec(python_code, {"__builtins__": {}}, local_vars)
-                    output_buffer.append(str(local_vars.get('result', 'OK')))
-                    return 0
+                    success, result = self._safe_execute_python(python_code)
+                    output_buffer.append(result)
+                    return 0 if success else 1
                 except Exception as e:
                     output_buffer.append(str(e))
                     return 1

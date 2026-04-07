@@ -7,9 +7,10 @@ from dataclasses import dataclass, field
 from datetime import datetime
 from typing import Any, Optional
 
-from src.core.entities.task import Task, TaskStatus, TaskType
+from src.core.entities.task import Task, TaskStatus
 from src.infrastructure.persistence import ensure_data_dirs, get_db_path
 from src.infrastructure.repositories.sqlite_task_repository import SQLiteTaskRepository
+import contextlib
 
 
 @dataclass
@@ -309,10 +310,8 @@ class PersistentTaskStorage:
 
             internal_id = self._id_map.get(task_id)
             if internal_id:
-                try:
+                with contextlib.suppress(Exception):
                     self._run_async(self._do_complete_task(internal_id, result))
-                except Exception:
-                    pass
 
             return True
 
@@ -476,10 +475,8 @@ class PersistentTaskStorage:
 
             internal_id = self._id_map.get(task_id)
             if internal_id:
-                try:
+                with contextlib.suppress(Exception):
                     self._run_async(self._repo.delete(internal_id))
-                except Exception:
-                    pass
 
             self._invalidate_cache(task_id)
             return {"success": True, "message": f"任务 {task_id} 已删除"}

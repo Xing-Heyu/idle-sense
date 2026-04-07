@@ -27,13 +27,13 @@ jobs:
           pip install ruff mypy black
           
       - name: Run Ruff (Linter)
-        run: ruff check . --output-format=github || true
+        run: ruff check . --output-format=github
         
       - name: Run Black (Formatter Check)
-        run: black --check . || true
+        run: black --check .
         
       - name: Run MyPy (Type Check)
-        run: mypy idle_sense/ scheduler/ node/ --ignore-missing-imports || true
+        run: mypy idle_sense/ scheduler/ node/ --ignore-missing-imports
 
   test:
     name: Tests (${{ matrix.os }}, Python ${{ matrix.python }})
@@ -43,7 +43,7 @@ jobs:
       fail-fast: false
       matrix:
         os: [ubuntu-latest, windows-latest, macos-latest]
-        python: ['3.8', '3.9', '3.10', '3.11']
+        python: ['3.9', '3.10', '3.11']
         
     steps:
       - uses: actions/checkout@v4
@@ -62,7 +62,7 @@ jobs:
           
       - name: Run tests with coverage
         run: |
-          pytest tests/ -v --cov=idle_sense --cov-report=xml --cov-report=term-missing || true
+          pytest tests/ -v --cov=idle_sense --cov-report=xml --cov-report=term-missing
           
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v4
@@ -106,4 +106,4 @@ jobs:
           scan-type: 'fs'
           scan-ref: '.'
           severity: 'CRITICAL,HIGH'
-          exit-code: '0'
+          exit-code: '1'

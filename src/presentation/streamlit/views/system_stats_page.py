@@ -68,7 +68,7 @@ def render(user_id: Optional[str] = None):
             hole=0.4
         )
         fig_pie.update_traces(textposition='inside', textinfo='percent+label')
-        st.plotly_chart(fig_pie, use_container_width=True)
+        st.plotly_chart(fig_pie, width="stretch")
 
         st.markdown("---")
 
@@ -91,7 +91,7 @@ def render(user_id: Optional[str] = None):
             color="状态",
             color_discrete_map={"空闲": "#2ecc71", "忙碌": "#f1c40f", "离线": "#e74c3c"}
         )
-        st.plotly_chart(fig_bar, use_container_width=True)
+        st.plotly_chart(fig_bar, width="stretch")
 
     else:
         st.warning(f"获取统计信息失败: {stats.get('error', '未知错误')}")
@@ -115,7 +115,7 @@ def render(user_id: Optional[str] = None):
 
         if user_results:
             results_df = pd.DataFrame(user_results)
-            st.dataframe(results_df, use_container_width=True, hide_index=True)
+            st.dataframe(results_df, width="stretch", hide_index=True)
         else:
             st.info("暂无用户任务结果")
     else:

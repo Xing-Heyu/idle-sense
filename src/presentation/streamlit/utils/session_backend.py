@@ -6,13 +6,18 @@
 - Redis 存储（支持水平扩展）
 """
 
-import fcntl
 import json
-import os
+import platform
 from abc import ABC, abstractmethod
+from contextlib import suppress
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Optional
+
+if platform.system() != "Windows":
+    import fcntl
+else:
+    fcntl = None
 
 
 class SessionBackend(ABC):
@@ -204,24 +209,42 @@ class FileSessionBackend(SessionBackend):
         if not expires_at:
             return False
         try:
-            exp_time = datetime.fromisoformat(expires_at)
+            if isinstance(expires_at, (int, float)):
+                exp_time = datetime.fromtimestamp(expires_at, tz=timezone.utc)
+            else:
+                exp_time = datetime.fromisoformat(expires_at)
             return datetime.now(timezone.utc) > exp_time
         except (ValueError, TypeError):
             return True
 
+    def _acquire_lock(self, file_obj, exclusive: bool = False) -> bool:
+        if fcntl is not None:
+            try:
+                lock_type = fcntl.LOCK_EX if exclusive else fcntl.LOCK_SH
+                fcntl.flock(file_obj, lock_type)
+                return True
+            except OSError:
+                return False
+        return True
+
+    def _release_lock(self, file_obj) -> None:
+        if fcntl is not None:
+            with suppress(OSError):
+                fcntl.flock(file_obj, fcntl.LOCK_UN)
+
     def _read_session(self, file_path: Path) -> Optional[dict[str, Any]]:
         try:
-            with open(file_path, "r", encoding="utf-8") as f:
-                fcntl.flock(f, fcntl.LOCK_SH)
+            with open(file_path, encoding="utf-8") as f:
+                self._acquire_lock(f, exclusive=False)
                 try:
                     data = json.load(f)
                     if self._is_expired(data):
-                        fcntl.flock(f, fcntl.LOCK_UN)
+                        self._release_lock(f)
                         file_path.unlink(missing_ok=True)
                         return None
                     return data
                 finally:
-                    fcntl.flock(f, fcntl.LOCK_UN)
+                    self._release_lock(f)
         except (FileNotFoundError, json.JSONDecodeError, OSError):
             return None
 
@@ -247,11 +270,11 @@ class FileSessionBackend(SessionBackend):
         }
         try:
             with open(file_path, "w", encoding="utf-8") as f:
-                fcntl.flock(f, fcntl.LOCK_EX)
+                self._acquire_lock(f, exclusive=True)
                 try:
                     json.dump(session_entry, f, ensure_ascii=False, indent=2)
                 finally:
-                    fcntl.flock(f, fcntl.LOCK_UN)
+                    self._release_lock(f)
             return True
         except OSError:
             return False

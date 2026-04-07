@@ -98,7 +98,7 @@ class ConnectionStats:
 class BandwidthManager:
     """
     Manages bandwidth for network connections.
-    
+
     Features:
     - Token bucket rate limiting
     - Per-connection limits
@@ -154,20 +154,14 @@ class BandwidthManager:
             self._stats["throttled_count"] += 1
             return False
 
-        if connection_id and connection_id in self._connection_buckets and not self._connection_buckets[connection_id].consume(size):
-            return False
-
-        return True
+        return not (connection_id and connection_id in self._connection_buckets and not self._connection_buckets[connection_id].consume(size))
 
     def can_receive(self, size: int, connection_id: str = None) -> bool:
         """Check if we can receive data."""
         if not self.download_bucket.consume(size):
             return False
 
-        if connection_id and connection_id in self._connection_buckets and not self._connection_buckets[connection_id].consume(size):
-            return False
-
-        return True
+        return not (connection_id and connection_id in self._connection_buckets and not self._connection_buckets[connection_id].consume(size))
 
     def record_send(self, size: int, connection_id: str = None):
         """Record sent data."""

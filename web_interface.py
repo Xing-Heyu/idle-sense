@@ -57,35 +57,61 @@ st.set_page_config(
 # 配置
 SCHEDULER_URL = settings.SCHEDULER.URL
 REFRESH_INTERVAL = settings.WEB.REFRESH_INTERVAL
-# ==================== 持久化登录恢复（必须放最前面）====================
-if 'user_session' not in st.session_state:
-    st.markdown("""
-    <script>
-    // 页面加载时从 localStorage 读取登录态
-    const savedSession = localStorage.getItem('idle_accelerator_session');
-    if (savedSession) {
-        try {
-            const sessionData = JSON.parse(savedSession);
-            // 通过 URL 参数传递给 Streamlit
-            const url = new URL(window.location.href);
-            url.searchParams.set('restore_session', JSON.stringify(sessionData));
-            window.history.replaceState({}, '', url);
-        } catch(e) {}
-    }
-    </script>
-    """, unsafe_allow_html=True)
 
-    # 从 URL 参数恢复 session_state
-    import json
-    restore_data = st.query_params.get_all('restore_session')
-    if restore_data:
-        try:
-            session_data = json.loads(restore_data[0])
-            st.session_state.user_session = session_data
-            st.query_params.clear()
-        except (json.JSONDecodeError, KeyError, IndexError):
-            pass
-# ===================================================================
+_SESSION_KEY = 'user_session'
+_LOCAL_STORAGE_KEY = 'idle_accelerator_session'
+
+def _validate_session_data(data: dict) -> bool:
+    """验证会话数据格式和内容"""
+    if not isinstance(data, dict):
+        return False
+    required_keys = {'user_id', 'username'}
+    if not required_keys.issubset(data.keys()):
+        return False
+    user_id = data.get('user_id', '')
+    username = data.get('username', '')
+    if not isinstance(user_id, str) or not isinstance(username, str):
+        return False
+    if len(user_id) > 64 or len(username) > 64:
+        return False
+    import re
+    if not re.match(r'^local_[a-f0-9]{8}$', user_id):
+        return False
+    return bool(re.match(r'^[\u4e00-\u9fa5a-zA-Z0-9_]+$', username))
+
+def _restore_session_safely():
+    """安全地恢复会话（使用服务端存储）"""
+    if _SESSION_KEY in st.session_state and st.session_state[_SESSION_KEY]:
+        return
+
+    try:
+        from src.presentation.streamlit.utils.session_manager import SessionManager
+
+        SessionManager.configure()
+        backend = SessionManager.get_backend()
+
+        restore_data = st.query_params.get_all('restore_session')
+        if restore_data:
+            try:
+                import html
+                import json
+
+                sanitized = html.unescape(restore_data[0])
+                session_data = json.loads(sanitized)
+                if _validate_session_data(session_data):
+                    user_id = session_data.get('user_id')
+                    stored_session = backend.get_session(user_id)
+                    if stored_session and stored_session.get('username') == session_data.get('username'):
+                        st.session_state[_SESSION_KEY] = stored_session
+                        backend.set_session(user_id, stored_session, ttl=3600)
+            except (json.JSONDecodeError, KeyError, IndexError, TypeError):
+                pass
+            finally:
+                st.query_params.pop('restore_session', None)
+    except ImportError:
+        pass
+
+_restore_session_safely()
 # ==================== 优化工具函数 ====================
 
 def safe_api_call(func, *args, default=None, **kwargs):
@@ -169,8 +195,8 @@ class UserManager:
                 return new_username
             counter += 1
             if counter > 999:
-                import random
-                return f"{username}_{random.randint(1000, 9999)}"
+                import secrets
+                return f"{username}_{secrets.randbelow(10000)}"
 
     def save_user(self, user_id, username, folder_location="project"):
         """保存本地用户信息"""
@@ -438,26 +464,33 @@ def create_folders_with_script(user_id, username, folder_location):
     """通过脚本创建文件夹 - 保持原版逻辑"""
     import subprocess
     import tempfile
+    from pathlib import Path
 
     with tempfile.NamedTemporaryFile(mode='w', suffix='.json', delete=False) as temp_file:
         temp_path = temp_file.name
 
     try:
-        script_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "create_folders.py")
+        project_root = Path(__file__).resolve().parent
+        script_path = project_root / "create_folders.py"
+        if not str(script_path).startswith(str(project_root)):
+            raise ValueError(f"Invalid script path: {script_path}")
+        if not script_path.exists():
+            raise FileNotFoundError(f"Script not found: {script_path}")
         cmd = [
             sys.executable,
-            script_path,
+            str(script_path),
             "--user-id", user_id,
             "--username", username,
             "--folder-location", folder_location,
             "--output", temp_path
         ]
 
-        result = subprocess.run(
+        result = subprocess.run(  # noqa: S603
             cmd,
             capture_output=True,
             text=True,
-            timeout=30
+            timeout=30,
+            shell=False
         )
 
         with open(temp_path, encoding='utf-8') as f:
@@ -535,7 +568,7 @@ for key, default in [
     ('last_node_status', {'online': 0, 'total': 0}),
     ('cache_data', {}),
     ('debug_mode', False),
-    ('session_id', hashlib.md5(f"{datetime.now().isoformat()}_{os.getpid()}".encode()).hexdigest()[:16]),
+    ('session_id', hashlib.sha256(f"{datetime.now().isoformat()}_{os.getpid()}".encode()).hexdigest()[:16]),
     ('share_cpu_value', 4.0),
     ('share_memory_value', 8192)
 ]:
@@ -828,8 +861,11 @@ with st.sidebar:
 if st.session_state.user_session:
     st.success(f"✅ {st.session_state.user_session.get('username', '用户')}")
     if st.button("🚪 退出登录"):
-    # 先清除 localStorage，再清除 session_state，最后刷新
-        st.markdown("<script>localStorage.removeItem('idle_accelerator_session');</script>", unsafe_allow_html=True)
+        try:
+            from src.presentation.streamlit.utils.session_manager import SessionManager
+            SessionManager.clear_session()
+        except ImportError:
+            pass
         st.session_state.user_session = None
         st.query_params.clear()
         st.rerun()
@@ -839,15 +875,13 @@ else:
 
     if st.button("快速登录") and username:
         import hashlib
-        user_id = f"local_{hashlib.md5(username.encode()).hexdigest()[:8]}"
+        user_id = f"local_{hashlib.sha256(username.encode()).hexdigest()[:8]}"
 
-        # 写入本地用户文件（让本地登录也能识别）
         user_manager.save_user(user_id, username, "project")
 
-        # 设置 session_state
         st.session_state.user_session = {
             "username": username,
-            "user_id": user_id
+            "user_id": user_id,
         }
 
         st.success(f"✅ 欢迎 {username}")
@@ -888,10 +922,10 @@ else:
                     st.success(f"✅ 节点 {node_id} 已在调度器注册")
 
                     import tempfile
-                    temp_dir = tempfile.gettempdir()
-                    node_id_file = os.path.join(temp_dir, "idle_sense_node_id.txt")
-                    with open(node_id_file, 'w') as f:
-                        f.write(node_id)
+                    from pathlib import Path
+                    temp_dir = Path(tempfile.gettempdir())
+                    node_id_file = temp_dir / "idle_sense_node_id.txt"
+                    node_id_file.write_text(node_id, encoding='utf-8')
                     st.info(f"节点ID已保存: {node_id}")
                 else:
                     st.error(f"节点注册失败: {response.status_code} - {response.text}")
@@ -1123,7 +1157,7 @@ print(f"合并完成，总共处理了 {total_count} 项数据")
                         st.code(DISTRIBUTED_TASK_TEMPLATES[template_name]["merge_code"], language="python")
 
             # 提交按钮
-            if st.button("🚀 提交分布式任务", type="primary", use_container_width=True):
+            if st.button("🚀 提交分布式任务", type="primary", width="stretch"):
                 if not task_name or not task_description:
                     st.error("请填写任务名称和描述")
                 elif task_data is None:
@@ -1199,7 +1233,7 @@ print(f"合并完成，总共处理了 {total_count} 项数据")
                 )
 
             # 提交按钮
-            if st.button("🚀 提交单节点任务", use_container_width=True):
+            if st.button("🚀 提交单节点任务", width="stretch"):
                 if not code.strip():
                     st.error("请输入Python代码")
                 else:
@@ -1272,7 +1306,7 @@ print(f"合并完成，总共处理了 {total_count} 项数据")
 
                 if results_data:
                     results_df = pd.DataFrame(results_data)
-                    st.dataframe(results_df, use_container_width=True, hide_index=True)
+                    st.dataframe(results_df, width="stretch", hide_index=True)
 
                     selected_task_id = st.selectbox("选择任务查看完整结果", [r["任务ID"] for r in results_data])
 
@@ -1332,7 +1366,7 @@ print(f"合并完成，总共处理了 {total_count} 项数据")
                 filtered_history = history_df
 
             if not filtered_history.empty:
-                st.dataframe(filtered_history, use_container_width=True, hide_index=True)
+                st.dataframe(filtered_history, width="stretch", hide_index=True)
 
                 # 任务删除功能
                 st.subheader("🗑️ 任务删除")
@@ -1440,8 +1474,18 @@ print(f"合并完成，总共处理了 {total_count} 项数据")
 
         try:
             import subprocess
-            script_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "node", "simple_client.py")
-            subprocess.Popen([sys.executable, script_path], creationflags=subprocess.CREATE_NEW_CONSOLE)
+            from pathlib import Path
+            script_path = Path(__file__).resolve().parent / "node" / "simple_client.py"
+            project_root = Path(__file__).resolve().parent
+            if not str(script_path).startswith(str(project_root)):
+                raise ValueError(f"Invalid script path: {script_path}")
+            if not script_path.exists():
+                raise FileNotFoundError(f"节点客户端脚本不存在: {script_path}")
+            subprocess.Popen(  # noqa: S603
+                [sys.executable, str(script_path)],
+                creationflags=subprocess.CREATE_NEW_CONSOLE,
+                shell=False
+            )
             st.success("✅ 节点客户端启动命令已发送")
             st.info("请检查是否弹出了新的命令行窗口")
         except Exception as e:
@@ -1595,7 +1639,7 @@ print(f"合并完成，总共处理了 {total_count} 项数据")
                 marker={"line": {"color": '#FFFFFF', "width": 1}}
             )
 
-            st.plotly_chart(fig, use_container_width=True)
+            st.plotly_chart(fig, width="stretch")
 
             st.markdown("---")
             st.subheader("📋 任务结果")
@@ -1743,26 +1787,15 @@ else:
                         "username": found_user['username'],
                         "is_local": True
                     }
-                    st.markdown(f"""
-                    <script>
-                    localStorage.setItem('idle_accelerator_session', JSON.stringify({{
-                        user_id: '{found_user['user_id']}',
-                        username: '{found_user['username']}',
-                        is_local: true
-                    }}));
-                    </script>
-                    """, unsafe_allow_html=True)
-                    st.markdown(f"""
-                    <script>
-                    window.dispatchEvent(new CustomEvent('login-success', {{
-                        detail: {{
-                            user_id: '{found_user['user_id']}',
-                            username: '{found_user['username']}',
-                            is_local: true
-                        }}
-                    }}));
-                    </script>
-                    """, unsafe_allow_html=True)
+                    try:
+                        from src.presentation.streamlit.utils.session_manager import SessionManager
+                        SessionManager.save_session(
+                            found_user['user_id'],
+                            found_user['username'],
+                            is_local=True
+                        )
+                    except ImportError:
+                        pass
                     st.success(f"✅ 登录成功！欢迎回来，{found_user['username']}")
                     st.info("🔄 页面将自动刷新...")
                     time.sleep(1)
@@ -1855,7 +1888,6 @@ else:
                 status_text = st.empty()
 
                 try:
-                    # 步骤1: 验证用户名
                     status_text.text("正在验证用户名...")
                     progress_bar.progress(10)
                     is_valid, message = user_manager.validate_username(reg_username)
@@ -1865,23 +1897,19 @@ else:
                         status_text.empty()
                         st.stop()
 
-                    # 步骤2: 检查用户名可用性
                     status_text.text("检查用户名可用性...")
                     progress_bar.progress(20)
                     available_username = user_manager.check_username_availability(reg_username)
 
-                    # 步骤3: 生成本地用户ID
                     status_text.text("生成用户ID...")
                     progress_bar.progress(30)
-                    import random
-                    local_user_id = f"local_{hashlib.md5(f'{time.time()}_{random.randint(10000, 99999)}'.encode()).hexdigest()[:8]}"
+                    import secrets
+                    local_user_id = f"local_{hashlib.sha256(f'{time.time()}_{secrets.token_hex(8)}'.encode()).hexdigest()[:8]}"
 
-                    # 步骤4: 保存本地用户信息
                     status_text.text("保存用户信息...")
                     progress_bar.progress(40)
                     user_info = user_manager.save_user(local_user_id, available_username, folder_value)
 
-                    # 步骤5: 创建文件夹和系统信息文件
                     status_text.text("创建文件夹结构...")
                     progress_bar.progress(50)
                     st.info("🔧 正在创建文件夹，如需权限会弹出UAC提示，请点击'是'允许...")
@@ -1899,26 +1927,17 @@ else:
                             "username": available_username,
                             "is_local": True
                         }
-                        st.markdown(f"""
-                        <script>
-                        localStorage.setItem('idle_accelerator_session', JSON.stringify({{
-                            user_id: '{local_user_id}',
-                            username: '{available_username}',
-                            is_local: true
-                        }}));
-                        </script>
-                        """, unsafe_allow_html=True)
-                        st.markdown(f"""
-                        <script>
-                        window.dispatchEvent(new CustomEvent('login-success', {{
-                            detail: {{
-                                user_id: '{local_user_id}',
-                                username: '{available_username}',
-                                is_local: true
-                            }}
-                        }}));
-                        </script>
-                        """, unsafe_allow_html=True)
+                        try:
+                            from src.presentation.streamlit.utils.session_manager import (
+                                SessionManager,
+                            )
+                            SessionManager.save_session(
+                                local_user_id,
+                                available_username,
+                                is_local=True
+                            )
+                        except ImportError:
+                            pass
                         progress_bar.progress(100)
                         status_text.text("注册成功！")
 

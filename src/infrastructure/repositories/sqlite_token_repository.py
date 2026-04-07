@@ -6,16 +6,18 @@ SQLite代币仓储实现
 - 交易记录（原子性转账）
 - 质押生命周期管理
 - 按时间范围/类型查询交易历史
+- 连接池管理（解决并发问题）
 """
 
 import hashlib
-import os
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from datetime import datetime
 from enum import Enum
 from typing import Optional
 
 import aiosqlite
+
+from src.infrastructure.repositories.sqlite_base import SQLiteConnectionPool
 
 
 class TransactionType(Enum):
@@ -211,93 +213,102 @@ class ITokenRepository:
 
 class SQLiteTokenRepository(ITokenRepository):
     """
-    基于SQLite的代币仓储实现
+    基于SQLite的代币仓储实现（使用连接池）
 
     提供代币经济系统的完整持久化存储：
     - 自动建表与索引
     - 异步IO操作（aiosqlite）
     - 原子性事务保证
     - 完整的CRUD与业务方法
+    - 连接池管理（解决并发问题）
     """
 
-    def __init__(self, db_path: str = "data/token_economy.db"):
+    def __init__(self, db_path: str = "data/token_economy.db", pool_size: int = 5):
         self.db_path = db_path
-        self._conn: Optional[aiosqlite.Connection] = None
+        self._pool: Optional[SQLiteConnectionPool] = None
+        self._pool_size = pool_size
 
-    async def _get_connection(self) -> aiosqlite.Connection:
-        if self._conn is None:
-            db_dir = os.path.dirname(self.db_path)
-            if db_dir:
-                os.makedirs(db_dir, exist_ok=True)
-            self._conn = await aiosqlite.connect(self.db_path)
-            self._conn.row_factory = aiosqlite.Row
+    async def _get_pool(self) -> SQLiteConnectionPool:
+        """获取或初始化连接池"""
+        if self._pool is None:
+            self._pool = SQLiteConnectionPool(
+                db_path=self.db_path,
+                max_connections=self._pool_size,
+            )
+            await self._pool.initialize()
             await self._init_tables()
-        return self._conn
+        return self._pool
 
     async def _init_tables(self) -> None:
-        conn = await self._get_connection()
+        """初始化数据库表结构"""
+        if self._pool is None:
+            return
 
-        await conn.execute("""
-            CREATE TABLE IF NOT EXISTS token_accounts (
-                user_id TEXT PRIMARY KEY,
-                balance REAL NOT NULL DEFAULT 0.0,
-                frozen_balance REAL NOT NULL DEFAULT 0.0,
-                total_earned REAL NOT NULL DEFAULT 0.0,
-                total_spent REAL NOT NULL DEFAULT 0.0,
-                updated_at TEXT NOT NULL,
-                created_at TEXT NOT NULL
-            )
-        """)
-        await conn.execute("""
-            CREATE INDEX IF NOT EXISTS idx_accounts_balance ON token_accounts(balance DESC)
-        """)
+        conn = await self._pool.get_connection()
+        try:
+            await conn.execute("""
+                CREATE TABLE IF NOT EXISTS token_accounts (
+                    user_id TEXT PRIMARY KEY,
+                    balance REAL NOT NULL DEFAULT 0.0,
+                    frozen_balance REAL NOT NULL DEFAULT 0.0,
+                    total_earned REAL NOT NULL DEFAULT 0.0,
+                    total_spent REAL NOT NULL DEFAULT 0.0,
+                    updated_at TEXT NOT NULL,
+                    created_at TEXT NOT NULL
+                )
+            """)
+            await conn.execute("""
+                CREATE INDEX IF NOT EXISTS idx_accounts_balance ON token_accounts(balance DESC)
+            """)
 
-        await conn.execute("""
-            CREATE TABLE IF NOT EXISTS token_transactions (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                tx_hash TEXT UNIQUE NOT NULL,
-                from_user_id TEXT,
-                to_user_id TEXT NOT NULL,
-                amount REAL NOT NULL,
-                tx_type TEXT NOT NULL,
-                description TEXT,
-                reference_id TEXT,
-                created_at TEXT NOT NULL
-            )
-        """)
-        await conn.execute("""
-            CREATE INDEX IF NOT EXISTS idx_tx_to_user ON token_transactions(to_user_id)
-        """)
-        await conn.execute("""
-            CREATE INDEX IF NOT EXISTS idx_tx_from_user ON token_transactions(from_user_id)
-        """)
-        await conn.execute("""
-            CREATE INDEX IF NOT EXISTS idx_tx_type ON token_transactions(tx_type)
-        """)
-        await conn.execute("""
-            CREATE INDEX IF NOT EXISTS idx_tx_created_at ON token_transactions(created_at)
-        """)
+            await conn.execute("""
+                CREATE TABLE IF NOT EXISTS token_transactions (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    tx_hash TEXT UNIQUE NOT NULL,
+                    from_user_id TEXT,
+                    to_user_id TEXT NOT NULL,
+                    amount REAL NOT NULL,
+                    tx_type TEXT NOT NULL,
+                    description TEXT,
+                    reference_id TEXT,
+                    created_at TEXT NOT NULL
+                )
+            """)
+            await conn.execute("""
+                CREATE INDEX IF NOT EXISTS idx_tx_to_user ON token_transactions(to_user_id)
+            """)
+            await conn.execute("""
+                CREATE INDEX IF NOT EXISTS idx_tx_from_user ON token_transactions(from_user_id)
+            """)
+            await conn.execute("""
+                CREATE INDEX IF NOT EXISTS idx_tx_type ON token_transactions(tx_type)
+            """)
+            await conn.execute("""
+                CREATE INDEX IF NOT EXISTS idx_tx_created_at ON token_transactions(created_at)
+            """)
 
-        await conn.execute("""
-            CREATE TABLE IF NOT EXISTS token_stakes (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                user_id TEXT NOT NULL,
-                amount REAL NOT NULL,
-                staked_at TEXT NOT NULL,
-                unlocked_at TEXT,
-                status TEXT NOT NULL DEFAULT 'active',
-                apy REAL DEFAULT 0.05,
-                earned_interest REAL DEFAULT 0.0
-            )
-        """)
-        await conn.execute("""
-            CREATE INDEX IF NOT EXISTS idx_stakes_user ON token_stakes(user_id)
-        """)
-        await conn.execute("""
-            CREATE INDEX IF NOT EXISTS idx_stakes_status ON token_stakes(status)
-        """)
+            await conn.execute("""
+                CREATE TABLE IF NOT EXISTS token_stakes (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    user_id TEXT NOT NULL,
+                    amount REAL NOT NULL,
+                    staked_at TEXT NOT NULL,
+                    unlocked_at TEXT,
+                    status TEXT NOT NULL DEFAULT 'active',
+                    apy REAL DEFAULT 0.05,
+                    earned_interest REAL DEFAULT 0.0
+                )
+            """)
+            await conn.execute("""
+                CREATE INDEX IF NOT EXISTS idx_stakes_user ON token_stakes(user_id)
+            """)
+            await conn.execute("""
+                CREATE INDEX IF NOT EXISTS idx_stakes_status ON token_stakes(status)
+            """)
 
-        await conn.commit()
+            await conn.commit()
+        finally:
+            await self._pool.release_connection(conn)
 
     @staticmethod
     def _now() -> str:
@@ -353,45 +364,53 @@ class SQLiteTokenRepository(ITokenRepository):
 
         如果账户已存在则直接返回，否则创建一个余额为0的新账户
         """
-        conn = await self._get_connection()
-        now = self._now()
+        pool = await self._get_pool()
+        conn = await pool.get_connection()
+        try:
+            now = self._now()
 
-        async with conn.execute(
-            "SELECT * FROM token_accounts WHERE user_id = ?", (user_id,)
-        ) as cursor:
-            row = await cursor.fetchone()
+            async with conn.execute(
+                "SELECT * FROM token_accounts WHERE user_id = ?", (user_id,)
+            ) as cursor:
+                row = await cursor.fetchone()
 
-        if row:
-            return self._row_to_account(row)
+            if row:
+                return self._row_to_account(row)
 
-        await conn.execute(
-            """
-            INSERT INTO token_accounts
-            (user_id, balance, frozen_balance, total_earned, total_spent, updated_at, created_at)
-            VALUES (?, 0.0, 0.0, 0.0, 0.0, ?, ?)
-            """,
-            (user_id, now, now),
-        )
-        await conn.commit()
+            await conn.execute(
+                """
+                INSERT INTO token_accounts
+                (user_id, balance, frozen_balance, total_earned, total_spent, updated_at, created_at)
+                VALUES (?, 0.0, 0.0, 0.0, 0.0, ?, ?)
+                """,
+                (user_id, now, now),
+            )
+            await conn.commit()
 
-        return Account(
-            user_id=user_id,
-            balance=0.0,
-            frozen_balance=0.0,
-            total_earned=0.0,
-            total_spent=0.0,
-            updated_at=now,
-            created_at=now,
-        )
+            return Account(
+                user_id=user_id,
+                balance=0.0,
+                frozen_balance=0.0,
+                total_earned=0.0,
+                total_spent=0.0,
+                updated_at=now,
+                created_at=now,
+            )
+        finally:
+            await pool.release_connection(conn)
 
     async def get_account(self, user_id: str) -> Optional[Account]:
         """获取用户账户，不存在则返回None"""
-        conn = await self._get_connection()
-        async with conn.execute(
-            "SELECT * FROM token_accounts WHERE user_id = ?", (user_id,)
-        ) as cursor:
-            row = await cursor.fetchone()
-        return self._row_to_account(row) if row else None
+        pool = await self._get_pool()
+        conn = await pool.get_connection()
+        try:
+            async with conn.execute(
+                "SELECT * FROM token_accounts WHERE user_id = ?", (user_id,)
+            ) as cursor:
+                row = await cursor.fetchone()
+            return self._row_to_account(row) if row else None
+        finally:
+            await pool.release_connection(conn)
 
     async def get_balance(self, user_id: str) -> float:
         """获取用户可用余额（不包含冻结金额）"""
@@ -409,66 +428,70 @@ class SQLiteTokenRepository(ITokenRepository):
             delta: 变动金额（正数增加/负数减少）
             is_earning: 是否为收入（影响total_earned/total_spent统计）
         """
-        conn = await self._get_connection()
-        now = self._now()
-        account = await self.get_or_create_account(user_id)
+        pool = await self._get_pool()
+        conn = await pool.get_connection()
+        try:
+            now = self._now()
+            account = await self.get_or_create_account(user_id)
 
-        new_balance = account.balance + delta
-        if new_balance < 0:
-            raise InsufficientBalanceError(
-                f"用户 {user_id} 余额不足: 当前 {account.balance}, 需要 {-delta}"
-            )
+            new_balance = account.balance + delta
+            if new_balance < 0:
+                raise InsufficientBalanceError(
+                    f"用户 {user_id} 余额不足: 当前 {account.balance}, 需要 {-delta}"
+                )
 
-        if is_earning and delta > 0:
-            await conn.execute(
-                """
-                UPDATE token_accounts SET
-                    balance = balance + ?,
-                    frozen_balance = frozen_balance,
-                    total_earned = total_earned + ?,
-                    updated_at = ?
-                WHERE user_id = ?
-                """,
-                (delta, delta, now, user_id),
-            )
-        elif not is_earning and delta > 0:
-            await conn.execute(
-                """
-                UPDATE token_accounts SET
-                    balance = balance + ?,
-                    frozen_balance = frozen_balance,
-                    updated_at = ?
-                WHERE user_id = ?
-                """,
-                (delta, now, user_id),
-            )
-        elif delta < 0:
-            spend_delta = abs(delta)
-            await conn.execute(
-                """
-                UPDATE token_accounts SET
-                    balance = balance + ?,
-                    frozen_balance = frozen_balance,
-                    total_spent = total_spent + ?,
-                    updated_at = ?
-                WHERE user_id = ?
-                """,
-                (delta, spend_delta, now, user_id),
-            )
-        else:
-            await conn.execute(
-                """
-                UPDATE token_accounts SET
-                    balance = balance + ?,
-                    frozen_balance = frozen_balance,
-                    updated_at = ?
-                WHERE user_id = ?
-                """,
-                (delta, now, user_id),
-            )
-        await conn.commit()
+            if is_earning and delta > 0:
+                await conn.execute(
+                    """
+                    UPDATE token_accounts SET
+                        balance = balance + ?,
+                        frozen_balance = frozen_balance,
+                        total_earned = total_earned + ?,
+                        updated_at = ?
+                    WHERE user_id = ?
+                    """,
+                    (delta, delta, now, user_id),
+                )
+            elif not is_earning and delta > 0:
+                await conn.execute(
+                    """
+                    UPDATE token_accounts SET
+                        balance = balance + ?,
+                        frozen_balance = frozen_balance,
+                        updated_at = ?
+                    WHERE user_id = ?
+                    """,
+                    (delta, now, user_id),
+                )
+            elif delta < 0:
+                spend_delta = abs(delta)
+                await conn.execute(
+                    """
+                    UPDATE token_accounts SET
+                        balance = balance + ?,
+                        frozen_balance = frozen_balance,
+                        total_spent = total_spent + ?,
+                        updated_at = ?
+                    WHERE user_id = ?
+                    """,
+                    (delta, spend_delta, now, user_id),
+                )
+            else:
+                await conn.execute(
+                    """
+                    UPDATE token_accounts SET
+                        balance = balance + ?,
+                        frozen_balance = frozen_balance,
+                        updated_at = ?
+                    WHERE user_id = ?
+                    """,
+                    (delta, now, user_id),
+                )
+            await conn.commit()
 
-        return await self.get_account(user_id)
+            return await self.get_account(user_id)
+        finally:
+            await pool.release_connection(conn)
 
     # ==================== 交易管理 ====================
 
@@ -489,38 +512,42 @@ class SQLiteTokenRepository(ITokenRepository):
         if amount <= 0:
             raise ValueError("交易金额必须大于0")
 
-        conn = await self._get_connection()
-        tx_hash = self._generate_tx_hash()
-        now = self._now()
-
+        pool = await self._get_pool()
+        conn = await pool.get_connection()
         try:
-            async with conn.execute(
-                """
-                INSERT INTO token_transactions
-                (tx_hash, from_user_id, to_user_id, amount, tx_type, description, reference_id, created_at)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-                """,
-                (
-                    tx_hash,
-                    from_user_id,
-                    to_user_id,
-                    amount,
-                    tx_type,
-                    description,
-                    reference_id,
-                    now,
-                ),
-            ):
-                pass
+            tx_hash = self._generate_tx_hash()
+            now = self._now()
 
-            is_earning = tx_type in ("deposit", "reward", "interest", "unstake")
-            await self.update_balance(to_user_id, amount, is_earning=is_earning)
+            try:
+                async with conn.execute(
+                    """
+                    INSERT INTO token_transactions
+                    (tx_hash, from_user_id, to_user_id, amount, tx_type, description, reference_id, created_at)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                    """,
+                    (
+                        tx_hash,
+                        from_user_id,
+                        to_user_id,
+                        amount,
+                        tx_type,
+                        description,
+                        reference_id,
+                        now,
+                    ),
+                ):
+                    pass
 
-            await conn.commit()
-        except aiosqlite.IntegrityError:
-            raise DuplicateTransactionError(f"交易哈希冲突: {tx_hash}")
+                is_earning = tx_type in ("deposit", "reward", "interest", "unstake")
+                await self.update_balance(to_user_id, amount, is_earning=is_earning)
 
-        return await self.get_transaction_by_hash(tx_hash)
+                await conn.commit()
+            except aiosqlite.IntegrityError:
+                raise DuplicateTransactionError(f"交易哈希冲突: {tx_hash}") from None
+
+            return await self.get_transaction_by_hash(tx_hash)
+        finally:
+            await pool.release_connection(conn)
 
     async def transfer(
         self,
@@ -546,59 +573,63 @@ class SQLiteTokenRepository(ITokenRepository):
         if from_user_id == to_user_id:
             raise ValueError("不能向自己转账")
 
-        conn = await self._get_connection()
-        tx_hash = self._generate_tx_hash()
-        now = self._now()
-
+        pool = await self._get_pool()
+        conn = await pool.get_connection()
         try:
-            async with conn.execute(
-                "SELECT balance FROM token_accounts WHERE user_id = ?",
-                (from_user_id,),
-            ) as cursor:
-                from_row = await cursor.fetchone()
+            tx_hash = self._generate_tx_hash()
+            now = self._now()
 
-            if not from_row or from_row["balance"] < amount:
-                raise InsufficientBalanceError(
-                    f"转出方 {from_user_id} 余额不足"
+            try:
+                async with conn.execute(
+                    "SELECT balance FROM token_accounts WHERE user_id = ?",
+                    (from_user_id,),
+                ) as cursor:
+                    from_row = await cursor.fetchone()
+
+                if not from_row or from_row["balance"] < amount:
+                    raise InsufficientBalanceError(
+                        f"转出方 {from_user_id} 余额不足"
+                    )
+
+                await conn.execute(
+                    """
+                    INSERT INTO token_transactions
+                    (tx_hash, from_user_id, to_user_id, amount, tx_type, description, created_at)
+                    VALUES (?, ?, ?, ?, ?, ?, ?)
+                    """,
+                    (tx_hash, from_user_id, to_user_id, amount, tx_type, description, now),
                 )
 
-            await conn.execute(
-                """
-                INSERT INTO token_transactions
-                (tx_hash, from_user_id, to_user_id, amount, tx_type, description, created_at)
-                VALUES (?, ?, ?, ?, ?, ?, ?)
-                """,
-                (tx_hash, from_user_id, to_user_id, amount, tx_type, description, now),
-            )
+                await conn.execute(
+                    """
+                    UPDATE token_accounts SET
+                        balance = balance - ?,
+                        total_spent = total_spent + ?,
+                        updated_at = ?
+                    WHERE user_id = ?
+                    """,
+                    (amount, amount, now, from_user_id),
+                )
 
-            await conn.execute(
-                """
-                UPDATE token_accounts SET
-                    balance = balance - ?,
-                    total_spent = total_spent + ?,
-                    updated_at = ?
-                WHERE user_id = ?
-                """,
-                (amount, amount, now, from_user_id),
-            )
+                await conn.execute(
+                    """
+                    UPDATE token_accounts SET
+                        balance = balance + ?,
+                        total_earned = total_earned + ?,
+                        updated_at = ?
+                    WHERE user_id = ?
+                    """,
+                    (amount, amount, now, to_user_id),
+                )
 
-            await conn.execute(
-                """
-                UPDATE token_accounts SET
-                    balance = balance + ?,
-                    total_earned = total_earned + ?,
-                    updated_at = ?
-                WHERE user_id = ?
-                """,
-                (amount, amount, now, to_user_id),
-            )
+                await conn.commit()
+            except aiosqlite.IntegrityError:
+                await conn.rollback()
+                raise DuplicateTransactionError(f"交易哈希冲突: {tx_hash}") from None
 
-            await conn.commit()
-        except aiosqlite.IntegrityError:
-            await conn.rollback()
-            raise DuplicateTransactionError(f"交易哈希冲突: {tx_hash}")
-
-        return await self.get_transaction_by_hash(tx_hash)
+            return await self.get_transaction_by_hash(tx_hash)
+        finally:
+            await pool.release_connection(conn)
 
     async def get_transaction_history(
         self,
@@ -616,46 +647,53 @@ class SQLiteTokenRepository(ITokenRepository):
         - start_time / end_time: 按时间范围过滤（ISO格式）
         - limit: 返回条数上限
         """
-        conn = await self._get_connection()
+        pool = await self._get_pool()
+        conn = await pool.get_connection()
+        try:
+            conditions = ["(from_user_id = ? OR to_user_id = ?)"]
+            params: list = [user_id, user_id]
 
-        conditions = ["(from_user_id = ? OR to_user_id = ?)"]
-        params: list = [user_id, user_id]
+            if tx_type:
+                conditions.append("tx_type = ?")
+                params.append(tx_type)
 
-        if tx_type:
-            conditions.append("tx_type = ?")
-            params.append(tx_type)
+            if start_time:
+                conditions.append("created_at >= ?")
+                params.append(start_time)
 
-        if start_time:
-            conditions.append("created_at >= ?")
-            params.append(start_time)
+            if end_time:
+                conditions.append("created_at <= ?")
+                params.append(end_time)
 
-        if end_time:
-            conditions.append("created_at <= ?")
-            params.append(end_time)
+            where_clause = " AND ".join(conditions)
+            params.append(limit)
 
-        where_clause = " AND ".join(conditions)
-        params.append(limit)
+            query = f"""
+                SELECT * FROM token_transactions
+                WHERE {where_clause}
+                ORDER BY created_at DESC
+                LIMIT ?
+            """
 
-        query = f"""
-            SELECT * FROM token_transactions
-            WHERE {where_clause}
-            ORDER BY created_at DESC
-            LIMIT ?
-        """
+            async with conn.execute(query, params) as cursor:
+                rows = await cursor.fetchall()
 
-        async with conn.execute(query, params) as cursor:
-            rows = await cursor.fetchall()
-
-        return [self._row_to_transaction(row) for row in rows]
+            return [self._row_to_transaction(row) for row in rows]
+        finally:
+            await pool.release_connection(conn)
 
     async def get_transaction_by_hash(self, tx_hash: str) -> Optional[Transaction]:
         """根据交易哈希查询交易记录"""
-        conn = await self._get_connection()
-        async with conn.execute(
-            "SELECT * FROM token_transactions WHERE tx_hash = ?", (tx_hash,)
-        ) as cursor:
-            row = await cursor.fetchone()
-        return self._row_to_transaction(row) if row else None
+        pool = await self._get_pool()
+        conn = await pool.get_connection()
+        try:
+            async with conn.execute(
+                "SELECT * FROM token_transactions WHERE tx_hash = ?", (tx_hash,)
+            ) as cursor:
+                row = await cursor.fetchone()
+            return self._row_to_transaction(row) if row else None
+        finally:
+            await pool.release_connection(conn)
 
     # ==================== 质押管理 ====================
 
@@ -669,52 +707,56 @@ class SQLiteTokenRepository(ITokenRepository):
         if amount <= 0:
             raise ValueError("质押金额必须大于0")
 
-        conn = await self._get_connection()
-        now = self._now()
+        pool = await self._get_pool()
+        conn = await pool.get_connection()
+        try:
+            now = self._now()
 
-        async with conn.execute(
-            "SELECT balance, frozen_balance FROM token_accounts WHERE user_id = ?",
-            (user_id,),
-        ) as cursor:
-            row = await cursor.fetchone()
+            async with conn.execute(
+                "SELECT balance, frozen_balance FROM token_accounts WHERE user_id = ?",
+                (user_id,),
+            ) as cursor:
+                row = await cursor.fetchone()
 
-        if not row or row["balance"] < amount:
-            raise InsufficientBalanceError(f"用户 {user_id} 余额不足，无法质押")
+            if not row or row["balance"] < amount:
+                raise InsufficientBalanceError(f"用户 {user_id} 余额不足，无法质押")
 
-        cursor = await conn.execute(
-            """
-            INSERT INTO token_stakes
-            (user_id, amount, staked_at, status, apy, earned_interest)
-            VALUES (?, ?, ?, 'active', ?, 0.0)
-            """,
-            (user_id, amount, now, apy),
-        )
+            cursor = await conn.execute(
+                """
+                INSERT INTO token_stakes
+                (user_id, amount, staked_at, status, apy, earned_interest)
+                VALUES (?, ?, ?, 'active', ?, 0.0)
+                """,
+                (user_id, amount, now, apy),
+            )
 
-        stake_id = cursor.lastrowid
+            stake_id = cursor.lastrowid
 
-        await conn.execute(
-            """
-            UPDATE token_accounts SET
-                balance = balance - ?,
-                frozen_balance = frozen_balance + ?,
-                updated_at = ?
-            WHERE user_id = ?
-            """,
-            (amount, amount, now, user_id),
-        )
+            await conn.execute(
+                """
+                UPDATE token_accounts SET
+                    balance = balance - ?,
+                    frozen_balance = frozen_balance + ?,
+                    updated_at = ?
+                WHERE user_id = ?
+                """,
+                (amount, amount, now, user_id),
+            )
 
-        await conn.commit()
+            await conn.commit()
 
-        return Stake(
-            id=stake_id,
-            user_id=user_id,
-            amount=amount,
-            staked_at=now,
-            unlocked_at=None,
-            status="active",
-            apy=apy,
-            earned_interest=0.0,
-        )
+            return Stake(
+                id=stake_id,
+                user_id=user_id,
+                amount=amount,
+                staked_at=now,
+                unlocked_at=None,
+                status="active",
+                apy=apy,
+                earned_interest=0.0,
+            )
+        finally:
+            await pool.release_connection(conn)
 
     async def unstake(self, stake_id: int) -> Stake:
         """
@@ -723,66 +765,74 @@ class SQLiteTokenRepository(ITokenRepository):
         要求质押必须处于unlocked状态，
         将本金+利息返还至用户可用余额
         """
-        conn = await self._get_connection()
-        now = self._now()
+        pool = await self._get_pool()
+        conn = await pool.get_connection()
+        try:
+            now = self._now()
 
-        async with conn.execute(
-            "SELECT * FROM token_stakes WHERE id = ?", (stake_id,)
-        ) as cursor:
-            row = await cursor.fetchone()
+            async with conn.execute(
+                "SELECT * FROM token_stakes WHERE id = ?", (stake_id,)
+            ) as cursor:
+                row = await cursor.fetchone()
 
-        if not row:
-            raise StakeNotFoundError(f"质押记录不存在: stake_id={stake_id}")
+            if not row:
+                raise StakeNotFoundError(f"质押记录不存在: stake_id={stake_id}")
 
-        stake = self._row_to_stake(row)
+            stake = self._row_to_stake(row)
 
-        if stake.status == "withdrawn":
-            raise StakeNotFoundError(f"该质押已被提取: stake_id={stake_id}")
+            if stake.status == "withdrawn":
+                raise StakeNotFoundError(f"该质押已被提取: stake_id={stake_id}")
 
-        if stake.status != "unlocked":
-            raise StakeNotUnlockedError(
-                f"质押尚未解锁，当前状态: {stake.status}"
+            if stake.status != "unlocked":
+                raise StakeNotUnlockedError(
+                    f"质押尚未解锁，当前状态: {stake.status}"
+                )
+
+            interest = await self.calculate_stake_interest(stake_id)
+            total_return = stake.amount + interest
+
+            await conn.execute(
+                """
+                UPDATE token_stakes SET
+                    status = 'withdrawn',
+                    earned_interest = ?
+                WHERE id = ?
+                """,
+                (interest, stake_id),
             )
 
-        interest = await self.calculate_stake_interest(stake_id)
-        total_return = stake.amount + interest
+            await conn.execute(
+                """
+                UPDATE token_accounts SET
+                    balance = balance + ?,
+                    frozen_balance = frozen_balance - ?,
+                    total_earned = total_earned + ?,
+                    updated_at = ?
+                WHERE user_id = ?
+                """,
+                (total_return, stake.amount, interest, now, stake.user_id),
+            )
 
-        await conn.execute(
-            """
-            UPDATE token_stakes SET
-                status = 'withdrawn',
-                earned_interest = ?
-            WHERE id = ?
-            """,
-            (interest, stake_id),
-        )
+            await conn.commit()
 
-        await conn.execute(
-            """
-            UPDATE token_accounts SET
-                balance = balance + ?,
-                frozen_balance = frozen_balance - ?,
-                total_earned = total_earned + ?,
-                updated_at = ?
-            WHERE user_id = ?
-            """,
-            (total_return, stake.amount, interest, now, stake.user_id),
-        )
-
-        await conn.commit()
-
-        stake.status = "withdrawn"
-        stake.earned_interest = interest
-        return stake
+            stake.status = "withdrawn"
+            stake.earned_interest = interest
+            return stake
+        finally:
+            await pool.release_connection(conn)
 
     async def get_stake(self, stake_id: int) -> Optional[Stake]:
         """根据ID查询单条质押记录"""
-        conn = await self._get_connection()
-        async with conn.execute(
-            "SELECT * FROM token_stakes WHERE id = ?", (stake_id,)
-        ) as cursor:
-            row = await cursor.fetchone()
-        return self._row_to_stake(row) if row else None
+        pool = await self._get_pool()
+        conn = await pool.get_connection()
+        try:
+            async with conn.execute(
+                "SELECT * FROM token_stakes WHERE id = ?", (stake_id,)
+            ) as cursor:
+                row = await cursor.fetchone()
+            return self._row_to_stake(row) if row else None
+        finally:
+            await pool.release_connection(conn)
 
     async def get_user_stakes(
         self, user_id: str, status: Optional[str] = None
@@ -794,22 +844,25 @@ class SQLiteTokenRepository(ITokenRepository):
             user_id: 用户ID
             status: 按状态过滤（active/unlocked/withdrawn/slashed），为空则返回全部
         """
-        conn = await self._get_connection()
+        pool = await self._get_pool()
+        conn = await pool.get_connection()
+        try:
+            if status:
+                async with conn.execute(
+                    "SELECT * FROM token_stakes WHERE user_id = ? AND status = ? ORDER BY staked_at DESC",
+                    (user_id, status),
+                ) as cursor:
+                    rows = await cursor.fetchall()
+            else:
+                async with conn.execute(
+                    "SELECT * FROM token_stakes WHERE user_id = ? ORDER BY staked_at DESC",
+                    (user_id,),
+                ) as cursor:
+                    rows = await cursor.fetchall()
 
-        if status:
-            async with conn.execute(
-                "SELECT * FROM token_stakes WHERE user_id = ? AND status = ? ORDER BY staked_at DESC",
-                (user_id, status),
-            ) as cursor:
-                rows = await cursor.fetchall()
-        else:
-            async with conn.execute(
-                "SELECT * FROM token_stakes WHERE user_id = ? ORDER BY staked_at DESC",
-                (user_id,),
-            ) as cursor:
-                rows = await cursor.fetchall()
-
-        return [self._row_to_stake(row) for row in rows]
+            return [self._row_to_stake(row) for row in rows]
+        finally:
+            await pool.release_connection(conn)
 
     async def calculate_stake_interest(self, stake_id: int) -> float:
         """
@@ -818,32 +871,35 @@ class SQLiteTokenRepository(ITokenRepository):
         使用简单年化利率公式：interest = principal × APY × (days_held / 365)
         仅在质押处于active或unlocked状态时计算
         """
-        conn = await self._get_connection()
+        pool = await self._get_pool()
+        conn = await pool.get_connection()
+        try:
+            async with conn.execute(
+                "SELECT * FROM token_stakes WHERE id = ?", (stake_id,)
+            ) as cursor:
+                row = await cursor.fetchone()
 
-        async with conn.execute(
-            "SELECT * FROM token_stakes WHERE id = ?", (stake_id,)
-        ) as cursor:
-            row = await cursor.fetchone()
+            if not row:
+                raise StakeNotFoundError(f"质押记录不存在: stake_id={stake_id}")
 
-        if not row:
-            raise StakeNotFoundError(f"质押记录不存在: stake_id={stake_id}")
+            stake = self._row_to_stake(row)
 
-        stake = self._row_to_stake(row)
+            if stake.status in ("withdrawn", "slashed"):
+                return 0.0
 
-        if stake.status in ("withdrawn", "slashed"):
-            return 0.0
+            staked_at = datetime.fromisoformat(stake.staked_at)
 
-        staked_at = datetime.fromisoformat(stake.staked_at)
+            if stake.status == "unlocked" and stake.unlocked_at:
+                end_time = datetime.fromisoformat(stake.unlocked_at)
+            else:
+                end_time = datetime.utcnow()
 
-        if stake.status == "unlocked" and stake.unlocked_at:
-            end_time = datetime.fromisoformat(stake.unlocked_at)
-        else:
-            end_time = datetime.utcnow()
+            days_held = (end_time - staked_at).total_seconds() / 86400
+            interest = round(stake.amount * stake.apy * (days_held / 365), 6)
 
-        days_held = (end_time - staked_at).total_seconds() / 86400
-        interest = round(stake.amount * stake.apy * (days_held / 365), 6)
-
-        return max(0.0, interest)
+            return max(0.0, interest)
+        finally:
+            await pool.release_connection(conn)
 
     async def unlock_stake(self, stake_id: int) -> Stake:
         """
@@ -852,31 +908,35 @@ class SQLiteTokenRepository(ITokenRepository):
         将质押状态从 active 变更为 unlocked，
         标记解锁时间，此时用户可调用 unstake 提取资金
         """
-        conn = await self._get_connection()
-        now = self._now()
+        pool = await self._get_pool()
+        conn = await pool.get_connection()
+        try:
+            now = self._now()
 
-        async with conn.execute(
-            "SELECT * FROM token_stakes WHERE id = ?", (stake_id,)
-        ) as cursor:
-            row = await cursor.fetchone()
+            async with conn.execute(
+                "SELECT * FROM token_stakes WHERE id = ?", (stake_id,)
+            ) as cursor:
+                row = await cursor.fetchone()
 
-        if not row:
-            raise StakeNotFoundError(f"质押记录不存在: stake_id={stake_id}")
+            if not row:
+                raise StakeNotFoundError(f"质押记录不存在: stake_id={stake_id}")
 
-        stake = self._row_to_stake(row)
+            stake = self._row_to_stake(row)
 
-        if stake.status != "active":
-            raise ValueError(f"只有active状态的质押才能解锁，当前状态: {stake.status}")
+            if stake.status != "active":
+                raise ValueError(f"只有active状态的质押才能解锁，当前状态: {stake.status}")
 
-        await conn.execute(
-            "UPDATE token_stakes SET status = 'unlocked', unlocked_at = ? WHERE id = ?",
-            (now, stake_id),
-        )
-        await conn.commit()
+            await conn.execute(
+                "UPDATE token_stakes SET status = 'unlocked', unlocked_at = ? WHERE id = ?",
+                (now, stake_id),
+            )
+            await conn.commit()
 
-        stake.status = "unlocked"
-        stake.unlocked_at = now
-        return stake
+            stake.status = "unlocked"
+            stake.unlocked_at = now
+            return stake
+        finally:
+            await pool.release_connection(conn)
 
     async def slash_stake(self, stake_id: int, reason: str) -> Stake:
         """
@@ -884,65 +944,73 @@ class SQLiteTokenRepository(ITokenRepository):
 
         将质押状态置为 slashed，冻结金额归零且不予返还
         """
-        conn = await self._get_connection()
-        now = self._now()
+        pool = await self._get_pool()
+        conn = await pool.get_connection()
+        try:
+            now = self._now()
 
-        async with conn.execute(
-            "SELECT * FROM token_stakes WHERE id = ?", (stake_id,)
-        ) as cursor:
-            row = await cursor.fetchone()
+            async with conn.execute(
+                "SELECT * FROM token_stakes WHERE id = ?", (stake_id,)
+            ) as cursor:
+                row = await cursor.fetchone()
 
-        if not row:
-            raise StakeNotFoundError(f"质押记录不存在: stake_id={stake_id}")
+            if not row:
+                raise StakeNotFoundError(f"质押记录不存在: stake_id={stake_id}")
 
-        stake = self._row_to_stake(row)
+            stake = self._row_to_stake(row)
 
-        if stake.status not in ("active", "unlocked"):
-            raise ValueError(f"无法惩罚非活跃质押，当前状态: {stake.status}")
+            if stake.status not in ("active", "unlocked"):
+                raise ValueError(f"无法惩罚非活跃质押，当前状态: {stake.status}")
 
-        await conn.execute(
-            """
-            UPDATE token_stakes SET
-                status = 'slashed',
-                earned_interest = 0.0
-            WHERE id = ?
-            """,
-            (stake_id,),
-        )
+            await conn.execute(
+                """
+                UPDATE token_stakes SET
+                    status = 'slashed',
+                    earned_interest = 0.0
+                WHERE id = ?
+                """,
+                (stake_id,),
+            )
 
-        await conn.execute(
-            """
-            UPDATE token_accounts SET
-                frozen_balance = frozen_balance - ?,
-                total_spent = total_spent + ?,
-                updated_at = ?
-            WHERE user_id = ?
-            """,
-            (stake.amount, stake.amount, now, stake.user_id),
-        )
+            await conn.execute(
+                """
+                UPDATE token_accounts SET
+                    frozen_balance = frozen_balance - ?,
+                    total_spent = total_spent + ?,
+                    updated_at = ?
+                WHERE user_id = ?
+                """,
+                (stake.amount, stake.amount, now, stake.user_id),
+            )
 
-        await conn.commit()
+            await conn.commit()
 
-        stake.status = "slashed"
-        stake.earned_interest = 0.0
-        return stake
+            stake.status = "slashed"
+            stake.earned_interest = 0.0
+            return stake
+        finally:
+            await pool.release_connection(conn)
 
     async def get_all_active_stakes(self) -> list[Stake]:
         """获取所有活跃状态的质押记录（用于批量计息等系统任务）"""
-        conn = await self._get_connection()
-        async with conn.execute(
-            "SELECT * FROM token_stakes WHERE status = 'active' ORDER BY staked_at ASC"
-        ) as cursor:
-            rows = await cursor.fetchall()
-        return [self._row_to_stake(row) for row in rows]
+        pool = await self._get_pool()
+        conn = await pool.get_connection()
+        try:
+            async with conn.execute(
+                "SELECT * FROM token_stakes WHERE status = 'active' ORDER BY staked_at ASC"
+            ) as cursor:
+                rows = await cursor.fetchall()
+            return [self._row_to_stake(row) for row in rows]
+        finally:
+            await pool.release_connection(conn)
 
     # ==================== 连接管理 ====================
 
     async def close(self) -> None:
-        """关闭数据库连接"""
-        if self._conn:
-            await self._conn.close()
-            self._conn = None
+        """关闭连接池"""
+        if self._pool:
+            await self._pool.close()
+            self._pool = None
 
 
 __all__ = [

@@ -19,6 +19,7 @@ from collections import OrderedDict
 from dataclasses import dataclass, field
 from enum import Enum
 from typing import Any, Callable, Optional
+import contextlib
 
 
 class ConnectionState(Enum):
@@ -100,7 +101,7 @@ class PoolConfig:
 class WebSocketConnectionPool:
     """
     Manages a pool of WebSocket connections.
-    
+
     Features:
     - Connection pooling and reuse
     - Automatic reconnection
@@ -149,10 +150,8 @@ class WebSocketConnectionPool:
 
         for task in self._tasks:
             task.cancel()
-            try:
+            with contextlib.suppress(asyncio.CancelledError):
                 await task
-            except asyncio.CancelledError:
-                pass
 
         for conn in list(self._connections.values()):
             await self._close_connection(conn.connection_id)
@@ -180,11 +179,11 @@ class WebSocketConnectionPool:
     ) -> Optional[PooledConnection]:
         """
         Get or create a connection to a peer.
-        
+
         Args:
             peer_id: The peer's identifier
             peer_address: The peer's (host, port)
-            
+
         Returns:
             A pooled connection or None
         """
@@ -217,10 +216,7 @@ class WebSocketConnectionPool:
             return False
 
         peer_conns = self._peer_connections.get(peer_id, [])
-        if len(peer_conns) >= self.config.max_connections_per_peer:
-            return False
-
-        return True
+        return not len(peer_conns) >= self.config.max_connections_per_peer
 
     async def _create_connection(
         self,
@@ -294,10 +290,8 @@ class WebSocketConnectionPool:
         conn.state = ConnectionState.CLOSING
 
         if self._disconnect_func:
-            try:
+            with contextlib.suppress(Exception):
                 await self._disconnect_func(conn.peer_id, conn.peer_address)
-            except Exception:
-                pass
 
         conn.state = ConnectionState.DISCONNECTED
 
@@ -305,10 +299,8 @@ class WebSocketConnectionPool:
             del self._available[conn_id]
 
         if conn.peer_id in self._peer_connections:
-            try:
+            with contextlib.suppress(ValueError):
                 self._peer_connections[conn.peer_id].remove(conn_id)
-            except ValueError:
-                pass
 
         del self._connections[conn_id]
         self._stats["connections_closed"] += 1
@@ -339,11 +331,11 @@ class WebSocketConnectionPool:
     ) -> int:
         """
         Broadcast a message to multiple peers.
-        
+
         Args:
             message: The message to send
             peer_ids: Optional list of target peer IDs
-            
+
         Returns:
             Number of successful sends
         """
@@ -467,11 +459,11 @@ class ConnectionLoadBalancer:
     ) -> Optional[PooledConnection]:
         """
         Select a connection using the specified strategy.
-        
+
         Args:
             peer_id: The peer to connect to
             strategy: Selection strategy (round_robin, least_used, random)
-            
+
         Returns:
             Selected connection or None
         """

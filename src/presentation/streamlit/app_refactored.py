@@ -88,7 +88,7 @@ def render_sidebar():
             username = st.session_state.user_session.get('username', '用户')
             st.success(f"✅ 已登录: {username}")
 
-            if st.button("🚪 退出登录", use_container_width=True):
+            if st.button("🚪 退出登录", width="stretch"):
                 st.session_state.user_session = None
                 st.rerun()
         else:
@@ -169,7 +169,7 @@ def render_task_submission_page():
     code = st.text_area("输入Python代码", height=250,
                         placeholder="print('Hello World')")
 
-    if st.button("🚀 提交任务", type="primary", use_container_width=True):
+    if st.button("🚀 提交任务", type="primary", width="stretch"):
         if not code.strip():
             st.error("请输入Python代码")
             return

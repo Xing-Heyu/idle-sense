@@ -1,6 +1,10 @@
 """
 sandbox.py
-代码安全沙箱执行环境
+代码安全沙箱执行环境（遗留版本）
+
+注意：此模块为遗留实现，建议迁移到新架构：
+    from src.infrastructure.sandbox import SandboxFactory, IsolationLevel
+
 确保用户提交的Python代码在受限环境中安全执行
 """
 
@@ -8,7 +12,14 @@ import ast
 import contextlib
 import sys
 import time
+import warnings
 from typing import Any, Optional
+
+warnings.warn(
+    "legacy.sandbox.CodeSandbox 已弃用，请迁移到 src.infrastructure.sandbox",
+    DeprecationWarning,
+    stacklevel=2
+)
 
 # Windows系统不支持resource模块
 try:
@@ -18,34 +29,46 @@ except ImportError:
 
 
 class CodeSandbox:
-    """代码安全沙箱执行环境"""
+    """代码安全沙箱执行环境（遗留版本）"""
 
     def __init__(self):
-        # 允许的安全模块白名单
         self.allowed_modules = {
             'math', 'random', 'statistics', 'time', 'datetime',
             'collections', 'itertools', 'functools', 'operator',
-            'json', 're', 'string', 'hashlib', 'base64'
+            'json', 're', 'string', 'hashlib', 'base64',
+            'decimal', 'fractions', 'numbers', 'copy',
+            'typing', 'dataclasses', 'enum',
         }
 
-        # 禁止的危险函数和属性
         self.dangerous_builtins = {
             'eval', 'exec', 'compile', 'input', 'open', 'file',
             '__import__', 'reload', 'globals', 'locals', 'vars',
-            'dir', 'help', 'exit', 'quit', 'license', 'credits'
+            'dir', 'help', 'exit', 'quit', 'license', 'credits',
+            'breakpoint', 'memoryview',
         }
 
-        # 资源限制
-        self.default_timeout = 300  # 5分钟
-        self.default_memory_limit = 512  # MB
+        self.dangerous_attributes = {
+            '__class__', '__base__', '__bases__', '__subclasses__',
+            '__mro__', '__init__', '__new__', '__del__',
+            '__getattribute__', '__setattr__', '__delattr__',
+            '__dict__', '__globals__', '__code__', '__builtins__',
+        }
+
+        self.max_code_length = 100000
+        self.default_timeout = 300
+        self.default_memory_limit = 512
 
     def check_code_safety(self, code: str) -> dict[str, Any]:
-        """检查代码安全性"""
+        """检查代码安全性（增强版）"""
+        if len(code) > self.max_code_length:
+            return {
+                'safe': False,
+                'error': f'代码长度超过限制: {len(code)} > {self.max_code_length}'
+            }
+
         try:
-            # 解析AST语法树
             tree = ast.parse(code)
 
-            # 检查导入语句
             for node in ast.walk(tree):
                 if isinstance(node, ast.Import):
                     for alias in node.names:
@@ -64,7 +87,6 @@ class CodeSandbox:
                             'error': f'禁止从模块导入: {module_name}'
                         }
 
-                # 检查危险函数调用
                 elif isinstance(node, ast.Call):
                     if isinstance(node.func, ast.Name):
                         func_name = node.func.id
@@ -74,12 +96,18 @@ class CodeSandbox:
                                 'error': f'禁止调用危险函数: {func_name}'
                             }
 
-                # 检查属性访问
-                elif isinstance(node, ast.Attribute) and isinstance(node.value, ast.Name) and node.attr.startswith('_'):
-                    return {
-                        'safe': False,
-                        'error': f'禁止访问私有属性: {node.attr}'
-                    }
+                elif isinstance(node, ast.Attribute):
+                    attr_name = node.attr
+                    if attr_name in self.dangerous_attributes:
+                        return {
+                            'safe': False,
+                            'error': f'禁止访问危险属性: {attr_name}'
+                        }
+                    elif attr_name.startswith('_'):
+                        return {
+                            'safe': False,
+                            'error': f'禁止访问私有属性: {attr_name}'
+                        }
 
             return {'safe': True, 'message': '代码安全检查通过'}
 

@@ -51,7 +51,7 @@ from src.core.use_cases.task import (
 )
 from src.infrastructure.audit import AuditLogger
 from src.infrastructure.external import DistributedTaskClient, SchedulerClient
-from src.infrastructure.persistence import ensure_data_dirs, get_db_path
+from src.infrastructure.persistence import get_db_path
 from src.infrastructure.persistence.persistent_node_storage import PersistentNodeStorage
 from src.infrastructure.persistence.persistent_task_storage import PersistentTaskStorage
 from src.infrastructure.repositories import (
@@ -68,7 +68,6 @@ from src.infrastructure.sandbox import IsolationLevel, SandboxConfig, SandboxFac
 from src.infrastructure.scheduler import AdvancedScheduler, SchedulingPolicy, SimpleScheduler
 from src.infrastructure.utils import MemoryCache
 from src.presentation.streamlit.utils.session_backend import (
-    FileSessionBackend,
     SessionBackendFactory,
 )
 

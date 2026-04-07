@@ -13,6 +13,7 @@ import time
 from collections import defaultdict
 from dataclasses import dataclass, field
 from typing import Any, Callable, Generic, Optional, TypeVar
+import contextlib
 
 K = TypeVar("K")
 V = TypeVar("V")
@@ -67,7 +68,7 @@ class ShuffleResult:
 class ShuffleManager(Generic[K, V]):
     """
     Manages shuffle operations for distributed tasks.
-    
+
     A shuffle operation redistributes data across nodes based on keys.
     This is necessary for wide dependencies in DAG execution.
     """
@@ -225,10 +226,8 @@ class ShuffleExecutor:
         self._running = False
         for task in self._tasks:
             task.cancel()
-            try:
+            with contextlib.suppress(asyncio.CancelledError):
                 await task
-            except asyncio.CancelledError:
-                pass
         self._tasks = []
 
     async def _run_shuffle_loop(self):
@@ -247,7 +246,7 @@ class ShuffleExecutor:
         if not result:
             return False
 
-        for partition_id, partition in result.partitions.items():
+        for _, partition in result.partitions.items():
             if partition.node_id is None:
                 continue
 

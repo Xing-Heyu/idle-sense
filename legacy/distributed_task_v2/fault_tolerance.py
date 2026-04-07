@@ -21,6 +21,7 @@ from collections import defaultdict
 from dataclasses import dataclass, field
 from enum import Enum
 from typing import Any, Callable, Optional
+import contextlib
 
 
 class RetryPolicy(Enum):
@@ -121,7 +122,7 @@ class Checkpoint:
 class CircuitBreaker:
     """
     Circuit breaker for preventing cascading failures.
-    
+
     States:
     - CLOSED: Normal operation, requests pass through
     - OPEN: Failures detected, requests blocked
@@ -157,10 +158,7 @@ class CircuitBreaker:
                 return True
             return False
 
-        if self.state == "HALF_OPEN":
-            return True
-
-        return False
+        return self.state == "HALF_OPEN"
 
     def record_success(self):
         """Record a successful execution."""
@@ -181,9 +179,7 @@ class CircuitBreaker:
         self.failure_count += 1
         self.last_failure_time = time.time()
 
-        if self.state == "HALF_OPEN":
-            self.state = "OPEN"
-        elif self.state == "CLOSED" and self.failure_count >= self.failure_threshold:
+        if self.state == "HALF_OPEN" or self.state == "CLOSED" and self.failure_count >= self.failure_threshold:
             self.state = "OPEN"
 
     def get_state(self) -> dict[str, Any]:
@@ -198,7 +194,7 @@ class CircuitBreaker:
 class StragglerDetector:
     """
     Detects and handles straggler tasks.
-    
+
     A straggler is a task that runs significantly slower than
     the median task duration.
     """
@@ -252,7 +248,7 @@ class StragglerDetector:
 class FaultToleranceManager:
     """
     Manages fault tolerance for distributed tasks.
-    
+
     Features:
     - Automatic retry with configurable policies
     - Checkpoint-based recovery
@@ -308,10 +304,8 @@ class FaultToleranceManager:
         self._running = False
         for task in self._tasks:
             task.cancel()
-            try:
+            with contextlib.suppress(asyncio.CancelledError):
                 await task
-            except asyncio.CancelledError:
-                pass
         self._tasks = []
 
     def classify_failure(self, error: Exception) -> FailureType:
@@ -358,14 +352,14 @@ class FaultToleranceManager:
     ) -> tuple[bool, Any]:
         """
         Execute a chunk with automatic retry.
-        
+
         Args:
             chunk_id: The chunk identifier
             task_id: The parent task identifier
             execute_func: Async function to execute
             node_id: Optional node identifier for circuit breaker
             on_checkpoint: Optional callback for checkpointing
-            
+
         Returns:
             Tuple of (success, result_or_error)
         """
@@ -430,13 +424,13 @@ class FaultToleranceManager:
     ) -> tuple[bool, Any]:
         """
         Execute with speculative execution for stragglers.
-        
+
         Args:
             chunk_id: The chunk identifier
             task_id: The parent task identifier
             execute_func: Primary execution function
             backup_execute_func: Backup execution function (uses primary if None)
-            
+
         Returns:
             Tuple of (success, result_or_error)
         """
@@ -464,10 +458,8 @@ class FaultToleranceManager:
 
         for task in pending:
             task.cancel()
-            try:
+            with contextlib.suppress(asyncio.CancelledError):
                 await task
-            except asyncio.CancelledError:
-                pass
 
         result = done.pop().result()
 

@@ -454,8 +454,7 @@ NODE_IDLE_THRESHOLD=300
 REDIS_URL=redis://localhost:6379/0
 
 # 安全配置
-REQUIRE_AUTH=false
-ALLOWED_ORIGINS=*
+CORS_ALLOWED_ORIGINS=*
 ```
 
 ## 📊 监控和维护

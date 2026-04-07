@@ -7,10 +7,6 @@
 import sys
 from pathlib import Path
 
-project_root = Path(__file__).parent.parent.parent.parent
-if str(project_root) not in sys.path:
-    sys.path.insert(0, str(project_root))
-
 import streamlit as st
 
 from src.presentation.streamlit.components.sidebar import render_sidebar
@@ -21,6 +17,10 @@ from src.presentation.streamlit.views.system_stats_page import render as render_
 from src.presentation.streamlit.views.task_monitor_page import render as render_task_monitor
 from src.presentation.streamlit.views.task_results_page import render as render_task_results
 from src.presentation.streamlit.views.task_submission_page import render as render_task_submission
+
+project_root = Path(__file__).parent.parent.parent.parent
+if str(project_root) not in sys.path:
+    sys.path.insert(0, str(project_root))
 
 
 def configure_page():

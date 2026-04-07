@@ -189,8 +189,7 @@ REDIS_ENABLED=false
 REDIS_URL=redis://localhost:6379/0
 
 # 安全配置
-REQUIRE_AUTH=false
-ALLOWED_ORIGINS=*
+CORS_ALLOWED_ORIGINS=*
 EOF
         echo -e "${GREEN}✓ 环境文件已创建: .env${NC}"
     fi

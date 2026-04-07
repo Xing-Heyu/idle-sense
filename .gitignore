@@ -45,6 +45,8 @@ ehthumbs.db
 
 # Logs
 *.log
+# Database files
+*.db
 logs/
 
 # Configuration files

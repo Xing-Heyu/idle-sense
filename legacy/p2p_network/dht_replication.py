@@ -19,6 +19,7 @@ from collections import OrderedDict
 from dataclasses import dataclass, field
 from enum import Enum
 from typing import Any, Callable, Optional
+import contextlib
 
 
 class ReplicationStatus(Enum):
@@ -106,7 +107,7 @@ class ReplicationTask:
 class DHTReplicationManager:
     """
     Manages DHT data replication.
-    
+
     Features:
     - Configurable replication factor
     - Automatic data refresh
@@ -161,10 +162,8 @@ class DHTReplicationManager:
         self._running = False
         for task in self._tasks:
             task.cancel()
-            try:
+            with contextlib.suppress(asyncio.CancelledError):
                 await task
-            except asyncio.CancelledError:
-                pass
         self._tasks = []
 
     async def store(
@@ -176,13 +175,13 @@ class DHTReplicationManager:
     ) -> bool:
         """
         Store a value in the DHT with replication.
-        
+
         Args:
             key: The key to store
             value: The value to store
             ttl: Time to live in seconds
             replicate: Whether to replicate to other nodes
-            
+
         Returns:
             True if stored successfully
         """
@@ -206,10 +205,10 @@ class DHTReplicationManager:
     async def get(self, key: str) -> Optional[Any]:
         """
         Get a value from the DHT.
-        
+
         Args:
             key: The key to retrieve
-            
+
         Returns:
             The value if found, None otherwise
         """
@@ -225,10 +224,10 @@ class DHTReplicationManager:
     async def delete(self, key: str) -> bool:
         """
         Delete a value from the DHT.
-        
+
         Args:
             key: The key to delete
-            
+
         Returns:
             True if deleted successfully
         """
@@ -248,7 +247,7 @@ class DHTReplicationManager:
     ) -> bool:
         """
         Receive a replica from another node.
-        
+
         Args:
             key: The key being replicated
             value: The value
@@ -256,7 +255,7 @@ class DHTReplicationManager:
             timestamp: Original timestamp
             ttl: Time to live
             version: Version number
-            
+
         Returns:
             True if accepted
         """
@@ -437,7 +436,7 @@ class DHTReplicationManager:
 class ConsistentHashRing:
     """
     Consistent hash ring for data partitioning.
-    
+
     Used to determine which nodes are responsible for storing
     specific keys in a distributed manner.
     """

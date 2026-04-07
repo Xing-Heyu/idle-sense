@@ -2,10 +2,12 @@
 会话管理工具
 
 提供会话持久化和恢复功能：
-- localStorage 恢复
+- 服务端会话存储（内存/Redis/文件）
 - URL 参数恢复
 - 会话清理
-- 支持可配置后端（内存/Redis）
+- 支持可配置后端
+
+注意：已弃用 localStorage 以避免 XSS 风险
 """
 
 import hashlib
@@ -17,7 +19,6 @@ import streamlit as st
 
 from .session_backend import (
     FileSessionBackend,
-    MemorySessionBackend,
     RedisSessionBackend,
     SessionBackend,
     SessionBackendFactory,
@@ -29,7 +30,7 @@ class SessionConfig:
 
     def __init__(
         self,
-        backend_type: str = "file",
+        backend_type: str = "memory",
         redis_url: Optional[str] = None,
         redis_key_prefix: str = "session:",
         session_ttl: int = 3600,
@@ -45,7 +46,7 @@ class SessionConfig:
     def from_env(cls) -> "SessionConfig":
         """从环境变量创建配置"""
         return cls(
-            backend_type=os.environ.get("IDLE_SESSION_BACKEND", "file"),
+            backend_type=os.environ.get("IDLE_SESSION_BACKEND", "memory"),
             redis_url=os.environ.get("IDLE_SESSION_REDIS_URL"),
             redis_key_prefix=os.environ.get("IDLE_SESSION_REDIS_PREFIX", "session:"),
             session_ttl=int(os.environ.get("IDLE_SESSION_TTL", "3600")),
@@ -57,7 +58,7 @@ class SessionManager:
 
     SESSION_KEY = "user_session"
     HISTORY_KEY = "task_history"
-    LOCAL_STORAGE_KEY = "idle_accelerator_session"
+    SESSION_TOKEN_KEY = "idle_accelerator_session"
 
     _backend: Optional[SessionBackend] = None
     _config: Optional[SessionConfig] = None
@@ -214,61 +215,91 @@ class SessionManager:
         return False
 
     @staticmethod
-    def restore_from_localstorage():
-        """从 localStorage 恢复会话"""
+    def restore_from_session_token():
+        """
+        从会话令牌恢复会话
+
+        通过 URL 参数传递的会话令牌从服务端存储恢复会话。
+        不再使用 localStorage 以避免 XSS 风险。
+        """
         if st.session_state.get(SessionManager.SESSION_KEY):
             return False
-
-        st.markdown("""
-        <script>
-        const savedSession = localStorage.getItem('idle_accelerator_session');
-        if (savedSession) {
-            try {
-                const sessionData = JSON.parse(savedSession);
-                const url = new URL(window.location.href);
-                url.searchParams.set('restore_session', savedSession);
-                window.history.replaceState({}, '', url);
-            } catch(e) {}
-        }
-        </script>
-        """, unsafe_allow_html=True)
 
         restore_data = st.query_params.get_all("restore_session")
         if restore_data:
             try:
-                session_data = json.loads(restore_data[0])
-                if session_data.get("user_id") and session_data.get("username"):
-                    st.session_state[SessionManager.SESSION_KEY] = session_data
+                import html
+                sanitized = html.unescape(restore_data[0])
+                session_data = json.loads(sanitized)
+                if not SessionManager._validate_session_data(session_data):
+                    return False
+                user_id = session_data.get("user_id")
+                backend = SessionManager.get_backend()
+                stored_session = backend.get_session(user_id)
+                if stored_session and stored_session.get("username") == session_data.get("username"):
+                    st.session_state[SessionManager.SESSION_KEY] = stored_session
                     st.query_params.pop("restore_session", None)
                     return True
-            except (json.JSONDecodeError, KeyError, IndexError):
+            except (json.JSONDecodeError, KeyError, IndexError, TypeError):
                 pass
 
         return False
 
+    restore_from_localstorage = restore_from_session_token
+
     @staticmethod
-    def save_to_localstorage(user_id: str, username: str, **kwargs):
-        """保存会话到 localStorage"""
+    def _validate_session_data(data: dict) -> bool:
+        """验证会话数据格式和内容"""
+        if not isinstance(data, dict):
+            return False
+        required_keys = {'user_id', 'username'}
+        if not required_keys.issubset(data.keys()):
+            return False
+        user_id = data.get('user_id', '')
+        username = data.get('username', '')
+        if not isinstance(user_id, str) or not isinstance(username, str):
+            return False
+        if len(user_id) > 64 or len(username) > 64:
+            return False
+        import re
+        if not re.match(r'^local_[a-f0-9]{8}$', user_id):
+            return False
+        return bool(re.match(r'^[\u4e00-\u9fa5a-zA-Z0-9_]+$', username))
+
+    @staticmethod
+    def save_session(user_id: str, username: str, **kwargs):
+        """
+        保存会话到服务端存储
+
+        Args:
+            user_id: 用户ID
+            username: 用户名
+            **kwargs: 其他会话数据
+        """
         session_data = {
             "user_id": user_id,
             "username": username,
             **kwargs
         }
-        session_json = json.dumps(session_data, ensure_ascii=False)
-        st.markdown(f"""
-        <script>
-        localStorage.setItem('idle_accelerator_session', '{session_json}');
-        </script>
-        """, unsafe_allow_html=True)
+        backend = SessionManager.get_backend()
+        config = SessionManager.get_config()
+        backend.set_session(user_id, session_data, ttl=config.session_ttl)
+
+    save_to_localstorage = save_session
 
     @staticmethod
-    def clear_localstorage():
-        """清除 localStorage 中的会话"""
-        st.markdown("""
-        <script>
-        localStorage.removeItem('idle_accelerator_session');
-        </script>
-        """, unsafe_allow_html=True)
+    def clear_session():
+        """
+        清除服务端会话存储
+
+        删除当前用户的会话数据。
+        """
+        session = st.session_state.get(SessionManager.SESSION_KEY)
+        if session and "user_id" in session:
+            backend = SessionManager.get_backend()
+            backend.delete_session(session["user_id"])
+
+    clear_localstorage = clear_session
 
     @staticmethod
     def generate_user_id(username: str) -> str:

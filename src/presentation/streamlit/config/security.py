@@ -138,10 +138,7 @@ def validate_redirect_url(url: str, allowed_hosts: Optional[list[str]] = None) -
         if parsed.scheme not in ["http", "https"]:
             return False
 
-        if allowed_hosts and parsed.netloc not in allowed_hosts:
-            return False
-
-        return True
+        return not (allowed_hosts and parsed.netloc not in allowed_hosts)
     except Exception:
         return False
 

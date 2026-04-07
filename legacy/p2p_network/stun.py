@@ -10,6 +10,7 @@ References:
 """
 
 import asyncio
+import binascii
 import secrets
 import socket
 import struct
@@ -246,13 +247,13 @@ class STUNClient:
     async def discover_nat_type(self) -> NATType:
         """
         Discover NAT type using RFC 3489 algorithm.
-        
+
         Test flow:
         1. Test I: Get mapped address from primary STUN server
         2. Test II: Send change request to different IP and port
         3. Test I(II): Get mapped address from secondary STUN server
         4. Test III: Send change request to different port only
-        
+
         Returns:
             NATType enum value
         """
@@ -408,9 +409,6 @@ class STUNClient:
             "local_ip": self._get_local_ip(),
             "local_port": self.local_port,
         }
-
-
-import binascii
 
 
 class STUNServer:

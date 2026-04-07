@@ -84,15 +84,9 @@ class TokenEncryption:
     def __init__(
         self,
         main_password: Optional[str] = None,
-        key_file: Optional[str] = None
+        key_file: Optional[str] = None,
+        salt_file: Optional[str] = None
     ):
-        """
-        初始化加密服务
-
-        Args:
-            main_password: 主密码（可选）
-            key_file: 密钥文件路径（可选）
-        """
         if not CRYPTOGRAPHY_AVAILABLE:
             raise ImportError(
                 "cryptography 库未安装，请运行: pip install cryptography"
@@ -100,6 +94,7 @@ class TokenEncryption:
 
         self._main_password = main_password
         self._key_file = key_file
+        self._salt_file = salt_file
         self._encryption_key: Optional[bytes] = None
         self._hmac_key: Optional[bytes] = None
 
@@ -114,8 +109,15 @@ class TokenEncryption:
         self._derive_keys_from_password(password)
 
     def _derive_keys_from_password(self, password: str) -> None:
-        """从主密码派生加密密钥和HMAC密钥"""
-        salt = secrets.token_bytes(self.SALT_SIZE)
+        if self._salt_file and os.path.exists(self._salt_file):
+            with open(self._salt_file, "r") as f:
+                salt = base64.b64decode(f.read().strip())
+        else:
+            salt = secrets.token_bytes(self.SALT_SIZE)
+            if self._salt_file:
+                os.makedirs(os.path.dirname(self._salt_file), exist_ok=True)
+                with open(self._salt_file, "w") as f:
+                    f.write(base64.b64encode(salt).decode())
 
         kdf = PBKDF2HMAC(
             algorithm=hashes.SHA256(),
