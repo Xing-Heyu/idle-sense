@@ -38,8 +38,8 @@ call venv\Scripts\activate.bat
 :: 安装依赖
 echo.
 echo [3/4] 安装依赖包...
-python -m pip install --upgrade pip -q
-pip install -r requirements.txt -q
+python -m pip install --upgrade pip -q -i https://pypi.tuna.tsinghua.edu.cn/simple
+pip install -r requirements.txt -q -i https://pypi.tuna.tsinghua.edu.cn/simple
 if errorlevel 1 (
     echo ❌ 依赖安装失败，请检查网络连接
     pause
@@ -50,7 +50,7 @@ echo ✅ 核心依赖安装成功
 :: 安装可选依赖
 echo.
 echo [4/4] 安装可选组件...
-pip install wasmtime -q 2>nul
+pip install wasmtime -q -i https://pypi.tuna.tsinghua.edu.cn/simple 2>nul
 echo ✅ WASM 沙箱支持已安装
 
 :: 检查 Docker
