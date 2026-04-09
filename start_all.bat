@@ -13,16 +13,24 @@ if errorlevel 1 (
     exit /b 1
 )
 
-echo [1/4] Checking dependencies...
-pip show streamlit >nul 2>&1
-if errorlevel 1 (
-    echo [2/4] Installing dependencies...
-    pip install -r requirements.txt
+REM Activate virtual environment if exists
+if exist venv\Scripts\activate.bat (
+    echo [1/5] Activating virtual environment...
+    call venv\Scripts\activate.bat
 ) else (
-    echo [2/4] Dependencies OK
+    echo [1/5] Using system Python...
 )
 
-echo [3/4] Starting scheduler...
+echo [2/5] Checking dependencies...
+pip show streamlit >nul 2>&1
+if errorlevel 1 (
+    echo [3/5] Installing dependencies...
+    pip install -r requirements.txt
+) else (
+    echo [3/5] Dependencies OK
+)
+
+echo [4/5] Starting scheduler...
 start "Scheduler" /min python -m legacy.scheduler.simple_server
 
 echo Waiting for scheduler...
@@ -37,7 +45,7 @@ if errorlevel 1 (
     echo [OK] Scheduler running at: http://localhost:8000
 )
 
-echo [4/4] Starting Web UI...
+echo [5/5] Starting Web UI...
 echo.
 echo ========================================
 echo   Started successfully!
