@@ -56,4 +56,6 @@ echo Scheduler: http://localhost:8000
 echo Press Ctrl+C to stop
 echo.
 
+REM Set PYTHONPATH to project root for module imports
+set PYTHONPATH=%~dp0
 streamlit run src/presentation/streamlit/app.py
