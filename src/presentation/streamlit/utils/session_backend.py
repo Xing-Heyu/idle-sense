@@ -298,7 +298,7 @@ class SessionBackendFactory:
 
     @staticmethod
     def create_backend(
-        backend_type: str = "memory",
+        backend_type: str = "file",
         redis_url: Optional[str] = None,
         key_prefix: str = "session:",
         default_ttl: int = 3600,

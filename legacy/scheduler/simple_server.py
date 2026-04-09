@@ -1196,7 +1196,7 @@ async def delete_task_api(task_id: int):
 # ==================== CORS 支持 ====================
 try:
     from fastapi.middleware.cors import CORSMiddleware
-    _cors_origins_str = os.getenv("CORS_ALLOWED_ORIGINS", "*")
+    _cors_origins_str = os.getenv("CORS_ALLOWED_ORIGINS", "http://localhost:8000")
     _cors_origins = [o.strip() for o in _cors_origins_str.split(",") if o.strip()]
     _allow_all = "*" in _cors_origins
     app.add_middleware(

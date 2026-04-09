@@ -57,7 +57,7 @@ class SecurityConfig:
     headers: SecurityHeaders = None
     enable_cors_protection: bool = True
     enable_csrf_protection: bool = True
-    session_cookie_secure: bool = True
+    session_cookie_secure: bool = False  # 生产环境必须改为 True（需 HTTPS）
     session_cookie_httponly: bool = True
     session_cookie_samesite: str = "Lax"
 
@@ -72,7 +72,7 @@ class SecurityConfig:
             enabled=os.getenv("IDLE_SECURITY_ENABLED", "true").lower() == "true",
             enable_cors_protection=os.getenv("IDLE_CORS_PROTECTION", "true").lower() == "true",
             enable_csrf_protection=os.getenv("IDLE_CSRF_PROTECTION", "true").lower() == "true",
-            session_cookie_secure=os.getenv("IDLE_SESSION_COOKIE_SECURE", "true").lower() == "true",
+            session_cookie_secure=os.getenv("IDLE_SESSION_COOKIE_SECURE", "false").lower() == "true",
         )
 
 

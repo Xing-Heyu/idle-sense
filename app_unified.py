@@ -153,30 +153,12 @@ def init_session_state():
 
 
 def restore_session():
-    """从 localStorage 恢复登录态"""
-    if 'user_session' not in st.session_state:
-        st.markdown("""
-        <script>
-        const savedSession = localStorage.getItem('idle_accelerator_session');
-        if (savedSession) {
-            try {
-                const sessionData = JSON.parse(savedSession);
-                const url = new URL(window.location.href);
-                url.searchParams.set('restore_session', JSON.stringify(sessionData));
-                window.history.replaceState({}, '', url);
-            } catch(e) {}
-        }
-        </script>
-        """, unsafe_allow_html=True)
-
-        restore_data = st.query_params.get_all('restore_session')
-        if restore_data:
-            try:
-                session_data = json.loads(restore_data[0])
-                st.session_state.user_session = session_data
-                st.query_params.clear()
-            except (json.JSONDecodeError, KeyError, IndexError):
-                pass
+    if 'user_session' not in st.session_state or not st.session_state.user_session:
+        user_id = st.query_params.get("user_id")
+        username = st.query_params.get("username")
+        if user_id and username:
+            session_data = {"username": username, "user_id": user_id}
+            st.session_state.user_session = session_data
 
 
 def get_scheduler_client() -> SchedulerClient:
@@ -223,7 +205,6 @@ def render_sidebar():
                     st.metric(f"声誉 ({account['tier']})", f"{account['reputation']:.0f}")
 
             if st.button("退出登录", width="stretch"):
-                st.markdown("<script>localStorage.removeItem('idle_accelerator_session');</script>", unsafe_allow_html=True)
                 st.session_state.user_session = None
                 st.query_params.clear()
                 st.rerun()
@@ -238,11 +219,8 @@ def render_sidebar():
 
                 container.token_economy_service.get_or_create_account(user_id)
 
-                st.markdown(f"""
-                <script>
-                localStorage.setItem('idle_accelerator_session', JSON.stringify({json.dumps(session_data)}));
-                </script>
-                """, unsafe_allow_html=True)
+                st.query_params["user_id"] = user_id
+                st.query_params["username"] = username
                 st.toast(f"✅ 欢迎 {username}，获得 {settings.TOKEN.INITIAL_BALANCE} CMP 初始余额！", icon="✅")
                 time.sleep(0.3)
                 st.rerun()

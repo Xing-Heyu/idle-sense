@@ -30,7 +30,7 @@ class SessionConfig:
 
     def __init__(
         self,
-        backend_type: str = "memory",
+        backend_type: str = "file",
         redis_url: Optional[str] = None,
         redis_key_prefix: str = "session:",
         session_ttl: int = 3600,
@@ -46,7 +46,7 @@ class SessionConfig:
     def from_env(cls) -> "SessionConfig":
         """从环境变量创建配置"""
         return cls(
-            backend_type=os.environ.get("IDLE_SESSION_BACKEND", "memory"),
+            backend_type=os.environ.get("IDLE_SESSION_BACKEND", "file"),
             redis_url=os.environ.get("IDLE_SESSION_REDIS_URL"),
             redis_key_prefix=os.environ.get("IDLE_SESSION_REDIS_PREFIX", "session:"),
             session_ttl=int(os.environ.get("IDLE_SESSION_TTL", "3600")),
@@ -198,7 +198,6 @@ class SessionManager:
 
     @staticmethod
     def restore_from_url_params():
-        """从URL参数恢复会话"""
         try:
             params = st.query_params
 
@@ -207,6 +206,8 @@ class SessionManager:
                 username = params["username"]
 
                 if not st.session_state.get(SessionManager.SESSION_KEY):
+                    if SessionManager.restore_session_from_backend(user_id):
+                        return True
                     SessionManager.set_user_session(user_id, username)
                     return True
         except Exception:

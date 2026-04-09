@@ -46,6 +46,8 @@ def render_login():
                         response.username,
                         is_local=True
                     )
+                    st.query_params["user_id"] = response.user_id
+                    st.query_params["username"] = response.username
                     time.sleep(1)
                     st.rerun()
                 else:
@@ -255,6 +257,8 @@ def render_register():
                         response.username,
                         is_local=True
                     )
+                    st.query_params["user_id"] = response.user_id
+                    st.query_params["username"] = response.username
 
                     st.success(f"✅ {response.message}")
                     if response.username != username:

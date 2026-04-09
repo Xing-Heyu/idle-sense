@@ -9,6 +9,7 @@ import pytest
 from unittest.mock import MagicMock, patch
 
 from src.presentation.streamlit.utils.session_backend import (
+    FileSessionBackend,
     MemorySessionBackend,
     RedisSessionBackend,
     SessionBackend,
@@ -201,10 +202,9 @@ class TestSessionBackendFactory:
             )
             assert isinstance(backend, MemorySessionBackend)
 
-    def test_default_backend_is_memory(self):
-        """测试默认后端是内存"""
+    def test_default_backend_is_file(self):
         backend = SessionBackendFactory.create_backend()
-        assert isinstance(backend, MemorySessionBackend)
+        assert isinstance(backend, FileSessionBackend)
 
 
 class TestSessionBackendInterface:

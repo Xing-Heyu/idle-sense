@@ -11,6 +11,7 @@ from unittest.mock import MagicMock, patch
 
 from src.presentation.streamlit.utils.session_manager import SessionConfig, SessionManager
 from src.presentation.streamlit.utils.session_backend import (
+    FileSessionBackend,
     MemorySessionBackend,
     RedisSessionBackend,
 )
@@ -73,9 +74,8 @@ class TestSessionConfig:
     """会话配置测试"""
 
     def test_default_config(self):
-        """测试默认配置"""
         config = SessionConfig()
-        assert config.backend_type == "memory"
+        assert config.backend_type == "file"
         assert config.redis_key_prefix == "session:"
         assert config.session_ttl == 3600
 
@@ -93,9 +93,8 @@ class TestSessionConfig:
         assert config.session_ttl == 7200
 
     def test_from_env_default(self):
-        """测试从环境变量创建配置（默认值）"""
         config = SessionConfig.from_env()
-        assert config.backend_type == "memory"
+        assert config.backend_type == "file"
         assert config.session_ttl == 3600
 
     def test_from_env_custom(self, monkeypatch):
@@ -119,10 +118,9 @@ class TestSessionManagerBackend:
         SessionManager._backend = None
         SessionManager._config = None
 
-    def test_default_backend_is_memory(self):
-        """测试默认后端是内存"""
+    def test_default_backend_is_file(self):
         backend = SessionManager.get_backend()
-        assert isinstance(backend, MemorySessionBackend)
+        assert isinstance(backend, FileSessionBackend)
 
     def test_configure_memory_backend(self):
         """测试配置内存后端"""
