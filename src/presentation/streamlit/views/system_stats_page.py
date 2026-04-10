@@ -18,7 +18,7 @@ def render(user_id: Optional[str] = None):
     """渲染系统统计页面"""
     st.header("📈 系统统计")
 
-    client = container.scheduler_client
+    client = container.scheduler_client()
 
     success, stats = client.get_system_stats()
     if success:
@@ -126,7 +126,7 @@ def render(user_id: Optional[str] = None):
     st.subheader("📊 计算时数统计")
 
     if user_id:
-        token_service = container.token_economy_service
+        token_service = container.token_economy_service()
         account = token_service.get_or_create_account(user_id)
 
         if account:

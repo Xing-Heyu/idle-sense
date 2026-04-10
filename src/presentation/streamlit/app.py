@@ -6,6 +6,9 @@
 
 import streamlit as st
 
+from src.presentation.streamlit.utils.di_utils import ensure_wired
+ensure_wired()
+
 from src.presentation.streamlit.components.sidebar import render_sidebar
 from src.presentation.streamlit.utils.session_manager import SessionManager
 from src.presentation.streamlit.views.auth_page import render as render_auth
