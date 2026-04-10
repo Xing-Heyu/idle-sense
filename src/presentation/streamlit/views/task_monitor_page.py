@@ -12,7 +12,7 @@ from typing import Optional
 import pandas as pd
 import streamlit as st
 
-from src.di import container
+from src.presentation.streamlit.utils.di_utils import container
 
 
 def render(user_id: Optional[str] = None):
@@ -24,7 +24,7 @@ def render(user_id: Optional[str] = None):
 
     task_monitor_type = st.radio("监控任务类型", ["所有任务", "单节点任务", "分布式任务"], horizontal=True)
 
-    client = container.scheduler_client
+    client = container.scheduler_client()
     success, results = client.get_all_results()
 
     if success and results.get("results"):
@@ -94,7 +94,7 @@ def render(user_id: Optional[str] = None):
                         st.code(full_result["result"], language="text")
 
                         if task_type == "分布式任务":
-                            distributed_client = container.distributed_task_client
+                            distributed_client = container.distributed_task_client()
                             if distributed_client.is_available:
                                 st.subheader("分布式任务详情")
 

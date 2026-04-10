@@ -11,14 +11,14 @@ from typing import Optional
 import pandas as pd
 import streamlit as st
 
-from src.di import container
+from src.presentation.streamlit.utils.di_utils import container
 
 
 def render(user_id: Optional[str] = None):
     """渲染任务结果页面"""
     st.header("📋 任务结果")
 
-    client = container.scheduler_client
+    client = container.scheduler_client()
 
     st.subheader("🔍 搜索任务")
 

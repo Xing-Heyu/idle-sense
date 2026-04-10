@@ -14,7 +14,7 @@ import time
 import streamlit as st
 
 from src.core.use_cases.auth import LoginRequest
-from src.di import container
+from src.presentation.streamlit.utils.di_utils import container
 from src.presentation.streamlit.utils.session_manager import SessionManager
 
 
@@ -71,7 +71,7 @@ def _render_user_status():
                     response.user_id,
                     response.username
                 )
-                container.token_economy_service.get_or_create_account(response.user_id)
+                container.token_economy_service().get_or_create_account(response.user_id)
                 st.rerun()
             else:
                 st.error(f"登录失败: {response.message}")
@@ -81,7 +81,7 @@ def _render_system_status():
     """渲染系统状态"""
     st.subheader("📊 系统状态")
 
-    client = container.scheduler_client
+    client = container.scheduler_client()
     success, stats = client.get_system_stats()
 
     if success:
@@ -112,7 +112,7 @@ def _render_node_controls():
         return
 
     user_id = st.session_state.user_session.get("user_id")
-    client = container.scheduler_client
+    client = container.scheduler_client()
 
     if st.session_state.get("active_node_id"):
         st.success("🟢 节点已激活")
@@ -175,7 +175,7 @@ def _render_debug_mode():
 
 def _render_token_balance(user_id: str):
     """渲染代币余额"""
-    token_service = container.token_economy_service
+    token_service = container.token_economy_service()
     account_info = token_service.get_account_info(user_id)
 
     st.subheader("💰 代币余额")
@@ -190,7 +190,7 @@ def _render_token_balance(user_id: str):
 
 def _render_reputation(user_id: str):
     """渲染声誉信息"""
-    token_service = container.token_economy_service
+    token_service = container.token_economy_service()
     account_info = token_service.get_account_info(user_id)
     reputation = account_info.get('reputation', 50.0)
 

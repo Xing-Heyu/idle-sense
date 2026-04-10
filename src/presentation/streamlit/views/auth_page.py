@@ -13,7 +13,7 @@ import time
 import streamlit as st
 
 from src.core.use_cases.auth import LoginRequest, RegisterRequest
-from src.di import container
+from src.presentation.streamlit.utils.di_utils import container
 from src.presentation.streamlit.utils.session_manager import SessionManager
 
 

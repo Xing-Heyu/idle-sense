@@ -15,7 +15,7 @@ from datetime import datetime
 import streamlit as st
 
 from config.settings import settings
-from src.di import container
+from src.presentation.streamlit.utils.di_utils import container
 from src.infrastructure.external import SchedulerClient
 
 MODERN_STYLE = """
@@ -163,7 +163,7 @@ def restore_session():
 
 def get_scheduler_client() -> SchedulerClient:
     """获取调度器客户端"""
-    return container.scheduler_client
+    return container.scheduler_client()
 
 
 def render_sidebar():
@@ -194,7 +194,7 @@ def render_sidebar():
                 st.markdown("---")
                 st.markdown("### 💰 Token账户")
 
-                account = container.token_economy_service.get_account_info(user_id)
+                account = container.token_economy_service().get_account_info(user_id)
 
                 st.metric("余额", f"{account['balance']:,.2f} CMP")
 
@@ -217,7 +217,7 @@ def render_sidebar():
                 session_data = {"username": username, "user_id": user_id}
                 st.session_state.user_session = session_data
 
-                container.token_economy_service.get_or_create_account(user_id)
+                container.token_economy_service().get_or_create_account(user_id)
 
                 st.query_params["user_id"] = user_id
                 st.query_params["username"] = username
@@ -273,7 +273,7 @@ def render_task_submission():
 
                     if success:
                         task_id = result.get("task_id")
-                        cost_info = container.token_economy_service.estimate_task_cost(
+                        cost_info = container.token_economy_service().estimate_task_cost(
                             cpu_request, memory_request, timeout
                         )
                         st.toast(f"✅ 任务提交成功！ID: {task_id} | 预估: {cost_info['final_price']} CMP", icon="✅")
@@ -457,7 +457,7 @@ def render_system_stats():
         st.markdown("---")
         st.subheader("💰 Token经济")
 
-        token_stats = container.token_economy_service.get_system_stats()
+        token_stats = container.token_economy_service().get_system_stats()
 
         col1, col2, col3, col4 = st.columns(4)
         with col1:

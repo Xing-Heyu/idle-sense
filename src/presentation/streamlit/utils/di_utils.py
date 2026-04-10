@@ -1,0 +1,41 @@
+"""
+Streamlit DI 工具 - 提供与 Streamlit 集成的 DI 功能
+
+使用示例：
+    from src.presentation.streamlit.utils.di_utils import get_container, container
+
+    container = get_container()
+"""
+
+import streamlit as st
+
+from src.di import Container
+
+
+_container = None
+
+
+@st.cache_resource
+def get_container():
+    """获取或创建 DI 容器实例（单例）"""
+    global _container
+    if _container is None:
+        _container = Container()
+        _container.wire(modules=[
+            "src.presentation.streamlit.components.sidebar",
+            "src.presentation.streamlit.views.auth_page",
+            "src.presentation.streamlit.views.task_monitor_page",
+            "src.presentation.streamlit.views.task_submission_page",
+            "src.presentation.streamlit.views.node_management_page",
+            "src.presentation.streamlit.views.system_stats_page",
+        ])
+    return _container
+
+
+container = get_container()
+
+
+__all__ = [
+    "get_container",
+    "container",
+]

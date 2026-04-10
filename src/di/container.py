@@ -12,7 +12,7 @@
     pip install dependency-injector
 
 使用示例：
-    from src.di import Container, container
+    from src.di import Container
 
     # 初始化容器
     container = Container()
@@ -24,6 +24,10 @@
     @inject
     def my_function(client = Provide[Container.scheduler_client]):
         return client.check_health()
+
+    # 向后兼容：使用预初始化的全局容器
+    from src.di import container
+    container.wire(modules=[__name__])
 """
 
 

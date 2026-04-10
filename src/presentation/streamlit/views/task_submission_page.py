@@ -13,7 +13,7 @@ from typing import Any, Optional
 
 import streamlit as st
 
-from src.di import container
+from src.presentation.streamlit.utils.di_utils import container
 
 
 def _parse_data_input(data_type: str, data_input: str) -> Any:
@@ -118,7 +118,7 @@ def _render_single_node_task(user_id: Optional[str]):
     priority = st.slider("任务优先级", 0, 10, 0, 1, help="优先级越高，任务调度越快，但消耗更多代币（普通提交免费）")
 
     if user_id and priority > 0:
-        cost_info = container.token_economy_service.estimate_task_cost(
+        cost_info = container.token_economy_service().estimate_task_cost(
             cpu_request, memory_request, timeout, priority
         )
         st.info(f"💵 预估费用: 基础 {cost_info['base_price']:.2f} CMP | 最终 {cost_info['final_price']:.2f} CMP | 优先级费 {cost_info['priority_fee']:.2f} CMP")
@@ -139,7 +139,7 @@ def _render_single_node_task(user_id: Optional[str]):
                 st.toast("⚠️ 请输入Python代码", icon="⚠️")
             else:
                 with st.spinner("提交任务中..."):
-                    client = container.scheduler_client
+                    client = container.scheduler_client()
                     success, result = client.submit_task(
                         code, timeout, cpu_request, memory_request, user_id
                     )
@@ -148,7 +148,7 @@ def _render_single_node_task(user_id: Optional[str]):
                         task_id = result.get("task_id")
 
                         if priority > 0:
-                            cost_info = container.token_economy_service.estimate_task_cost(
+                            cost_info = container.token_economy_service().estimate_task_cost(
                                 cpu_request, memory_request, timeout, priority
                             )
                             st.toast(f"✅ 任务提交成功！ID: {task_id} | 预估费用: {cost_info['final_price']} CMP", icon="✅")
@@ -173,7 +173,7 @@ def _render_single_node_task(user_id: Optional[str]):
                 st.toast("⚠️ 请输入Python代码", icon="⚠️")
             else:
                 with st.spinner("提交加速任务中..."):
-                    client = container.scheduler_client
+                    client = container.scheduler_client()
                     success, result = client.submit_task(
                         code, timeout, cpu_request, memory_request, user_id
                     )
@@ -182,7 +182,7 @@ def _render_single_node_task(user_id: Optional[str]):
                         task_id = result.get("task_id")
 
                         high_priority = min(priority + 5, 10)
-                        cost_info = container.token_economy_service.estimate_task_cost(
+                        cost_info = container.token_economy_service().estimate_task_cost(
                             cpu_request, memory_request, timeout, high_priority
                         )
 
@@ -204,7 +204,7 @@ def _render_single_node_task(user_id: Optional[str]):
 
 def _render_distributed_task(user_id: Optional[str]):
     """渲染分布式任务提交"""
-    distributed_client = container.distributed_task_client
+    distributed_client = container.distributed_task_client()
 
     if not distributed_client.is_available:
         st.error("❌ 分布式任务处理模块不可用，请确保已安装 distributed_task.py")
@@ -240,7 +240,7 @@ def _render_distributed_task(user_id: Optional[str]):
 
     if user_id and priority > 0:
         estimated_resources = 1000
-        cost_info = container.token_economy_service.estimate_task_cost(
+        cost_info = container.token_economy_service().estimate_task_cost(
             max_parallel_chunks, 4096, 600, priority
         )
         st.info(f"💵 预估费用: 基础 {cost_info['base_price']:.2f} CMP | 最终 {cost_info['final_price']:.2f} CMP | 优先级费 {cost_info['priority_fee']:.2f} CMP")
@@ -469,7 +469,7 @@ __MERGED_RESULT__ = {"all_data": all_results}
                         task_id = result.get("task_id")
 
                         if priority > 0:
-                            cost_info = container.token_economy_service.estimate_task_cost(
+                            cost_info = container.token_economy_service().estimate_task_cost(
                                 max_parallel_chunks, 4096, 600, priority
                             )
                             st.success(f"✅ 分布式任务提交成功！任务ID: `{task_id}` | 预估费用: {cost_info['final_price']} CMP")
@@ -536,7 +536,7 @@ __MERGED_RESULT__ = {"all_data": all_results}
                         task_id = result.get("task_id")
                         high_priority = min(priority + 5, 10)
 
-                        cost_info = container.token_economy_service.estimate_task_cost(
+                        cost_info = container.token_economy_service().estimate_task_cost(
                             max_parallel_chunks, 4096, 600, high_priority
                         )
 
@@ -571,7 +571,7 @@ def render(user_id: Optional[str] = None):
     """渲染任务提交页面"""
     st.header("📝 提交计算任务")
 
-    distributed_client = container.distributed_task_client
+    distributed_client = container.distributed_task_client()
     task_type = st.radio(
         "选择任务类型",
         ["单节点任务", "分布式任务"],
