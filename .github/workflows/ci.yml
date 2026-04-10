@@ -33,7 +33,12 @@ jobs:
         run: black --check .
         
       - name: Run MyPy (Type Check)
-        run: mypy src/ tests/ --ignore-missing-imports
+        run: |
+          if [ -d "idle_sense" ]; then
+            mypy idle_sense/ scheduler/ node/ --ignore-missing-imports
+          else
+            mypy src/ tests/ --ignore-missing-imports
+          fi
 
   test:
     name: Tests (${{ matrix.os }}, Python ${{ matrix.python }})
@@ -62,7 +67,11 @@ jobs:
           
       - name: Run tests with coverage
         run: |
-          pytest tests/ -v --cov=src --cov-report=xml --cov-report=term-missing
+          if [ -d "idle_sense" ]; then
+            pytest tests/ -v --cov=idle_sense --cov-report=xml --cov-report=term-missing
+          else
+            pytest tests/ -v --cov=src --cov-report=xml --cov-report=term-missing
+          fi
           
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v4
