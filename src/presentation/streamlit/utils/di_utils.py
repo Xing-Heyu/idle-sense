@@ -12,24 +12,19 @@ import streamlit as st
 from src.di import Container
 
 
-_container = None
-
-
 @st.cache_resource
 def get_container():
-    """获取或创建 DI 容器实例（单例）"""
-    global _container
-    if _container is None:
-        _container = Container()
-        _container.wire(modules=[
-            "src.presentation.streamlit.components.sidebar",
-            "src.presentation.streamlit.views.auth_page",
-            "src.presentation.streamlit.views.task_monitor_page",
-            "src.presentation.streamlit.views.task_submission_page",
-            "src.presentation.streamlit.views.node_management_page",
-            "src.presentation.streamlit.views.system_stats_page",
-        ])
-    return _container
+    """获取或创建 DI 容器实例（Streamlit 缓存单例）"""
+    container = Container()
+    container.wire(modules=[
+        "src.presentation.streamlit.components.sidebar",
+        "src.presentation.streamlit.views.auth_page",
+        "src.presentation.streamlit.views.task_monitor_page",
+        "src.presentation.streamlit.views.task_submission_page",
+        "src.presentation.streamlit.views.node_management_page",
+        "src.presentation.streamlit.views.system_stats_page",
+    ])
+    return container
 
 
 container = get_container()

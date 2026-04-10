@@ -18,7 +18,7 @@ def render(user_id: Optional[str] = None):
     """渲染节点管理页面"""
     st.header("🖥️ 节点管理")
 
-    client = container.scheduler_client()
+    client = container.scheduler_client
 
     success, result = client.get_all_nodes()
     if success and result:

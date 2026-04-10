@@ -18,7 +18,7 @@ def render(user_id: Optional[str] = None):
     """渲染任务结果页面"""
     st.header("📋 任务结果")
 
-    client = container.scheduler_client()
+    client = container.scheduler_client
 
     st.subheader("🔍 搜索任务")
 
