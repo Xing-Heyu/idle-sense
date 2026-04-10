@@ -18,6 +18,7 @@ from typing import Any, Optional
 @dataclass
 class Feedback:
     """反馈数据"""
+
     from_address: str
     to_address: str
     score: float
@@ -28,6 +29,7 @@ class Feedback:
 @dataclass
 class ReputationEvent:
     """声誉事件记录"""
+
     address: str
     event_type: str
     score_change: float
@@ -65,7 +67,7 @@ class MeritRankEngine:
 
         作用: 防止远距离刷分，距离越远衰减越大
         """
-        return score * (self.TRANSMISSION_DECAY_FACTOR ** distance)
+        return score * (self.TRANSMISSION_DECAY_FACTOR**distance)
 
     def _connection_decay(self, score: float, connections: int) -> float:
         """
@@ -77,7 +79,7 @@ class MeritRankEngine:
         """
         if connections <= 0:
             return score
-        return score * (1.0 / (connections ** 1.5))
+        return score * (1.0 / (connections**1.5))
 
     def _period_decay(self, score: float, periods: int) -> float:
         """
@@ -87,7 +89,7 @@ class MeritRankEngine:
 
         作用: 历史贡献自动过期，鼓励持续贡献
         """
-        return score * (self.PERIOD_DECAY_FACTOR ** periods)
+        return score * (self.PERIOD_DECAY_FACTOR**periods)
 
     def _calculate_periods(self, address: str) -> int:
         """计算经历的周期数"""
@@ -140,24 +142,15 @@ class MeritRankEngine:
 
         for feedback in feedbacks:
             # 应用传递衰减
-            transmission_score = self._transmission_decay(
-                feedback.score,
-                feedback.distance
-            )
+            transmission_score = self._transmission_decay(feedback.score, feedback.distance)
 
             # 应用连接衰减
-            connection_score = self._connection_decay(
-                transmission_score,
-                connections
-            )
+            connection_score = self._connection_decay(transmission_score, connections)
 
             total_score += connection_score
 
         # 限制声誉范围
-        reputation = max(
-            self.MIN_REPUTATION,
-            min(self.MAX_REPUTATION, total_score)
-        )
+        reputation = max(self.MIN_REPUTATION, min(self.MAX_REPUTATION, total_score))
 
         old_reputation = self._reputations.get(address, self.DEFAULT_REPUTATION)
         change = reputation - old_reputation
@@ -173,18 +166,15 @@ class MeritRankEngine:
                     metadata={
                         "old_reputation": old_reputation,
                         "new_reputation": reputation,
-                        "feedback_count": len(feedbacks)
-                    }
+                        "feedback_count": len(feedbacks),
+                    },
                 )
             )
 
         self._reputations[address] = reputation
 
     def record_task_completion(
-        self,
-        node_address: str,
-        requester_address: str,
-        quality_score: float = 1.0
+        self, node_address: str, requester_address: str, quality_score: float = 1.0
     ) -> None:
         """
         记录任务完成，更新声誉
@@ -197,19 +187,13 @@ class MeritRankEngine:
         base_score = 5.0 * quality_score
 
         feedback = Feedback(
-            from_address=requester_address,
-            to_address=node_address,
-            score=base_score,
-            distance=1
+            from_address=requester_address, to_address=node_address, score=base_score, distance=1
         )
 
         self.add_feedback(feedback)
 
     def record_task_failure(
-        self,
-        node_address: str,
-        requester_address: str,
-        penalty_score: float = -10.0
+        self, node_address: str, requester_address: str, penalty_score: float = -10.0
     ) -> None:
         """
         记录任务失败，惩罚声誉
@@ -220,19 +204,13 @@ class MeritRankEngine:
             penalty_score: 惩罚分数 (负数)
         """
         feedback = Feedback(
-            from_address=requester_address,
-            to_address=node_address,
-            score=penalty_score,
-            distance=1
+            from_address=requester_address, to_address=node_address, score=penalty_score, distance=1
         )
 
         self.add_feedback(feedback)
 
     def record_uptime_reward(
-        self,
-        node_address: str,
-        uptime_minutes: int,
-        base_reward_per_minute: float = 0.1
+        self, node_address: str, uptime_minutes: int, base_reward_per_minute: float = 0.1
     ) -> None:
         """
         记录在线时间奖励
@@ -248,10 +226,7 @@ class MeritRankEngine:
         reward = base_reward_per_minute * uptime_minutes
 
         feedback = Feedback(
-            from_address="system",
-            to_address=node_address,
-            score=reward,
-            distance=1
+            from_address="system", to_address=node_address, score=reward, distance=1
         )
 
         self.add_feedback(feedback)
@@ -288,13 +263,7 @@ class MeritRankEngine:
         reputation = self.get_reputation(address)
         tier = self.get_reputation_tier(reputation)
 
-        tier_priorities = {
-            "Platinum": 3,
-            "Gold": 2,
-            "Silver": 1,
-            "Bronze": 0,
-            "Untrusted": -1
-        }
+        tier_priorities = {"Platinum": 3, "Gold": 2, "Silver": 1, "Bronze": 0, "Untrusted": -1}
 
         return tier_priorities.get(tier, 0)
 
@@ -304,9 +273,7 @@ class MeritRankEngine:
         return reputation >= 40.0
 
     def get_reputation_events(
-        self,
-        address: Optional[str] = None,
-        limit: int = 100
+        self, address: Optional[str] = None, limit: int = 100
     ) -> list[ReputationEvent]:
         """获取声誉事件历史"""
         events = self._reputation_events[-limit:]
@@ -321,11 +288,7 @@ class MeritRankEngine:
         addresses = list(self._reputations.keys())
 
         if not addresses:
-            return {
-                "total_accounts": 0,
-                "avg_reputation": 0.0,
-                "tier_distribution": {}
-            }
+            return {"total_accounts": 0, "avg_reputation": 0.0, "tier_distribution": {}}
 
         reputations = [self.get_reputation(a) for a in addresses]
         avg_reputation = sum(reputations) / len(reputations)
@@ -342,13 +305,11 @@ class MeritRankEngine:
             "max_reputation": max(reputations),
             "tier_distribution": tier_counts,
             "total_feedbacks": sum(len(f) for f in self._feedbacks.values()),
-            "total_events": len(self._reputation_events)
+            "total_events": len(self._reputation_events),
         }
 
     def simulate_sybil_attack(
-        self,
-        attacker_count: int = 100,
-        fake_score: float = 5.0
+        self, attacker_count: int = 100, fake_score: float = 5.0
     ) -> dict[str, Any]:
         """
         模拟女巫攻击测试
@@ -373,7 +334,7 @@ class MeritRankEngine:
                 from_address=attacker_address,
                 to_address=victim_address,
                 score=fake_score,
-                distance=1
+                distance=1,
             )
             total_score_without_decay += fake_score
 
@@ -386,10 +347,7 @@ class MeritRankEngine:
             self._feedbacks[victim_address].append(feedback)
 
         final_reputation = initial_reputation + total_score_with_decay
-        final_reputation = max(
-            self.MIN_REPUTATION,
-            min(self.MAX_REPUTATION, final_reputation)
-        )
+        final_reputation = max(self.MIN_REPUTATION, min(self.MAX_REPUTATION, final_reputation))
 
         self._reputations[victim_address] = final_reputation
 
@@ -407,7 +365,11 @@ class MeritRankEngine:
             "final_reputation": final_reputation,
             "reputation_increase": final_reputation - initial_reputation,
             "effectiveness": effectiveness,
-            "decay_ratio": total_score_with_decay / total_score_without_decay if total_score_without_decay > 0 else 0.0
+            "decay_ratio": (
+                total_score_with_decay / total_score_without_decay
+                if total_score_without_decay > 0
+                else 0.0
+            ),
         }
 
 

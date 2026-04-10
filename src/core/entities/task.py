@@ -27,6 +27,7 @@ from typing import Any, Optional
 
 class TaskStatus(Enum):
     """任务状态枚举"""
+
     PENDING = "pending"
     RUNNING = "running"
     COMPLETED = "completed"
@@ -36,6 +37,7 @@ class TaskStatus(Enum):
 
 class TaskType(Enum):
     """任务类型枚举"""
+
     SINGLE_NODE = "single_node"
     DISTRIBUTED = "distributed"
 
@@ -50,6 +52,7 @@ class Task:
     - 处理任务状态转换
     - 记录任务执行结果
     """
+
     task_id: str = field(default_factory=lambda: f"task_{uuid.uuid4().hex[:12]}")
     code: str = ""
     status: TaskStatus = TaskStatus.PENDING
@@ -135,7 +138,7 @@ class Task:
             "completed_at": self.completed_at.isoformat() if self.completed_at else None,
             "result": self.result,
             "error": self.error,
-            "duration": self.duration
+            "duration": self.duration,
         }
 
     @classmethod
@@ -145,17 +148,25 @@ class Task:
             task_id=data.get("task_id", ""),
             code=data.get("code", ""),
             status=TaskStatus(data.get("status", "pending")),
-            created_at=datetime.fromisoformat(data["created_at"]) if data.get("created_at") else datetime.now(),
+            created_at=(
+                datetime.fromisoformat(data["created_at"])
+                if data.get("created_at")
+                else datetime.now()
+            ),
             user_id=data.get("user_id"),
             timeout=data.get("timeout", 300),
             cpu_request=data.get("cpu_request", 1.0),
             memory_request=data.get("memory_request", 512),
             task_type=TaskType(data.get("task_type", "single_node")),
             assigned_node=data.get("assigned_node"),
-            started_at=datetime.fromisoformat(data["started_at"]) if data.get("started_at") else None,
-            completed_at=datetime.fromisoformat(data["completed_at"]) if data.get("completed_at") else None,
+            started_at=(
+                datetime.fromisoformat(data["started_at"]) if data.get("started_at") else None
+            ),
+            completed_at=(
+                datetime.fromisoformat(data["completed_at"]) if data.get("completed_at") else None
+            ),
             result=data.get("result"),
-            error=data.get("error")
+            error=data.get("error"),
         )
 
 
@@ -169,7 +180,7 @@ class TaskFactory:
         timeout: int = 300,
         cpu: float = 1.0,
         memory: int = 512,
-        task_type: TaskType = TaskType.SINGLE_NODE
+        task_type: TaskType = TaskType.SINGLE_NODE,
     ) -> Task:
         """创建新任务"""
         return Task(
@@ -180,7 +191,7 @@ class TaskFactory:
             cpu_request=cpu,
             memory_request=memory,
             task_type=task_type,
-            resources={"cpu": cpu, "memory": memory}
+            resources={"cpu": cpu, "memory": memory},
         )
 
     @staticmethod

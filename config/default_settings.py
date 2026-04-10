@@ -16,9 +16,11 @@ DATA_DIR = PROJECT_ROOT / "data"
 for directory in [LOG_DIR, DATA_DIR]:
     directory.mkdir(exist_ok=True)
 
+
 # ==================== 调度中心默认配置 ====================
 class SchedulerDefaults:
     """调度中心默认配置"""
+
     HOST = "127.0.0.1"
     PORT = 8000
     LOG_LEVEL = "INFO"
@@ -31,11 +33,7 @@ class SchedulerDefaults:
 
     # 公平调度
     SCHEDULING_POLICY = "fair_priority"
-    FAIR_PRIORITY_WEIGHTS = {
-        "wait_time": 0.6,
-        "contribution": 0.3,
-        "newcomer": 0.1
-    }
+    FAIR_PRIORITY_WEIGHTS = {"wait_time": 0.6, "contribution": 0.3, "newcomer": 0.1}
     CONTRIBUTION_CAP = 10.0
     NEWCOMER_THRESHOLD = 10
     NEWCOMER_BASE_BONUS = 20
@@ -47,9 +45,11 @@ class SchedulerDefaults:
     TIMEOUT_THRESHOLD = 90
     MAX_NODES = 100
 
+
 # ==================== 节点客户端默认配置 ====================
 class NodeDefaults:
     """节点客户端默认配置"""
+
     # 调度中心连接
     SCHEDULER_URL = "http://localhost:8000"
     NODE_NAME = os.environ.get("HOSTNAME", "unknown-node")
@@ -81,16 +81,30 @@ class NodeDefaults:
 
     # 允许的安全模块（当网络访问禁用时）
     ALLOWED_MODULES = [
-        "math", "random", "datetime", "time",
-        "collections", "itertools", "functools",
-        "json", "re", "statistics", "decimal",
-        "fractions", "hashlib", "secrets",
-        "string", "typing", "uuid"
+        "math",
+        "random",
+        "datetime",
+        "time",
+        "collections",
+        "itertools",
+        "functools",
+        "json",
+        "re",
+        "statistics",
+        "decimal",
+        "fractions",
+        "hashlib",
+        "secrets",
+        "string",
+        "typing",
+        "uuid",
     ]
+
 
 # ==================== 网页界面默认配置 ====================
 class WebDefaults:
     """网页界面默认配置"""
+
     # Streamlit
     STREAMLIT_PORT = 8501
     STREAMLIT_HOST = "127.0.0.1"
@@ -102,16 +116,20 @@ class WebDefaults:
     # 传统Web（备用）
     TRADITIONAL_PORT = 8080
 
+
 # ==================== 监控默认配置 ====================
 class MonitoringDefaults:
     """监控默认配置"""
+
     METRICS_PORT = 9090
     HEALTH_CHECK_ENDPOINT = "/health"
     STATS_RETENTION_DAYS = 7
 
+
 # ==================== 路径配置 ====================
 class PathDefaults:
     """路径默认配置"""
+
     # 任务临时目录
     TASK_TEMP_DIR = str(PROJECT_ROOT / "tmp" / "tasks")
 
@@ -124,9 +142,11 @@ class PathDefaults:
     # PID文件（用于进程管理）
     PID_DIR = str(PROJECT_ROOT / "tmp" / "pids")
 
+
 # ==================== 安全默认配置 ====================
 class SecurityDefaults:
     """安全默认配置"""
+
     # 沙箱配置
     SANDBOX_TYPE = "tempdir"  # tempdir, docker, none
     TEMP_DIR = "/tmp/idle_tasks"
@@ -141,6 +161,7 @@ class SecurityDefaults:
     # 输入验证
     MAX_CODE_SIZE = 10000  # 最大代码大小（字符）
     MAX_INPUT_SIZE = 1024  # 最大输入数据大小（KB）
+
 
 # ==================== 导出所有默认配置 ====================
 SCHEDULER = SchedulerDefaults()
@@ -157,5 +178,5 @@ DEFAULTS = {
     "web": WEB,
     "monitoring": MONITORING,
     "paths": PATHS,
-    "security": SECURITY
+    "security": SECURITY,
 }

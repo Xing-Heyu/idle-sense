@@ -28,6 +28,7 @@ import yaml
 
 class ConfigError(Exception):
     """Configuration related errors."""
+
     pass
 
 
@@ -83,7 +84,7 @@ class ConfigManager:
         if self._env_prefix:
             for key, value in os.environ.items():
                 if key.startswith(self._env_prefix):
-                    config_key = key[len(self._env_prefix):]
+                    config_key = key[len(self._env_prefix) :]
                     self._config[config_key] = self._parse_env_value(value)
 
         return self._config

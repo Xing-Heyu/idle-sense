@@ -40,6 +40,7 @@ class ReputationEvent(Enum):
 @dataclass
 class ReputationRecord:
     """A record of a reputation event."""
+
     node_id: str
     event_type: ReputationEvent
     score_delta: float
@@ -59,6 +60,7 @@ class ReputationRecord:
 @dataclass
 class NodeReputation:
     """Reputation information for a node."""
+
     node_id: str
     trust_score: float = 0.5
     total_interactions: int = 0
@@ -162,10 +164,7 @@ class ReputationManager:
         return self.reputations[node_id]
 
     def record_event(
-        self,
-        node_id: str,
-        event_type: ReputationEvent,
-        details: dict[str, Any] = None
+        self, node_id: str, event_type: ReputationEvent, details: dict[str, Any] = None
     ) -> float:
         """
         Record a reputation event for a node.
@@ -197,8 +196,12 @@ class ReputationManager:
 
         if event_type in (ReputationEvent.TASK_COMPLETED, ReputationEvent.GOOD_BEHAVIOR):
             reputation.successful_interactions += 1
-        elif event_type in (ReputationEvent.TASK_FAILED, ReputationEvent.INVALID_RESULT,
-                           ReputationEvent.TIMEOUT, ReputationEvent.CONNECTION_ERROR):
+        elif event_type in (
+            ReputationEvent.TASK_FAILED,
+            ReputationEvent.INVALID_RESULT,
+            ReputationEvent.TIMEOUT,
+            ReputationEvent.CONNECTION_ERROR,
+        ):
             reputation.failed_interactions += 1
 
         self._update_node_type(node_id)
@@ -234,7 +237,10 @@ class ReputationManager:
         if not reputation:
             return
 
-        if reputation.trust_score < self.config.BLACKLIST_THRESHOLD and node_id not in self.blacklist:
+        if (
+            reputation.trust_score < self.config.BLACKLIST_THRESHOLD
+            and node_id not in self.blacklist
+        ):
             self.blacklist.add(node_id)
             reputation.is_blacklisted = True
             reputation.blacklist_reason = "Low trust score"
@@ -243,12 +249,10 @@ class ReputationManager:
     def _update_stats(self):
         """Update statistics."""
         self._stats["nodes_honest"] = sum(
-            1 for r in self.reputations.values()
-            if r.node_type == NodeType.HONEST
+            1 for r in self.reputations.values() if r.node_type == NodeType.HONEST
         )
         self._stats["nodes_suspicious"] = sum(
-            1 for r in self.reputations.values()
-            if r.node_type == NodeType.SUSPICIOUS
+            1 for r in self.reputations.values() if r.node_type == NodeType.SUSPICIOUS
         )
 
     def is_trusted(self, node_id: str) -> bool:
@@ -328,10 +332,9 @@ class ReputationManager:
         Returns:
             Dictionary of node_id -> global trust score
         """
-        nodes = list(set(
-            list(self.trust_matrix.keys()) +
-            [n for d in self.trust_matrix.values() for n in d]
-        ))
+        nodes = list(
+            set(list(self.trust_matrix.keys()) + [n for d in self.trust_matrix.values() for n in d])
+        )
 
         if not nodes:
             return {}
@@ -368,10 +371,7 @@ class ReputationManager:
             if reputation.last_interaction:
                 time_since = time.time() - reputation.last_interaction
                 decay_amount = decay * time_since / 3600
-                reputation.trust_score = max(
-                    0.5,
-                    reputation.trust_score - decay_amount
-                )
+                reputation.trust_score = max(0.5, reputation.trust_score - decay_amount)
 
     def get_reputation(self, node_id: str) -> Optional[NodeReputation]:
         """Get reputation for a node."""
@@ -387,19 +387,18 @@ class ReputationManager:
             **self._stats,
             "total_nodes": len(self.reputations),
             "blacklisted_nodes": len(self.blacklist),
-            "average_trust_score": sum(
-                r.trust_score for r in self.reputations.values()
-            ) / len(self.reputations) if self.reputations else 0.5,
+            "average_trust_score": (
+                sum(r.trust_score for r in self.reputations.values()) / len(self.reputations)
+                if self.reputations
+                else 0.5
+            ),
         }
 
     def export_reputations(self) -> dict[str, Any]:
         """Export all reputation data."""
         return {
             "local_node_id": self.local_node_id,
-            "reputations": {
-                node_id: rep.to_dict()
-                for node_id, rep in self.reputations.items()
-            },
+            "reputations": {node_id: rep.to_dict() for node_id, rep in self.reputations.items()},
             "blacklist": list(self.blacklist),
             "stats": self.get_stats(),
         }

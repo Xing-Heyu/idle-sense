@@ -37,9 +37,7 @@ class SessionBackend(ABC):
         pass
 
     @abstractmethod
-    def set_session(
-        self, session_id: str, data: dict[str, Any], ttl: Optional[int] = None
-    ) -> bool:
+    def set_session(self, session_id: str, data: dict[str, Any], ttl: Optional[int] = None) -> bool:
         """
         设置会话数据
 
@@ -89,9 +87,7 @@ class MemorySessionBackend(SessionBackend):
     def get_session(self, session_id: str) -> Optional[dict[str, Any]]:
         return self._sessions.get(session_id)
 
-    def set_session(
-        self, session_id: str, data: dict[str, Any], ttl: Optional[int] = None
-    ) -> bool:
+    def set_session(self, session_id: str, data: dict[str, Any], ttl: Optional[int] = None) -> bool:
         self._sessions[session_id] = data
         return True
 
@@ -151,9 +147,7 @@ class RedisSessionBackend(SessionBackend):
         except Exception:
             return None
 
-    def set_session(
-        self, session_id: str, data: dict[str, Any], ttl: Optional[int] = None
-    ) -> bool:
+    def set_session(self, session_id: str, data: dict[str, Any], ttl: Optional[int] = None) -> bool:
         try:
             redis_client = self._get_redis()
             key = self._make_key(session_id)
@@ -255,18 +249,14 @@ class FileSessionBackend(SessionBackend):
             return data.get("data")
         return None
 
-    def set_session(
-        self, session_id: str, data: dict[str, Any], ttl: Optional[int] = None
-    ) -> bool:
+    def set_session(self, session_id: str, data: dict[str, Any], ttl: Optional[int] = None) -> bool:
         file_path = self._get_file_path(session_id)
         actual_ttl = ttl if ttl is not None else self._default_ttl
         now = datetime.now(timezone.utc)
         session_entry = {
             "data": data,
             "created_at": now.isoformat(),
-            "expires_at": (now.timestamp() + actual_ttl)
-            if actual_ttl > 0
-            else None,
+            "expires_at": (now.timestamp() + actual_ttl) if actual_ttl > 0 else None,
         }
         try:
             with open(file_path, "w", encoding="utf-8") as f:

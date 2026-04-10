@@ -26,6 +26,7 @@ from src.core.interfaces.services import ISchedulerService
 @dataclass
 class GetTaskStatusRequest:
     """获取任务状态请求"""
+
     user_id: Optional[str] = None
     task_id: Optional[str] = None
     status_filter: Optional[str] = None
@@ -34,6 +35,7 @@ class GetTaskStatusRequest:
 @dataclass
 class GetTaskStatusResponse:
     """获取任务状态响应"""
+
     success: bool
     tasks: list[Task] = None
     message: str = ""
@@ -43,11 +45,7 @@ class GetTaskStatusResponse:
 class GetTaskStatusUseCase:
     """获取任务状态用例"""
 
-    def __init__(
-        self,
-        task_repository: ITaskRepository,
-        scheduler_service: ISchedulerService
-    ):
+    def __init__(self, task_repository: ITaskRepository, scheduler_service: ISchedulerService):
         """
         初始化获取任务状态用例
 
@@ -73,22 +71,14 @@ class GetTaskStatusUseCase:
             task = self._task_repository.get_by_id(request.task_id)
             if not task:
                 return GetTaskStatusResponse(
-                    success=False,
-                    message=f"任务ID '{request.task_id}' 不存在"
+                    success=False, message=f"任务ID '{request.task_id}' 不存在"
                 )
 
             # 验证所有权
             if request.user_id and task.user_id != request.user_id:
-                return GetTaskStatusResponse(
-                    success=False,
-                    message="无权限查看此任务"
-                )
+                return GetTaskStatusResponse(success=False, message="无权限查看此任务")
 
-            return GetTaskStatusResponse(
-                success=True,
-                tasks=[task],
-                message="获取任务状态成功"
-            )
+            return GetTaskStatusResponse(success=True, tasks=[task], message="获取任务状态成功")
 
         # 获取任务列表
         if request.user_id:
@@ -111,10 +101,7 @@ class GetTaskStatusUseCase:
         }
 
         return GetTaskStatusResponse(
-            success=True,
-            tasks=tasks,
-            stats=stats,
-            message="获取任务状态成功"
+            success=True, tasks=tasks, stats=stats, message="获取任务状态成功"
         )
 
 

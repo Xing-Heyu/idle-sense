@@ -49,7 +49,7 @@ class PermissionService:
         """
         try:
             test_file = os.path.join(path, ".permission_test")
-            with open(test_file, 'w') as f:
+            with open(test_file, "w") as f:
                 f.write("test")
             os.remove(test_file)
             return True

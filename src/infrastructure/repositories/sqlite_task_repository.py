@@ -86,7 +86,9 @@ class SQLiteTaskRepository(ITaskRepository):
             task_id=row["task_id"],
             code=row["code"],
             status=TaskStatus(row["status"]),
-            created_at=datetime.fromisoformat(row["created_at"]) if row["created_at"] else datetime.now(),
+            created_at=(
+                datetime.fromisoformat(row["created_at"]) if row["created_at"] else datetime.now()
+            ),
             user_id=row["user_id"],
             timeout=row["timeout"],
             cpu_request=row["cpu_request"],
@@ -94,10 +96,12 @@ class SQLiteTaskRepository(ITaskRepository):
             task_type=TaskType(row["task_type"]) if row["task_type"] else TaskType.SINGLE_NODE,
             assigned_node=row["assigned_node"],
             started_at=datetime.fromisoformat(row["started_at"]) if row["started_at"] else None,
-            completed_at=datetime.fromisoformat(row["completed_at"]) if row["completed_at"] else None,
+            completed_at=(
+                datetime.fromisoformat(row["completed_at"]) if row["completed_at"] else None
+            ),
             result=row["result"],
             error=row["error"],
-            resources=json.loads(row["resources"]) if row["resources"] else {}
+            resources=json.loads(row["resources"]) if row["resources"] else {},
         )
 
     async def get_by_id(self, task_id: str) -> Optional[Task]:
@@ -136,8 +140,8 @@ class SQLiteTaskRepository(ITaskRepository):
                     task.completed_at.isoformat() if task.completed_at else None,
                     task.result,
                     task.error,
-                    json.dumps(task.resources)
-                )
+                    json.dumps(task.resources),
+                ),
             )
             await conn.commit()
             return task
@@ -163,7 +167,7 @@ class SQLiteTaskRepository(ITaskRepository):
         try:
             async with conn.execute(
                 "SELECT * FROM tasks WHERE user_id = ? ORDER BY created_at DESC LIMIT ?",
-                (user_id, limit)
+                (user_id, limit),
             ) as cursor:
                 rows = await cursor.fetchall()
             return [self._row_to_task(row) for row in rows]
@@ -176,7 +180,7 @@ class SQLiteTaskRepository(ITaskRepository):
         try:
             async with conn.execute(
                 "SELECT * FROM tasks WHERE status = ? ORDER BY created_at DESC LIMIT ?",
-                (status.value, limit)
+                (status.value, limit),
             ) as cursor:
                 rows = await cursor.fetchall()
             return [self._row_to_task(row) for row in rows]
@@ -188,8 +192,7 @@ class SQLiteTaskRepository(ITaskRepository):
         conn = await pool.get_connection()
         try:
             async with conn.execute(
-                "SELECT * FROM tasks ORDER BY created_at DESC LIMIT ?",
-                (limit,)
+                "SELECT * FROM tasks ORDER BY created_at DESC LIMIT ?", (limit,)
             ) as cursor:
                 rows = await cursor.fetchall()
             return [self._row_to_task(row) for row in rows]

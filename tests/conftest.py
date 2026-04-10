@@ -1,6 +1,7 @@
 """
 Pytest configuration and shared fixtures for idle-accelerator tests.
 """
+
 import sys
 from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock, patch
@@ -13,9 +14,11 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 @pytest.fixture
 def mock_psutil():
     """Mock psutil for cross-platform testing."""
-    with patch("psutil.cpu_percent") as cpu_mock, \
-         patch("psutil.virtual_memory") as mem_mock, \
-         patch("psutil.disk_usage") as disk_mock:
+    with (
+        patch("psutil.cpu_percent") as cpu_mock,
+        patch("psutil.virtual_memory") as mem_mock,
+        patch("psutil.disk_usage") as disk_mock,
+    ):
 
         cpu_mock.return_value = 25.0
         mem_mock.return_value = MagicMock(percent=50.0, available=4 * 1024 * 1024 * 1024)
@@ -115,6 +118,7 @@ def pytest_collection_modifyitems(config, items):
     skip_macos = pytest.mark.skip(reason="macOS-only test")
 
     import platform
+
     current_platform = platform.system()
 
     for item in items:

@@ -47,7 +47,7 @@ class PoolStats:
             "total_returned": self.total_returned,
             "total_errors": self.total_errors,
             "avg_wait_time_ms": round(self.avg_wait_time_ms, 3),
-            "avg_usage_time_ms": round(self.avg_usage_time_ms, 3)
+            "avg_usage_time_ms": round(self.avg_usage_time_ms, 3),
         }
 
 
@@ -127,7 +127,7 @@ class ConnectionPool(Generic[T]):
         max_idle_time: float = 300.0,
         max_lifetime: float = 3600.0,
         validation_interval: float = 60.0,
-        acquire_timeout: float = 30.0
+        acquire_timeout: float = 30.0,
     ):
         self.factory = factory
         self.min_size = min_size
@@ -161,9 +161,7 @@ class ConnectionPool(Generic[T]):
     def _create_connection(self) -> PooledConnection[T]:
         connection = self.factory.create()
         pooled = PooledConnection(
-            connection=connection,
-            created_at=time.time(),
-            last_used=time.time()
+            connection=connection, created_at=time.time(), last_used=time.time()
         )
 
         with self._lock:
@@ -215,7 +213,9 @@ class ConnectionPool(Generic[T]):
                         self._wait_times.append(wait_time)
                         if len(self._wait_times) > 100:
                             self._wait_times = self._wait_times[-100:]
-                        self._stats.avg_wait_time_ms = sum(self._wait_times) / len(self._wait_times) * 1000
+                        self._stats.avg_wait_time_ms = (
+                            sum(self._wait_times) / len(self._wait_times) * 1000
+                        )
 
                     return pooled
                 else:
@@ -286,7 +286,9 @@ class ConnectionPool(Generic[T]):
                 self._usage_times.append(usage_time)
                 if len(self._usage_times) > 100:
                     self._usage_times = self._usage_times[-100:]
-                self._stats.avg_usage_time_ms = sum(self._usage_times) / len(self._usage_times) * 1000
+                self._stats.avg_usage_time_ms = (
+                    sum(self._usage_times) / len(self._usage_times) * 1000
+                )
             self.release(pooled)
 
     def get_stats(self) -> PoolStats:
@@ -294,9 +296,7 @@ class ConnectionPool(Generic[T]):
             self._stats.total_connections = len(self._all_connections)
             self._stats.idle_connections = self._pool.qsize()
             self._stats.pending_requests = 0
-            return PoolStats(
-                **dict(self._stats.__dict__.items())
-            )
+            return PoolStats(**dict(self._stats.__dict__.items()))
 
     def resize(self, min_size: int, max_size: int):
         with self._lock:
@@ -378,21 +378,10 @@ class PoolManager:
         return self._pools.get(name)
 
     def create_socket_pool(
-        self,
-        name: str,
-        host: str,
-        port: int,
-        min_size: int = 1,
-        max_size: int = 10,
-        **kwargs
+        self, name: str, host: str, port: int, min_size: int = 1, max_size: int = 10, **kwargs
     ) -> ConnectionPool[socket.socket]:
         factory = SocketConnectionFactory(host, port)
-        pool = ConnectionPool(
-            factory=factory,
-            min_size=min_size,
-            max_size=max_size,
-            **kwargs
-        )
+        pool = ConnectionPool(factory=factory, min_size=min_size, max_size=max_size, **kwargs)
         self.register_pool(name, pool)
         return pool
 

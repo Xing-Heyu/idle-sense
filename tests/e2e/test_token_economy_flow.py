@@ -96,9 +96,7 @@ class TestTokenEconomyRewards:
         node_address = f"node_{int(time.time())}"
 
         engine.record_task_completion(
-            node_address=node_address,
-            requester_address="requester",
-            quality_score=0.95
+            node_address=node_address, requester_address="requester", quality_score=0.95
         )
 
         reputation = engine.calculate_reputation([])
@@ -144,14 +142,10 @@ class TestTokenEconomyCompleteFlow:
             "code": "result = 1 + 1\n__result__ = result",
             "timeout": 30,
             "resources": {"cpu": 0.5, "memory": 256},
-            "user_id": user_address
+            "user_id": user_address,
         }
 
-        response = requests.post(
-            f"{scheduler_url}/submit",
-            json=task_data,
-            timeout=10
-        )
+        response = requests.post(f"{scheduler_url}/submit", json=task_data, timeout=10)
 
         assert response.status_code == 200
 
@@ -173,10 +167,7 @@ class TestTokenEconomyCompleteFlow:
         service = ContributionProofService()
 
         metrics = ResourceMetrics(
-            cpu_seconds=10.0,
-            memory_mb_seconds=5000.0,
-            network_bytes=1000,
-            storage_bytes=500
+            cpu_seconds=10.0, memory_mb_seconds=5000.0, network_bytes=1000, storage_bytes=500
         )
 
         proof = service.generate_proof(
@@ -184,7 +175,7 @@ class TestTokenEconomyCompleteFlow:
             task_id="task_001",
             resource_metrics=metrics,
             quality_score=0.9,
-            reputation=50.0
+            reputation=50.0,
         )
 
         assert proof is not None
@@ -237,17 +228,12 @@ class TestTokenEconomyPenalties:
         node_address = f"fail_node_{int(time.time())}"
 
         engine.record_task_completion(
-            node_address=node_address,
-            requester_address="requester",
-            quality_score=0.95
+            node_address=node_address, requester_address="requester", quality_score=0.95
         )
 
         initial_reputation = engine.calculate_reputation([])
 
-        engine.record_task_failure(
-            node_address=node_address,
-            requester_address="requester"
-        )
+        engine.record_task_failure(node_address=node_address, requester_address="requester")
 
         assert True
 

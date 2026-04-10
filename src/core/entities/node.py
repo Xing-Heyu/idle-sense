@@ -25,6 +25,7 @@ from typing import Any, Optional
 
 class NodeStatus(Enum):
     """节点状态枚举"""
+
     ONLINE = "online"
     OFFLINE = "offline"
     BUSY = "busy"
@@ -34,6 +35,7 @@ class NodeStatus(Enum):
 
 class NodePlatform(Enum):
     """节点平台枚举"""
+
     WINDOWS = "windows"
     LINUX = "linux"
     MACOS = "macos"
@@ -50,6 +52,7 @@ class Node:
     - 处理节点状态转换
     - 提供资源容量信息
     """
+
     node_id: str = field(default_factory=lambda: f"node_{uuid.uuid4().hex[:12]}")
     platform: str = field(default_factory=platform.system)
     status: NodeStatus = NodeStatus.OFFLINE
@@ -115,7 +118,7 @@ class Node:
             "registered_at": self.registered_at.isoformat() if self.registered_at else None,
             "last_heartbeat": self.last_heartbeat.isoformat() if self.last_heartbeat else None,
             "is_available": self.is_available,
-            "is_idle": self.is_idle
+            "is_idle": self.is_idle,
         }
 
     @classmethod
@@ -128,10 +131,16 @@ class Node:
             capacity=data.get("capacity", {}),
             tags=data.get("tags", {}),
             owner=data.get("owner", "unknown"),
-            registered_at=datetime.fromisoformat(data["registered_at"]) if data.get("registered_at") else None,
-            last_heartbeat=datetime.fromisoformat(data["last_heartbeat"]) if data.get("last_heartbeat") else None,
+            registered_at=(
+                datetime.fromisoformat(data["registered_at"]) if data.get("registered_at") else None
+            ),
+            last_heartbeat=(
+                datetime.fromisoformat(data["last_heartbeat"])
+                if data.get("last_heartbeat")
+                else None
+            ),
             is_available=data.get("is_available", False),
-            is_idle=data.get("is_idle", False)
+            is_idle=data.get("is_idle", False),
         )
 
 
@@ -140,10 +149,7 @@ class NodeFactory:
 
     @staticmethod
     def create_local(
-        cpu_limit: float,
-        memory_limit: int,
-        storage_limit: int,
-        user_id: Optional[str] = None
+        cpu_limit: float, memory_limit: int, storage_limit: int, user_id: Optional[str] = None
     ) -> Node:
         """创建本地节点"""
         return Node(
@@ -153,10 +159,10 @@ class NodeFactory:
             capacity={
                 "cpu_limit": cpu_limit,
                 "memory_limit": memory_limit,
-                "storage_limit": storage_limit
+                "storage_limit": storage_limit,
             },
             tags={"user_id": user_id or "unknown"},
-            owner=user_id or "unknown"
+            owner=user_id or "unknown",
         )
 
     @staticmethod

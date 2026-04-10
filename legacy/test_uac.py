@@ -19,6 +19,7 @@ def is_admin():
     except (AttributeError, OSError):
         return False
 
+
 def test_uac_request():
     """测试UAC权限请求"""
     print("=" * 50)
@@ -42,7 +43,7 @@ def test_uac_request():
     try:
         os.makedirs(test_path, exist_ok=True)
         test_file = os.path.join(test_path, "test.txt")
-        with open(test_file, 'w') as f:
+        with open(test_file, "w") as f:
             f.write("test")
         print("✅ 成功创建文件，当前已有足够权限")
 
@@ -93,7 +94,7 @@ if __name__ == "__main__":
 """
 
     try:
-        with open(temp_script, 'w', encoding='utf-8') as f:
+        with open(temp_script, "w", encoding="utf-8") as f:
             f.write(script_content)
     except Exception as e:
         print(f"❌ 创建临时脚本失败: {e}")
@@ -110,10 +111,12 @@ if __name__ == "__main__":
     # 清理临时脚本
     try:
         import threading
+
         def delete_script():
             time.sleep(3)
             with contextlib.suppress(BaseException):
                 os.remove(temp_script)
+
         threading.Thread(target=delete_script, daemon=True).start()
     except (OSError, RuntimeError):
         pass
@@ -123,6 +126,7 @@ if __name__ == "__main__":
         print("如果点击了'是'，应该会看到管理员权限创建文件成功的消息")
     else:
         print("❌ UAC权限请求失败，用户可能取消了操作")
+
 
 if __name__ == "__main__":
     test_uac_request()

@@ -49,7 +49,7 @@ class ScheduledTask:
             "last_run": self.last_run.isoformat() if self.last_run else None,
             "next_run": self.next_run.isoformat() if self.next_run else None,
             "run_count": self.run_count,
-            "tags": self.tags
+            "tags": self.tags,
         }
 
 
@@ -60,7 +60,7 @@ class CronParser:
         "hour": (0, 23),
         "day": (1, 31),
         "month": (1, 12),
-        "weekday": (0, 6)
+        "weekday": (0, 6),
     }
 
     @classmethod
@@ -131,20 +131,18 @@ class CronParser:
     @classmethod
     def _matches(cls, dt: datetime, parsed: dict[str, set[int]]) -> bool:
         return (
-            dt.minute in parsed["minute"] and
-            dt.hour in parsed["hour"] and
-            dt.day in parsed["day"] and
-            dt.month in parsed["month"] and
-            dt.weekday() in parsed["weekday"]
+            dt.minute in parsed["minute"]
+            and dt.hour in parsed["hour"]
+            and dt.day in parsed["day"]
+            and dt.month in parsed["month"]
+            and dt.weekday() in parsed["weekday"]
         )
 
 
 class ScheduleCalculator:
     @staticmethod
     def calculate_next_run(
-        schedule_type: ScheduleType,
-        expression: str,
-        after: datetime | None = None
+        schedule_type: ScheduleType, expression: str, after: datetime | None = None
     ) -> datetime:
         after = after or datetime.now()
 
@@ -201,8 +199,13 @@ class ScheduleCalculator:
             day = int(parts[0])
             hour, minute = map(int, parts[1].split(":"))
 
-            next_run = after.replace(day=min(day, calendar.monthrange(after.year, after.month)[1]),
-                                     hour=hour, minute=minute, second=0, microsecond=0)
+            next_run = after.replace(
+                day=min(day, calendar.monthrange(after.year, after.month)[1]),
+                hour=hour,
+                minute=minute,
+                second=0,
+                microsecond=0,
+            )
 
             if next_run <= after:
                 month = after.month + 1
@@ -210,8 +213,9 @@ class ScheduleCalculator:
                 if month > 12:
                     month = 1
                     year += 1
-                next_run = next_run.replace(year=year, month=month,
-                                           day=min(day, calendar.monthrange(year, month)[1]))
+                next_run = next_run.replace(
+                    year=year, month=month, day=min(day, calendar.monthrange(year, month)[1])
+                )
 
             return next_run
 
@@ -239,7 +243,7 @@ class TaskScheduler:
         enabled: bool = True,
         max_runs: int | None = None,
         tags: list[str] | None = None,
-        metadata: dict | None = None
+        metadata: dict | None = None,
     ) -> ScheduledTask:
         import uuid
 
@@ -254,12 +258,10 @@ class TaskScheduler:
             enabled=enabled,
             max_runs=max_runs,
             tags=tags or [],
-            metadata=metadata or {}
+            metadata=metadata or {},
         )
 
-        task.next_run = ScheduleCalculator.calculate_next_run(
-            schedule_type, expression
-        )
+        task.next_run = ScheduleCalculator.calculate_next_run(schedule_type, expression)
 
         with self._lock:
             self._tasks[task.id] = task
@@ -267,63 +269,47 @@ class TaskScheduler:
         return task
 
     def schedule_once(
-        self,
-        name: str,
-        handler: Callable,
-        run_at: datetime,
-        **kwargs
+        self, name: str, handler: Callable, run_at: datetime, **kwargs
     ) -> ScheduledTask:
         return self.schedule(
             name=name,
             handler=handler,
             schedule_type=ScheduleType.ONCE,
             expression=run_at.isoformat(),
-            **kwargs
+            **kwargs,
         )
 
     def schedule_interval(
-        self,
-        name: str,
-        handler: Callable,
-        interval_seconds: int,
-        **kwargs
+        self, name: str, handler: Callable, interval_seconds: int, **kwargs
     ) -> ScheduledTask:
         return self.schedule(
             name=name,
             handler=handler,
             schedule_type=ScheduleType.INTERVAL,
             expression=f"{interval_seconds} seconds",
-            **kwargs
+            **kwargs,
         )
 
     def schedule_cron(
-        self,
-        name: str,
-        handler: Callable,
-        cron_expression: str,
-        **kwargs
+        self, name: str, handler: Callable, cron_expression: str, **kwargs
     ) -> ScheduledTask:
         return self.schedule(
             name=name,
             handler=handler,
             schedule_type=ScheduleType.CRON,
             expression=cron_expression,
-            **kwargs
+            **kwargs,
         )
 
     def schedule_daily(
-        self,
-        name: str,
-        handler: Callable,
-        time_str: str,
-        **kwargs
+        self, name: str, handler: Callable, time_str: str, **kwargs
     ) -> ScheduledTask:
         return self.schedule(
             name=name,
             handler=handler,
             schedule_type=ScheduleType.DAILY,
             expression=time_str,
-            **kwargs
+            **kwargs,
         )
 
     def unschedule(self, task_id: str) -> bool:
@@ -388,7 +374,7 @@ class TaskScheduler:
     def set_callbacks(
         self,
         on_task_run: Callable[[ScheduledTask], None] | None = None,
-        on_task_error: Callable[[ScheduledTask, Exception], None] | None = None
+        on_task_error: Callable[[ScheduledTask, Exception], None] | None = None,
     ):
         self._on_task_run = on_task_run
         self._on_task_error = on_task_error
@@ -472,7 +458,7 @@ class TaskScheduler:
                 "enabled_tasks": enabled,
                 "disabled_tasks": total - enabled,
                 "total_runs": total_runs,
-                "running": self._running
+                "running": self._running,
             }
 
 

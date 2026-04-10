@@ -8,6 +8,7 @@ Usage:
     idle-accelerator status
     idle-accelerator version
 """
+
 import argparse
 import json
 import sys
@@ -18,14 +19,10 @@ def create_parser() -> argparse.ArgumentParser:
     """Create the main CLI parser."""
     parser = argparse.ArgumentParser(
         prog="idle-accelerator",
-        description="Distributed computing platform utilizing idle computer resources"
+        description="Distributed computing platform utilizing idle computer resources",
     )
 
-    parser.add_argument(
-        "--version", "-v",
-        action="store_true",
-        help="Show version information"
-    )
+    parser.add_argument("--version", "-v", action="store_true", help="Show version information")
 
     subparsers = parser.add_subparsers(dest="command", help="Available commands")
 
@@ -39,45 +36,46 @@ def create_parser() -> argparse.ArgumentParser:
 
 def _add_scheduler_parser(subparsers):
     """Add scheduler subcommand parser."""
-    scheduler_parser = subparsers.add_parser(
-        "scheduler",
-        help="Scheduler management commands"
-    )
+    scheduler_parser = subparsers.add_parser("scheduler", help="Scheduler management commands")
 
     scheduler_subparsers = scheduler_parser.add_subparsers(dest="scheduler_command")
 
     start_parser = scheduler_subparsers.add_parser("start", help="Start the scheduler")
     start_parser.add_argument("--host", default="0.0.0.0", help="Host to bind to")
     start_parser.add_argument("--port", type=int, default=8000, help="Port to listen on")
-    start_parser.add_argument("--storage", choices=["memory", "redis", "sqlite"],
-                              default="memory", help="Storage backend")
-    start_parser.add_argument("--redis-url", default="redis://localhost:6379/0",
-                              help="Redis URL (if storage=redis)")
-    start_parser.add_argument("--sqlite-path", default="data/scheduler.db",
-                              help="SQLite path (if storage=sqlite)")
+    start_parser.add_argument(
+        "--storage", choices=["memory", "redis", "sqlite"], default="memory", help="Storage backend"
+    )
+    start_parser.add_argument(
+        "--redis-url", default="redis://localhost:6379/0", help="Redis URL (if storage=redis)"
+    )
+    start_parser.add_argument(
+        "--sqlite-path", default="data/scheduler.db", help="SQLite path (if storage=sqlite)"
+    )
 
     scheduler_subparsers.add_parser("status", help="Check scheduler status")
 
 
 def _add_node_parser(subparsers):
     """Add node subcommand parser."""
-    node_parser = subparsers.add_parser(
-        "node",
-        help="Node management commands"
-    )
+    node_parser = subparsers.add_parser("node", help="Node management commands")
 
     node_subparsers = node_parser.add_subparsers(dest="node_command")
 
     start_parser = node_subparsers.add_parser("start", help="Start a node client")
-    start_parser.add_argument("--scheduler-url", default="http://localhost:8000",
-                              help="Scheduler URL")
+    start_parser.add_argument(
+        "--scheduler-url", default="http://localhost:8000", help="Scheduler URL"
+    )
     start_parser.add_argument("--node-id", help="Node ID (auto-generated if not provided)")
-    start_parser.add_argument("--idle-threshold", type=int, default=300,
-                              help="Idle threshold in seconds")
-    start_parser.add_argument("--cpu-threshold", type=float, default=30.0,
-                              help="CPU usage threshold")
-    start_parser.add_argument("--memory-threshold", type=float, default=70.0,
-                              help="Memory usage threshold")
+    start_parser.add_argument(
+        "--idle-threshold", type=int, default=300, help="Idle threshold in seconds"
+    )
+    start_parser.add_argument(
+        "--cpu-threshold", type=float, default=30.0, help="CPU usage threshold"
+    )
+    start_parser.add_argument(
+        "--memory-threshold", type=float, default=70.0, help="Memory usage threshold"
+    )
 
     node_subparsers.add_parser("list", help="List all nodes")
     node_subparsers.add_parser("status", help="Show node status")
@@ -85,10 +83,7 @@ def _add_node_parser(subparsers):
 
 def _add_task_parser(subparsers):
     """Add task subcommand parser."""
-    task_parser = subparsers.add_parser(
-        "task",
-        help="Task management commands"
-    )
+    task_parser = subparsers.add_parser("task", help="Task management commands")
 
     task_subparsers = task_parser.add_subparsers(dest="task_command")
 
@@ -98,35 +93,38 @@ def _add_task_parser(subparsers):
     submit_parser.add_argument("--timeout", type=int, default=300, help="Execution timeout")
     submit_parser.add_argument("--cpu", type=float, default=1.0, help="CPU requirement")
     submit_parser.add_argument("--memory", type=int, default=512, help="Memory requirement in MB")
-    submit_parser.add_argument("--scheduler-url", default="http://localhost:8000",
-                               help="Scheduler URL")
+    submit_parser.add_argument(
+        "--scheduler-url", default="http://localhost:8000", help="Scheduler URL"
+    )
 
     list_parser = task_subparsers.add_parser("list", help="List tasks")
-    list_parser.add_argument("--status", choices=["pending", "running", "completed", "failed"],
-                             help="Filter by status")
+    list_parser.add_argument(
+        "--status", choices=["pending", "running", "completed", "failed"], help="Filter by status"
+    )
     list_parser.add_argument("--limit", type=int, default=20, help="Maximum tasks to show")
-    list_parser.add_argument("--scheduler-url", default="http://localhost:8000",
-                             help="Scheduler URL")
+    list_parser.add_argument(
+        "--scheduler-url", default="http://localhost:8000", help="Scheduler URL"
+    )
 
     status_parser = task_subparsers.add_parser("status", help="Get task status")
     status_parser.add_argument("task_id", type=int, help="Task ID")
-    status_parser.add_argument("--scheduler-url", default="http://localhost:8000",
-                               help="Scheduler URL")
+    status_parser.add_argument(
+        "--scheduler-url", default="http://localhost:8000", help="Scheduler URL"
+    )
 
     result_parser = task_subparsers.add_parser("result", help="Get task result")
     result_parser.add_argument("task_id", type=int, help="Task ID")
-    result_parser.add_argument("--scheduler-url", default="http://localhost:8000",
-                               help="Scheduler URL")
+    result_parser.add_argument(
+        "--scheduler-url", default="http://localhost:8000", help="Scheduler URL"
+    )
 
 
 def _add_status_parser(subparsers):
     """Add status subcommand parser."""
-    status_parser = subparsers.add_parser(
-        "status",
-        help="Show system status"
+    status_parser = subparsers.add_parser("status", help="Show system status")
+    status_parser.add_argument(
+        "--scheduler-url", default="http://localhost:8000", help="Scheduler URL"
     )
-    status_parser.add_argument("--scheduler-url", default="http://localhost:8000",
-                               help="Scheduler URL")
     status_parser.add_argument("--json", action="store_true", help="Output as JSON")
 
 
@@ -144,12 +142,7 @@ def cmd_scheduler_start(args):
         import uvicorn
         from scheduler.simple_server import app
 
-        uvicorn.run(
-            app,
-            host=args.host,
-            port=args.port,
-            log_level="info"
-        )
+        uvicorn.run(app, host=args.host, port=args.port, log_level="info")
     except ImportError as e:
         print(f"Error: {e}")
         print("Please install required dependencies: pip install -e '.[scheduler]'")
@@ -168,7 +161,7 @@ def cmd_node_start(args):
             node_id=args.node_id,
             idle_threshold=args.idle_threshold,
             cpu_threshold=args.cpu_threshold,
-            memory_threshold=args.memory_threshold
+            memory_threshold=args.memory_threshold,
         )
 
         print(f"Node ID: {client.node_id}")
@@ -202,9 +195,9 @@ def cmd_task_submit(args):
             json={
                 "code": code,
                 "timeout": args.timeout,
-                "resources": {"cpu": args.cpu, "memory": args.memory}
+                "resources": {"cpu": args.cpu, "memory": args.memory},
             },
-            timeout=10
+            timeout=10,
         )
 
         if response.status_code == 200:
@@ -233,11 +226,7 @@ def cmd_task_list(args):
         if args.status:
             params["status"] = args.status
 
-        response = requests.get(
-            f"{args.scheduler_url}/tasks",
-            params=params,
-            timeout=10
-        )
+        response = requests.get(f"{args.scheduler_url}/tasks", params=params, timeout=10)
 
         if response.status_code == 200:
             tasks = response.json()
@@ -250,8 +239,9 @@ def cmd_task_list(args):
             print("-" * 60)
 
             for task in tasks:
-                created = time.strftime("%Y-%m-%d %H:%M:%S",
-                                       time.localtime(task.get("created_at", 0)))
+                created = time.strftime(
+                    "%Y-%m-%d %H:%M:%S", time.localtime(task.get("created_at", 0))
+                )
                 node = task.get("assigned_node", "-") or "-"
                 print(f"{task['task_id']:<8} {task['status']:<12} {created:<20} {node:<15}")
         else:
@@ -270,17 +260,16 @@ def cmd_task_status(args):
     try:
         import requests
 
-        response = requests.get(
-            f"{args.scheduler_url}/status/{args.task_id}",
-            timeout=10
-        )
+        response = requests.get(f"{args.scheduler_url}/status/{args.task_id}", timeout=10)
 
         if response.status_code == 200:
             task = response.json()
 
             print(f"Task ID: {task['task_id']}")
             print(f"Status: {task['status']}")
-            print(f"Created: {time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(task.get('created_at', 0)))}")
+            print(
+                f"Created: {time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(task.get('created_at', 0)))}"
+            )
 
             if task.get("assigned_node"):
                 print(f"Assigned Node: {task['assigned_node']}")
@@ -306,19 +295,13 @@ def cmd_scheduler_status(args):
     try:
         import requests
 
-        response = requests.get(
-            "http://localhost:8000/health",
-            timeout=5
-        )
+        response = requests.get("http://localhost:8000/health", timeout=5)
 
         if response.status_code == 200:
             print("Scheduler Status: Running")
             print("URL: http://localhost:8000")
 
-            stats_response = requests.get(
-                "http://localhost:8000/stats",
-                timeout=5
-            )
+            stats_response = requests.get("http://localhost:8000/stats", timeout=5)
 
             if stats_response.status_code == 200:
                 stats = stats_response.json()
@@ -348,10 +331,7 @@ def cmd_node_list(args):
     try:
         import requests
 
-        response = requests.get(
-            "http://localhost:8000/api/nodes",
-            timeout=10
-        )
+        response = requests.get("http://localhost:8000/api/nodes", timeout=10)
 
         if response.status_code == 200:
             nodes = response.json()
@@ -360,18 +340,22 @@ def cmd_node_list(args):
                 print("No nodes registered")
                 return
 
-            print(f"{'Node ID':<20} {'Status':<12} {'CPU':<8} {'Memory':<10} {'Last Heartbeat':<20}")
+            print(
+                f"{'Node ID':<20} {'Status':<12} {'CPU':<8} {'Memory':<10} {'Last Heartbeat':<20}"
+            )
             print("-" * 80)
 
             for node in nodes:
-                node_id = node.get('node_id', '-')[:18]
-                status = node.get('status', 'unknown')
+                node_id = node.get("node_id", "-")[:18]
+                status = node.get("status", "unknown")
                 cpu = f"{node.get('capacity', {}).get('cpu', 0):.1f}"
                 memory = f"{node.get('capacity', {}).get('memory', 0)} MB"
-                last_heartbeat = node.get('last_heartbeat', 0)
+                last_heartbeat = node.get("last_heartbeat", 0)
 
                 if last_heartbeat:
-                    heartbeat_str = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(last_heartbeat))
+                    heartbeat_str = time.strftime(
+                        "%Y-%m-%d %H:%M:%S", time.localtime(last_heartbeat)
+                    )
                 else:
                     heartbeat_str = "-"
 
@@ -394,10 +378,7 @@ def cmd_status(args):
     try:
         import requests
 
-        response = requests.get(
-            f"{args.scheduler_url}/stats",
-            timeout=10
-        )
+        response = requests.get(f"{args.scheduler_url}/stats", timeout=10)
 
         if response.status_code == 200:
             stats = response.json()

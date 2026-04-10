@@ -25,7 +25,7 @@ class IdleDetectionService:
         self,
         idle_threshold_sec: Optional[int] = None,
         cpu_threshold: Optional[float] = None,
-        memory_threshold: Optional[float] = None
+        memory_threshold: Optional[float] = None,
     ):
         """
         初始化闲置检测服务
@@ -43,7 +43,7 @@ class IdleDetectionService:
         self,
         idle_threshold_sec: Optional[int] = None,
         cpu_threshold: Optional[float] = None,
-        memory_threshold: Optional[float] = None
+        memory_threshold: Optional[float] = None,
     ) -> bool:
         """
         检查系统是否空闲
@@ -59,14 +59,14 @@ class IdleDetectionService:
         return is_idle(
             idle_threshold_sec=idle_threshold_sec or self._idle_threshold,
             cpu_threshold=cpu_threshold or self._cpu_threshold,
-            memory_threshold=memory_threshold or self._memory_threshold
+            memory_threshold=memory_threshold or self._memory_threshold,
         )
 
     def get_status(
         self,
         idle_threshold_sec: Optional[int] = None,
         cpu_threshold: Optional[float] = None,
-        memory_threshold: Optional[float] = None
+        memory_threshold: Optional[float] = None,
     ) -> dict[str, Any]:
         """
         获取系统状态详情
@@ -82,7 +82,7 @@ class IdleDetectionService:
         return get_system_status(
             idle_threshold_sec=idle_threshold_sec or self._idle_threshold,
             cpu_threshold=cpu_threshold or self._cpu_threshold,
-            memory_threshold=memory_threshold or self._memory_threshold
+            memory_threshold=memory_threshold or self._memory_threshold,
         )
 
     def get_platform_name(self) -> str:
@@ -122,7 +122,7 @@ class IdleDetectionService:
         self,
         min_idle_time: Optional[int] = None,
         max_cpu_usage: Optional[float] = None,
-        max_memory_usage: Optional[float] = None
+        max_memory_usage: Optional[float] = None,
     ) -> dict[str, Any]:
         """
         判断是否应该开始执行任务
@@ -170,7 +170,7 @@ class IdleDetectionService:
                 "min_idle_time": min_idle,
                 "max_cpu_usage": max_cpu,
                 "max_memory_usage": max_mem,
-            }
+            },
         }
 
 

@@ -33,12 +33,12 @@ def run_command(command_args, name, delay=0):
             stderr=subprocess.STDOUT,
             text=True,
             bufsize=1,
-            universal_newlines=True
+            universal_newlines=True,
         )
 
         # 实时输出
         def output_reader():
-            for line in iter(process.stdout.readline, ''):
+            for line in iter(process.stdout.readline, ""):
                 print(f"[{name}] {line.rstrip()}")
 
         output_thread = threading.Thread(target=output_reader)
@@ -49,6 +49,7 @@ def run_command(command_args, name, delay=0):
     except Exception as e:
         print(f"❌ 启动 {name} 失败: {e}")
         return None
+
 
 def check_scheduler_health(scheduler_url="http://localhost:8000"):
     """检查调度中心是否健康"""
@@ -73,6 +74,7 @@ def check_scheduler_health(scheduler_url="http://localhost:8000"):
     print("❌ 调度中心启动超时")
     return False
 
+
 def get_platform_client():
     """
     自动检测平台并返回最优客户端实现
@@ -84,6 +86,7 @@ def get_platform_client():
         "Linux": ("legacy/node/simple_client.py", "Linux节点客户端"),
     }
     return platform_map.get(system, ("legacy/node/simple_client.py", "通用节点客户端"))
+
 
 def check_dependencies():
     """检查必要的依赖"""
@@ -107,6 +110,7 @@ def check_dependencies():
         # 继续运行，因为用户可能已经在其他环境中安装了依赖
 
     return True
+
 
 def main():
     """主函数"""
@@ -144,7 +148,15 @@ def main():
     if args.scheduler_port != 8000:
         scheduler_cmd.extend(["--port", str(args.scheduler_port)])
 
-    web_cmd = [sys.executable, "-m", "streamlit", "run", "src/presentation/streamlit/app.py", "--server.port", str(args.web_port)]
+    web_cmd = [
+        sys.executable,
+        "-m",
+        "streamlit",
+        "run",
+        "src/presentation/streamlit/app.py",
+        "--server.port",
+        str(args.web_port),
+    ]
 
     # 启动调度中心
     scheduler_process = run_command(scheduler_cmd, "调度中心")
@@ -217,6 +229,7 @@ def main():
                     print(f"❌ 停止 {name} 时出错: {e}")
 
         print("✅ 所有服务已停止")
+
 
 if __name__ == "__main__":
     main()

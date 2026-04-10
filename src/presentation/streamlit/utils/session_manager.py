@@ -117,10 +117,7 @@ class SessionManager:
             st.session_state["debug_mode"] = False
 
         if "resource_allocation" not in st.session_state:
-            st.session_state["resource_allocation"] = {
-                "cpu": 4.0,
-                "memory": 4096
-            }
+            st.session_state["resource_allocation"] = {"cpu": 4.0, "memory": 4096}
 
     @staticmethod
     def get_user_session() -> Optional[dict[str, Any]]:
@@ -130,11 +127,7 @@ class SessionManager:
     @staticmethod
     def set_user_session(user_id: str, username: str, **kwargs):
         """设置用户会话"""
-        session_data = {
-            "user_id": user_id,
-            "username": username,
-            **kwargs
-        }
+        session_data = {"user_id": user_id, "username": username, **kwargs}
         st.session_state[SessionManager.SESSION_KEY] = session_data
 
         backend = SessionManager.get_backend()
@@ -182,13 +175,15 @@ class SessionManager:
         from datetime import datetime
 
         history = st.session_state.get(SessionManager.HISTORY_KEY, [])
-        history.append({
-            "task_id": task_id,
-            "time": datetime.now().strftime("%H:%M:%S"),
-            "status": "submitted",
-            "type": task_type,
-            **kwargs
-        })
+        history.append(
+            {
+                "task_id": task_id,
+                "time": datetime.now().strftime("%H:%M:%S"),
+                "status": "submitted",
+                "type": task_type,
+                **kwargs,
+            }
+        )
         st.session_state[SessionManager.HISTORY_KEY] = history
 
     @staticmethod
@@ -230,6 +225,7 @@ class SessionManager:
         if restore_data:
             try:
                 import html
+
                 sanitized = html.unescape(restore_data[0])
                 session_data = json.loads(sanitized)
                 if not SessionManager._validate_session_data(session_data):
@@ -237,7 +233,9 @@ class SessionManager:
                 user_id = session_data.get("user_id")
                 backend = SessionManager.get_backend()
                 stored_session = backend.get_session(user_id)
-                if stored_session and stored_session.get("username") == session_data.get("username"):
+                if stored_session and stored_session.get("username") == session_data.get(
+                    "username"
+                ):
                     st.session_state[SessionManager.SESSION_KEY] = stored_session
                     st.query_params.pop("restore_session", None)
                     return True
@@ -253,19 +251,20 @@ class SessionManager:
         """验证会话数据格式和内容"""
         if not isinstance(data, dict):
             return False
-        required_keys = {'user_id', 'username'}
+        required_keys = {"user_id", "username"}
         if not required_keys.issubset(data.keys()):
             return False
-        user_id = data.get('user_id', '')
-        username = data.get('username', '')
+        user_id = data.get("user_id", "")
+        username = data.get("username", "")
         if not isinstance(user_id, str) or not isinstance(username, str):
             return False
         if len(user_id) > 64 or len(username) > 64:
             return False
         import re
-        if not re.match(r'^local_[a-f0-9]{8}$', user_id):
+
+        if not re.match(r"^local_[a-f0-9]{8}$", user_id):
             return False
-        return bool(re.match(r'^[\u4e00-\u9fa5a-zA-Z0-9_]+$', username))
+        return bool(re.match(r"^[\u4e00-\u9fa5a-zA-Z0-9_]+$", username))
 
     @staticmethod
     def save_session(user_id: str, username: str, **kwargs):
@@ -277,11 +276,7 @@ class SessionManager:
             username: 用户名
             **kwargs: 其他会话数据
         """
-        session_data = {
-            "user_id": user_id,
-            "username": username,
-            **kwargs
-        }
+        session_data = {"user_id": user_id, "username": username, **kwargs}
         backend = SessionManager.get_backend()
         config = SessionManager.get_config()
         backend.set_session(user_id, session_data, ttl=config.session_ttl)

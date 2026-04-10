@@ -21,12 +21,14 @@ from src.core.interfaces.repositories import IUserRepository
 @dataclass
 class LoginRequest:
     """登录请求"""
+
     username_or_id: str
 
 
 @dataclass
 class LoginResponse:
     """登录响应"""
+
     success: bool
     user_id: str = ""
     username: str = ""
@@ -61,19 +63,13 @@ class LoginUseCase:
             user = self._user_repository.get_by_id(request.username_or_id)
 
         if not user:
-            return LoginResponse(
-                success=False,
-                message=f"用户 '{request.username_or_id}' 不存在"
-            )
+            return LoginResponse(success=False, message=f"用户 '{request.username_or_id}' 不存在")
 
         user.update_last_login()
         self._user_repository.update(user)
 
         return LoginResponse(
-            success=True,
-            user_id=user.user_id,
-            username=user.username,
-            message="登录成功"
+            success=True, user_id=user.user_id, username=user.username, message="登录成功"
         )
 
 

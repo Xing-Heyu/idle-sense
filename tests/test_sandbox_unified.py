@@ -26,10 +26,10 @@ class TestSecurityPolicy:
         """测试默认策略"""
         policy = SecurityPolicy()
 
-        assert 'math' in policy.allowed_modules
-        assert 'os' not in policy.allowed_modules
-        assert 'eval' in policy.dangerous_builtins
-        assert '__class__' in policy.dangerous_attributes
+        assert "math" in policy.allowed_modules
+        assert "os" not in policy.allowed_modules
+        assert "eval" in policy.dangerous_builtins
+        assert "__class__" in policy.dangerous_attributes
 
     def test_policy_to_dict(self):
         """测试策略序列化"""
@@ -117,8 +117,8 @@ obj.__class__.__bases__
 
         result = validator.check_code_safety("import math\nprint(math.pi)")
 
-        assert result['safe'] is True
-        assert result['error'] is None
+        assert result["safe"] is True
+        assert result["error"] is None
 
 
 class TestSandboxConfig:
@@ -141,7 +141,7 @@ class TestSandboxConfig:
             memory_limit=1024,
             cpu_limit=2.0,
             isolation_level=IsolationLevel.CONTAINER,
-            network_enabled=True
+            network_enabled=True,
         )
 
         assert config.timeout == 600
@@ -164,11 +164,7 @@ class TestExecutionResult:
 
     def test_success_result(self):
         """测试成功结果"""
-        result = ExecutionResult(
-            success=True,
-            output="Hello, World!",
-            execution_time=0.5
-        )
+        result = ExecutionResult(success=True, output="Hello, World!", execution_time=0.5)
 
         assert result.success is True
         assert result.output == "Hello, World!"
@@ -176,11 +172,7 @@ class TestExecutionResult:
 
     def test_failure_result(self):
         """测试失败结果"""
-        result = ExecutionResult(
-            success=False,
-            error="执行超时",
-            execution_time=300
-        )
+        result = ExecutionResult(success=False, error="执行超时", execution_time=300)
 
         assert result.success is False
         assert result.error == "执行超时"
@@ -188,12 +180,7 @@ class TestExecutionResult:
 
     def test_result_to_dict(self):
         """测试结果序列化"""
-        result = ExecutionResult(
-            success=True,
-            output="test",
-            execution_time=1.0,
-            exit_code=0
-        )
+        result = ExecutionResult(success=True, output="test", execution_time=1.0, exit_code=0)
 
         data = result.to_dict()
 
@@ -218,7 +205,7 @@ class TestBasicSandbox:
 
         result = sandbox.validate_code("import math\nprint(math.pi)")
 
-        assert result['safe'] is True
+        assert result["safe"] is True
 
     def test_execute_safe_code(self):
         """测试执行安全代码"""

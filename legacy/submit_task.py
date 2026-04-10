@@ -11,9 +11,6 @@ print(f"1+1={result}")
 __result__ = result
 """
 
-    response = requests.post(
-        "http://localhost:8000/submit",
-        json={"code": code}
-    )
+    response = requests.post("http://localhost:8000/submit", json={"code": code})
 
     print(f"提交结果: {response.json()}")

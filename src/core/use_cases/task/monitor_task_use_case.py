@@ -23,6 +23,7 @@ from src.core.interfaces.services import ISchedulerService
 @dataclass
 class MonitorTaskRequest:
     """监控任务请求"""
+
     user_id: Optional[str] = None
     status: Optional[TaskStatus] = None
     limit: int = 100
@@ -31,6 +32,7 @@ class MonitorTaskRequest:
 @dataclass
 class MonitorTaskResponse:
     """监控任务响应"""
+
     success: bool
     tasks: list[dict[str, Any]] = None
     message: str = ""
@@ -43,11 +45,7 @@ class MonitorTaskResponse:
 class MonitorTaskUseCase:
     """监控任务用例"""
 
-    def __init__(
-        self,
-        task_repository: ITaskRepository,
-        scheduler_service: ISchedulerService
-    ):
+    def __init__(self, task_repository: ITaskRepository, scheduler_service: ISchedulerService):
         """
         初始化监控任务用例
 
@@ -85,19 +83,18 @@ class MonitorTaskUseCase:
                 task.status = TaskStatus(status_data.get("status", "pending"))
                 self._task_repository.update(task)
 
-            tasks_data.append({
-                "task_id": task.task_id,
-                "status": task.status.value,
-                "created_at": task.created_at.isoformat() if task.created_at else None,
-                "duration": task.duration,
-                "result": task.result,
-                "error": task.error
-            })
+            tasks_data.append(
+                {
+                    "task_id": task.task_id,
+                    "status": task.status.value,
+                    "created_at": task.created_at.isoformat() if task.created_at else None,
+                    "duration": task.duration,
+                    "result": task.result,
+                    "error": task.error,
+                }
+            )
 
-        return MonitorTaskResponse(
-            success=True,
-            tasks=tasks_data
-        )
+        return MonitorTaskResponse(success=True, tasks=tasks_data)
 
 
 __all__ = ["MonitorTaskUseCase", "MonitorTaskRequest", "MonitorTaskResponse"]

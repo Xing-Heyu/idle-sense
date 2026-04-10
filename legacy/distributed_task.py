@@ -18,6 +18,7 @@ import requests
 @dataclass
 class TaskChunk:
     """任务分片"""
+
     chunk_id: str
     parent_task_id: str
     code: str
@@ -37,9 +38,11 @@ class TaskChunk:
         if self.dependencies is None:
             self.dependencies = []
 
+
 @dataclass
 class DistributedTask:
     """分布式任务"""
+
     task_id: str
     name: str
     description: str
@@ -62,6 +65,7 @@ class DistributedTask:
         if self.chunks is None:
             self.chunks = []
 
+
 class DistributedTaskManager:
     """分布式任务管理器"""
 
@@ -71,10 +75,16 @@ class DistributedTaskManager:
         self.chunk_results: dict[str, Any] = {}
         self.lock = threading.Lock()
 
-    def submit_distributed_task(self, name: str, description: str, code_template: str,
-                                data: Any, chunk_size: int = 10,
-                                max_parallel_chunks: int = 5,
-                                merge_code: str = None) -> str:
+    def submit_distributed_task(
+        self,
+        name: str,
+        description: str,
+        code_template: str,
+        data: Any,
+        chunk_size: int = 10,
+        max_parallel_chunks: int = 5,
+        merge_code: str = None,
+    ) -> str:
         """提交分布式任务"""
         # 生成任务ID
         task_id = self._generate_task_id(name)
@@ -88,7 +98,7 @@ class DistributedTaskManager:
             data=data,
             chunk_size=chunk_size,
             max_parallel_chunks=max_parallel_chunks,
-            merge_code=merge_code
+            merge_code=merge_code,
         )
 
         with self.lock:
@@ -109,7 +119,7 @@ class DistributedTaskManager:
                     chunks = self._chunk_list_data(task)
                 elif isinstance(task.data, dict):
                     chunks = self._chunk_dict_data(task)
-                elif hasattr(task.data, '__iter__'):
+                elif hasattr(task.data, "__iter__"):
                     chunks = self._chunk_iterable_data(task)
                 else:
                     # 无法分片的数据，作为单个任务
@@ -206,7 +216,7 @@ class DistributedTaskManager:
                 "error": task.error,
                 "created_at": task.created_at,
                 "started_at": task.started_at,
-                "completed_at": task.completed_at
+                "completed_at": task.completed_at,
             }
 
     def get_task_result(self, task_id: str) -> Optional[Any]:
@@ -230,7 +240,7 @@ class DistributedTaskManager:
         chunk_size = task.chunk_size
 
         for i in range(0, len(data_list), chunk_size):
-            chunk_data = data_list[i:i + chunk_size]
+            chunk_data = data_list[i : i + chunk_size]
             chunk_id = f"{task.task_id}_chunk_{i // chunk_size}"
 
             # 替换代码模板中的数据占位符
@@ -239,10 +249,7 @@ class DistributedTaskManager:
             code = code.replace("__CHUNK_INDEX__", str(i // chunk_size))
 
             chunk = TaskChunk(
-                chunk_id=chunk_id,
-                parent_task_id=task.task_id,
-                code=code,
-                data=chunk_data
+                chunk_id=chunk_id, parent_task_id=task.task_id, code=code, data=chunk_data
             )
             chunks.append(chunk)
 
@@ -256,7 +263,7 @@ class DistributedTaskManager:
         chunk_size = task.chunk_size
 
         for i in range(0, len(items), chunk_size):
-            chunk_data = dict(items[i:i + chunk_size])
+            chunk_data = dict(items[i : i + chunk_size])
             chunk_id = f"{task.task_id}_chunk_{i // chunk_size}"
 
             # 替换代码模板中的数据占位符
@@ -265,10 +272,7 @@ class DistributedTaskManager:
             code = code.replace("__CHUNK_INDEX__", str(i // chunk_size))
 
             chunk = TaskChunk(
-                chunk_id=chunk_id,
-                parent_task_id=task.task_id,
-                code=code,
-                data=chunk_data
+                chunk_id=chunk_id, parent_task_id=task.task_id, code=code, data=chunk_data
             )
             chunks.append(chunk)
 
@@ -300,10 +304,7 @@ class DistributedTaskManager:
             code = code.replace("__CHUNK_INDEX__", str(chunk_index))
 
             chunk = TaskChunk(
-                chunk_id=chunk_id,
-                parent_task_id=task.task_id,
-                code=code,
-                data=chunk_data
+                chunk_id=chunk_id, parent_task_id=task.task_id, code=code, data=chunk_data
             )
             chunks.append(chunk)
             chunk_index += 1
@@ -319,30 +320,14 @@ class DistributedTaskManager:
         code = code.replace("__CHUNK_ID__", chunk_id)
         code = code.replace("__CHUNK_INDEX__", "0")
 
-        return TaskChunk(
-            chunk_id=chunk_id,
-            parent_task_id=task.task_id,
-            code=code,
-            data=task.data
-        )
+        return TaskChunk(chunk_id=chunk_id, parent_task_id=task.task_id, code=code, data=task.data)
 
     def _submit_chunk_to_scheduler(self, chunk: TaskChunk) -> Optional[str]:
         """提交分片任务到调度中心"""
         try:
-            payload = {
-                "code": chunk.code,
-                "timeout": 300,
-                "resources": {
-                    "cpu": 1.0,
-                    "memory": 512
-                }
-            }
+            payload = {"code": chunk.code, "timeout": 300, "resources": {"cpu": 1.0, "memory": 512}}
 
-            response = requests.post(
-                f"{self.scheduler_url}/submit",
-                json=payload,
-                timeout=10
-            )
+            response = requests.post(f"{self.scheduler_url}/submit", json=payload, timeout=10)
 
             if response.status_code == 200:
                 result = response.json()
@@ -395,7 +380,7 @@ class DistributedTaskManager:
                 merge_env = {
                     "__CHUNK_RESULTS__": chunk_results,
                     "__TASK_ID__": task.task_id,
-                    "__TASK_NAME__": task.name
+                    "__TASK_NAME__": task.name,
                 }
 
                 # 执行合并代码
@@ -422,6 +407,7 @@ class DistributedTaskManager:
         except Exception as e:
             task.error = f"合并结果失败: {str(e)}"
             return False
+
 
 # 预定义的分布式任务模板
 DISTRIBUTED_TASK_TEMPLATES = {
@@ -487,9 +473,8 @@ final_result = reduce_function(all_mapped_results)
 # 设置最终结果
 __MERGED_RESULT__ = final_result
 print(f"合并完成，总计处理 {total_count} 项数据")
-"""
+""",
     },
-
     "parallel_search": {
         "name": "并行搜索任务",
         "description": "将搜索空间分片，并行搜索",
@@ -547,9 +532,8 @@ __MERGED_RESULT__ = {
     "found_items": all_found_items
 }
 print(f"搜索完成，总计找到 {total_found} 个匹配项")
-"""
+""",
     },
-
     "data_processing": {
         "name": "数据处理任务",
         "description": "将大型数据集分片处理",
@@ -612,8 +596,8 @@ __MERGED_RESULT__ = {
     "processed_results": all_processed_results
 }
 print(f"数据处理完成，总计处理 {total_processed} 项数据")
-"""
-    }
+""",
+    },
 }
 
 # 使用示例
@@ -632,7 +616,7 @@ if __name__ == "__main__":
         data=map_reduce_data,
         chunk_size=100,
         max_parallel_chunks=5,
-        merge_code=DISTRIBUTED_TASK_TEMPLATES["map_reduce"]["merge_code"]
+        merge_code=DISTRIBUTED_TASK_TEMPLATES["map_reduce"]["merge_code"],
     )
 
     # 创建分片

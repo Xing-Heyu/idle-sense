@@ -37,6 +37,7 @@ V = TypeVar("V")
 @dataclass
 class CacheEntry(Generic[V]):
     """缓存条目"""
+
     value: V
     expires_at: float
     created_at: float
@@ -120,11 +121,7 @@ class MemoryCache(Generic[K, V]):
             current_time = time.time()
             ttl = ttl if ttl is not None else self._default_ttl
 
-            entry = CacheEntry(
-                value=value,
-                expires_at=current_time + ttl,
-                created_at=current_time
-            )
+            entry = CacheEntry(value=value, expires_at=current_time + ttl, created_at=current_time)
 
             if key in self._cache:
                 del self._cache[key]
@@ -165,10 +162,7 @@ class MemoryCache(Generic[K, V]):
             清理的条目数
         """
         with self._lock:
-            expired_keys = [
-                key for key, entry in self._cache.items()
-                if entry.is_expired()
-            ]
+            expired_keys = [key for key, entry in self._cache.items() if entry.is_expired()]
 
             for key in expired_keys:
                 del self._cache[key]
@@ -192,7 +186,7 @@ class MemoryCache(Generic[K, V]):
                 "hits": self._hits,
                 "misses": self._misses,
                 "hit_rate": hit_rate,
-                "total_requests": total_requests
+                "total_requests": total_requests,
             }
 
     def __len__(self) -> int:
@@ -246,13 +240,10 @@ def cache_result(ttl: int = 30, maxsize: int = 128):
             return result
 
         wrapper.cache_clear = lambda: cache.clear()
-        wrapper.cache_info = lambda: {
-            "size": len(cache),
-            "maxsize": maxsize,
-            "ttl": ttl
-        }
+        wrapper.cache_info = lambda: {"size": len(cache), "maxsize": maxsize, "ttl": ttl}
 
         return wrapper
+
     return decorator
 
 
@@ -274,6 +265,7 @@ def cached_method(ttl: int = 30):
         ...     def get_data(self, id):
         ...         return fetch_data(id)
     """
+
     def decorator(func: Callable[..., T]) -> Callable[..., T]:
         cache: dict[int, dict[str, tuple]] = {}
 
@@ -298,6 +290,7 @@ def cached_method(ttl: int = 30):
             return result
 
         return wrapper
+
     return decorator
 
 

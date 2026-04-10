@@ -148,23 +148,23 @@ class AuditLogger:
         )
 
         with self._lock, sqlite3.connect(self.db_path) as conn:
-                conn.execute(
-                    """
+            conn.execute(
+                """
                     INSERT INTO audit_logs
                     (timestamp, action, user_id, resource_type, resource_id, details, ip_address, user_agent)
                     VALUES (?, ?, ?, ?, ?, ?, ?, ?)
                     """,
-                    (
-                        log_entry.timestamp.isoformat(),
-                        log_entry.action.value,
-                        log_entry.user_id,
-                        log_entry.resource_type,
-                        log_entry.resource_id,
-                        json.dumps(log_entry.details),
-                        log_entry.ip_address,
-                        log_entry.user_agent,
-                    ),
-                )
+                (
+                    log_entry.timestamp.isoformat(),
+                    log_entry.action.value,
+                    log_entry.user_id,
+                    log_entry.resource_type,
+                    log_entry.resource_id,
+                    json.dumps(log_entry.details),
+                    log_entry.ip_address,
+                    log_entry.user_agent,
+                ),
+            )
 
     def query(
         self,

@@ -32,24 +32,23 @@ from .settings import (
 
 __all__ = [
     # 新版配置
-    'Settings',
-    'SchedulerSettings',
-    'ResourceSettings',
-    'WebUISettings',
-    'StorageSettings',
-    'DistributedTaskSettings',
-    'SecuritySettings',
-    'settings',
-    'get_settings',
-
+    "Settings",
+    "SchedulerSettings",
+    "ResourceSettings",
+    "WebUISettings",
+    "StorageSettings",
+    "DistributedTaskSettings",
+    "SecuritySettings",
+    "settings",
+    "get_settings",
     # 旧版配置（兼容）
-    'SCHEDULER',
-    'NODE',
-    'WEB',
-    'MONITORING',
-    'PATHS',
-    'SECURITY',
-    'DEFAULTS'
+    "SCHEDULER",
+    "NODE",
+    "WEB",
+    "MONITORING",
+    "PATHS",
+    "SECURITY",
+    "DEFAULTS",
 ]
 
 __version__ = "2.0.0"

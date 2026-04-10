@@ -9,6 +9,7 @@ Architecture Reference:
 - Redis: High-performance in-memory data store
 - SQLite: Lightweight disk-based database
 """
+
 import asyncio
 import json
 import time
@@ -21,6 +22,7 @@ T = TypeVar("T")
 
 class TaskStatus(str, Enum):
     """Task status enumeration."""
+
     PENDING = "pending"
     ASSIGNED = "assigned"
     RUNNING = "running"
@@ -31,6 +33,7 @@ class TaskStatus(str, Enum):
 
 class NodeStatus(str, Enum):
     """Node status enumeration."""
+
     ONLINE_AVAILABLE = "online_available"
     ONLINE_BUSY = "online_busy"
     ONLINE_UNAVAILABLE = "online_unavailable"
@@ -40,6 +43,7 @@ class NodeStatus(str, Enum):
 @dataclass
 class TaskInfo:
     """Task information data class."""
+
     task_id: int
     code: str
     status: TaskStatus = TaskStatus.PENDING
@@ -81,6 +85,7 @@ class TaskInfo:
 @dataclass
 class NodeInfo:
     """Node information data class."""
+
     node_id: str
     capacity: dict[str, Any] = field(default_factory=dict)
     tags: dict[str, Any] = field(default_factory=dict)
@@ -143,10 +148,7 @@ class StorageBackend(Protocol):
         ...
 
     async def list_tasks(
-        self,
-        status: Optional[TaskStatus] = None,
-        user_id: Optional[str] = None,
-        limit: int = 100
+        self, status: Optional[TaskStatus] = None, user_id: Optional[str] = None, limit: int = 100
     ) -> list[TaskInfo]:
         """List tasks with optional filtering."""
         ...
@@ -163,10 +165,7 @@ class StorageBackend(Protocol):
         """Update node information."""
         ...
 
-    async def list_nodes(
-        self,
-        status: Optional[NodeStatus] = None
-    ) -> list[NodeInfo]:
+    async def list_nodes(self, status: Optional[NodeStatus] = None) -> list[NodeInfo]:
         """List nodes with optional filtering."""
         ...
 
@@ -202,11 +201,7 @@ class BaseStorage:  # noqa: B024
         """Deserialize node from JSON string."""
         return NodeInfo.from_dict(json.loads(data))
 
-    def _calculate_match_score(
-        self,
-        node: NodeInfo,
-        task: TaskInfo
-    ) -> float:
+    def _calculate_match_score(self, node: NodeInfo, task: TaskInfo) -> float:
         """
         Calculate task-node match score.
 
@@ -285,10 +280,7 @@ class MemoryStorage(BaseStorage):
             self._tasks.pop(task_id, None)
 
     async def list_tasks(
-        self,
-        status: Optional[TaskStatus] = None,
-        user_id: Optional[str] = None,
-        limit: int = 100
+        self, status: Optional[TaskStatus] = None, user_id: Optional[str] = None, limit: int = 100
     ) -> list[TaskInfo]:
         tasks = list(self._tasks.values())
 
@@ -314,10 +306,7 @@ class MemoryStorage(BaseStorage):
                     if hasattr(node, key):
                         setattr(node, key, value)
 
-    async def list_nodes(
-        self,
-        status: Optional[NodeStatus] = None
-    ) -> list[NodeInfo]:
+    async def list_nodes(self, status: Optional[NodeStatus] = None) -> list[NodeInfo]:
         nodes = list(self._nodes.values())
 
         if status:
@@ -391,7 +380,7 @@ class RedisStorage(BaseStorage):
         self,
         redis_url: str = "redis://localhost:6379/0",
         key_prefix: str = "idle_accelerator:",
-        **kwargs
+        **kwargs,
     ):
         super().__init__(**kwargs)
         self.redis_url = redis_url
@@ -404,6 +393,7 @@ class RedisStorage(BaseStorage):
         if self._client is None:
             try:
                 import redis.asyncio as redis
+
                 self._client = redis.from_url(self.redis_url)
             except ImportError as e:
                 raise ImportError(
@@ -419,11 +409,7 @@ class RedisStorage(BaseStorage):
             task.task_id = await client.incr(self._task_counter_key)
 
         key = f"{self.key_prefix}task:{task.task_id}"
-        await client.setex(
-            key,
-            self.task_ttl,
-            self._serialize_task(task)
-        )
+        await client.setex(key, self.task_ttl, self._serialize_task(task))
         await client.sadd(f"{self.key_prefix}tasks:pending", task.task_id)
 
     async def get_task(self, task_id: int) -> Optional[TaskInfo]:
@@ -450,10 +436,7 @@ class RedisStorage(BaseStorage):
         await client.srem(f"{self.key_prefix}tasks:pending", task_id)
 
     async def list_tasks(
-        self,
-        status: Optional[TaskStatus] = None,
-        user_id: Optional[str] = None,
-        limit: int = 100
+        self, status: Optional[TaskStatus] = None, user_id: Optional[str] = None, limit: int = 100
     ) -> list[TaskInfo]:
         client = await self._get_client()
 
@@ -463,7 +446,7 @@ class RedisStorage(BaseStorage):
             keys.append(key)
 
         tasks = []
-        for key in keys[:limit * 2]:
+        for key in keys[: limit * 2]:
             data = await client.get(key)
             if data:
                 task = self._deserialize_task(data.decode())
@@ -497,10 +480,7 @@ class RedisStorage(BaseStorage):
                     setattr(node, key, value)
             await self.store_node(node)
 
-    async def list_nodes(
-        self,
-        status: Optional[NodeStatus] = None
-    ) -> list[NodeInfo]:
+    async def list_nodes(self, status: Optional[NodeStatus] = None) -> list[NodeInfo]:
         client = await self._get_client()
 
         pattern = f"{self.key_prefix}node:*"
@@ -536,11 +516,14 @@ class RedisStorage(BaseStorage):
                 best_task = task
 
         if best_task and best_score > 0:
-            await self.update_task(best_task.task_id, {
-                "status": TaskStatus.ASSIGNED,
-                "assigned_node": node_id,
-                "assigned_at": time.time()
-            })
+            await self.update_task(
+                best_task.task_id,
+                {
+                    "status": TaskStatus.ASSIGNED,
+                    "assigned_node": node_id,
+                    "assigned_at": time.time(),
+                },
+            )
             return best_task
 
         return None
@@ -574,11 +557,7 @@ class SQLiteStorage(BaseStorage):
         await storage.store_task(task)
     """
 
-    def __init__(
-        self,
-        db_path: str = "data/scheduler.db",
-        **kwargs
-    ):
+    def __init__(self, db_path: str = "data/scheduler.db", **kwargs):
         super().__init__(**kwargs)
         self.db_path = db_path
         self._conn = None
@@ -590,7 +569,10 @@ class SQLiteStorage(BaseStorage):
 
             import aiosqlite
 
-            os.makedirs(os.path.dirname(self.db_path) if os.path.dirname(self.db_path) else ".", exist_ok=True)
+            os.makedirs(
+                os.path.dirname(self.db_path) if os.path.dirname(self.db_path) else ".",
+                exist_ok=True,
+            )
             self._conn = await aiosqlite.connect(self.db_path)
             await self._init_tables()
         return self._conn
@@ -654,8 +636,8 @@ class SQLiteStorage(BaseStorage):
                 task.error,
                 task.timeout,
                 json.dumps(task.resources),
-                task.user_id
-            )
+                task.user_id,
+            ),
         )
         await conn.commit()
         task.task_id = cursor.lastrowid
@@ -663,9 +645,7 @@ class SQLiteStorage(BaseStorage):
     async def get_task(self, task_id: int) -> Optional[TaskInfo]:
         conn = await self._get_connection()
 
-        async with conn.execute(
-            "SELECT * FROM tasks WHERE task_id = ?", (task_id,)
-        ) as cursor:
+        async with conn.execute("SELECT * FROM tasks WHERE task_id = ?", (task_id,)) as cursor:
             row = await cursor.fetchone()
 
         if row:
@@ -686,15 +666,22 @@ class SQLiteStorage(BaseStorage):
             error=row[8],
             timeout=row[9],
             resources=json.loads(row[10]) if row[10] else {},
-            user_id=row[11]
+            user_id=row[11],
         )
 
     async def update_task(self, task_id: int, updates: dict[str, Any]) -> None:
         conn = await self._get_connection()
 
         _TASK_ALLOWED_COLUMNS = {
-            "status", "result", "error", "assigned_node", "resources",
-            "started_at", "completed_at", "progress", "priority",
+            "status",
+            "result",
+            "error",
+            "assigned_node",
+            "resources",
+            "started_at",
+            "completed_at",
+            "progress",
+            "priority",
         }
         set_clauses = []
         values = []
@@ -710,10 +697,7 @@ class SQLiteStorage(BaseStorage):
 
         values.append(task_id)
 
-        await conn.execute(
-            f"UPDATE tasks SET {', '.join(set_clauses)} WHERE task_id = ?",
-            values
-        )
+        await conn.execute(f"UPDATE tasks SET {', '.join(set_clauses)} WHERE task_id = ?", values)
         await conn.commit()
 
     async def delete_task(self, task_id: int) -> None:
@@ -722,10 +706,7 @@ class SQLiteStorage(BaseStorage):
         await conn.commit()
 
     async def list_tasks(
-        self,
-        status: Optional[TaskStatus] = None,
-        user_id: Optional[str] = None,
-        limit: int = 100
+        self, status: Optional[TaskStatus] = None, user_id: Optional[str] = None, limit: int = 100
     ) -> list[TaskInfo]:
         conn = await self._get_connection()
 
@@ -768,17 +749,15 @@ class SQLiteStorage(BaseStorage):
                 1 if node.is_idle else 0,
                 json.dumps(node.available_resources),
                 node.cpu_usage,
-                node.memory_usage
-            )
+                node.memory_usage,
+            ),
         )
         await conn.commit()
 
     async def get_node(self, node_id: str) -> Optional[NodeInfo]:
         conn = await self._get_connection()
 
-        async with conn.execute(
-            "SELECT * FROM nodes WHERE node_id = ?", (node_id,)
-        ) as cursor:
+        async with conn.execute("SELECT * FROM nodes WHERE node_id = ?", (node_id,)) as cursor:
             row = await cursor.fetchone()
 
         if row:
@@ -798,15 +777,21 @@ class SQLiteStorage(BaseStorage):
             is_idle=bool(row[7]),
             available_resources=json.loads(row[8]) if row[8] else {},
             cpu_usage=row[9],
-            memory_usage=row[10]
+            memory_usage=row[10],
         )
 
     async def update_node(self, node_id: str, updates: dict[str, Any]) -> None:
         conn = await self._get_connection()
 
         _NODE_ALLOWED_COLUMNS = {
-            "status", "capacity", "tags", "current_load", "available_resources",
-            "is_idle", "last_heartbeat", "completed_tasks",
+            "status",
+            "capacity",
+            "tags",
+            "current_load",
+            "available_resources",
+            "is_idle",
+            "last_heartbeat",
+            "completed_tasks",
         }
         set_clauses = []
         values = []
@@ -824,16 +809,10 @@ class SQLiteStorage(BaseStorage):
 
         values.append(node_id)
 
-        await conn.execute(
-            f"UPDATE nodes SET {', '.join(set_clauses)} WHERE node_id = ?",
-            values
-        )
+        await conn.execute(f"UPDATE nodes SET {', '.join(set_clauses)} WHERE node_id = ?", values)
         await conn.commit()
 
-    async def list_nodes(
-        self,
-        status: Optional[NodeStatus] = None
-    ) -> list[NodeInfo]:
+    async def list_nodes(self, status: Optional[NodeStatus] = None) -> list[NodeInfo]:
         conn = await self._get_connection()
 
         query = "SELECT * FROM nodes WHERE 1=1"
@@ -868,11 +847,14 @@ class SQLiteStorage(BaseStorage):
                 best_task = task
 
         if best_task and best_score > 0:
-            await self.update_task(best_task.task_id, {
-                "status": TaskStatus.ASSIGNED,
-                "assigned_node": node_id,
-                "assigned_at": time.time()
-            })
+            await self.update_task(
+                best_task.task_id,
+                {
+                    "status": TaskStatus.ASSIGNED,
+                    "assigned_node": node_id,
+                    "assigned_at": time.time(),
+                },
+            )
             return best_task
 
         return None
@@ -894,10 +876,7 @@ class SQLiteStorage(BaseStorage):
         }
 
 
-def create_storage(
-    backend: str = "memory",
-    **kwargs
-) -> StorageBackend:
+def create_storage(backend: str = "memory", **kwargs) -> StorageBackend:
     """
     Factory function to create storage backend.
 
@@ -926,8 +905,7 @@ def create_storage(
 
     if backend not in backends:
         raise ValueError(
-            f"Unknown storage backend: {backend}. "
-            f"Available: {list(backends.keys())}"
+            f"Unknown storage backend: {backend}. " f"Available: {list(backends.keys())}"
         )
 
     return backends[backend](**kwargs)

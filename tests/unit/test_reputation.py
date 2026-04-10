@@ -17,9 +17,7 @@ class TestReputationRecord:
     def test_create_record(self):
         """Test creating a reputation record."""
         record = ReputationRecord(
-            node_id="node-001",
-            event_type=ReputationEvent.TASK_COMPLETED,
-            score_delta=0.05
+            node_id="node-001", event_type=ReputationEvent.TASK_COMPLETED, score_delta=0.05
         )
 
         assert record.node_id == "node-001"
@@ -32,7 +30,7 @@ class TestReputationRecord:
             node_id="node-001",
             event_type=ReputationEvent.TASK_FAILED,
             score_delta=-0.03,
-            details={"error": "timeout"}
+            details={"error": "timeout"},
         )
 
         data = record.to_dict()
@@ -56,11 +54,7 @@ class TestNodeReputation:
 
     def test_success_rate(self):
         """Test success rate calculation."""
-        rep = NodeReputation(
-            node_id="node-001",
-            total_interactions=10,
-            successful_interactions=8
-        )
+        rep = NodeReputation(node_id="node-001", total_interactions=10, successful_interactions=8)
 
         assert rep.success_rate == 0.8
 
@@ -75,9 +69,7 @@ class TestNodeReputation:
         rep = NodeReputation(node_id="node-001")
 
         event = ReputationRecord(
-            node_id="node-001",
-            event_type=ReputationEvent.TASK_COMPLETED,
-            score_delta=0.05
+            node_id="node-001", event_type=ReputationEvent.TASK_COMPLETED, score_delta=0.05
         )
 
         rep.add_event(event)
@@ -90,9 +82,7 @@ class TestNodeReputation:
         rep = NodeReputation(node_id="node-001", trust_score=0.99)
 
         event = ReputationRecord(
-            node_id="node-001",
-            event_type=ReputationEvent.TASK_COMPLETED,
-            score_delta=0.1
+            node_id="node-001", event_type=ReputationEvent.TASK_COMPLETED, score_delta=0.1
         )
 
         rep.add_event(event)
@@ -106,7 +96,7 @@ class TestNodeReputation:
             trust_score=0.7,
             total_interactions=10,
             successful_interactions=8,
-            node_type=NodeType.HONEST
+            node_type=NodeType.HONEST,
         )
 
         data = rep.to_dict()
@@ -139,10 +129,7 @@ class TestReputationManager:
         """Test recording an event."""
         manager = ReputationManager(local_node_id="local-node")
 
-        score = manager.record_event(
-            node_id="node-001",
-            event_type=ReputationEvent.TASK_COMPLETED
-        )
+        score = manager.record_event(node_id="node-001", event_type=ReputationEvent.TASK_COMPLETED)
 
         assert score == 0.55
         assert manager._stats["total_events"] == 1
@@ -152,8 +139,7 @@ class TestReputationManager:
         manager = ReputationManager(local_node_id="local-node")
 
         score = manager.record_event(
-            node_id="local-node",
-            event_type=ReputationEvent.TASK_COMPLETED
+            node_id="local-node", event_type=ReputationEvent.TASK_COMPLETED
         )
 
         assert score == 1.0

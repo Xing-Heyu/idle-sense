@@ -36,9 +36,7 @@ class TestSimpleScheduler:
         scheduler = SimpleScheduler()
 
         node = NodeInfo(
-            node_id="test-node-1",
-            capacity={"cpu": 4.0, "memory": 8192},
-            tags={"type": "worker"}
+            node_id="test-node-1", capacity={"cpu": 4.0, "memory": 8192}, tags={"type": "worker"}
         )
 
         result = scheduler.register_node(node)
@@ -52,9 +50,7 @@ class TestSimpleScheduler:
         scheduler = SimpleScheduler()
 
         task = TaskInfo(
-            task_id=0,
-            code="print('hello')",
-            required_resources={"cpu": 1.0, "memory": 512}
+            task_id=0, code="print('hello')", required_resources={"cpu": 1.0, "memory": 512}
         )
 
         task_id = scheduler.add_task(task)
@@ -72,15 +68,13 @@ class TestSimpleScheduler:
             capacity={"cpu": 4.0, "memory": 8192},
             available_resources={"cpu": 4.0, "memory": 8192},
             is_idle=True,
-            is_available=True
+            is_available=True,
         )
         scheduler.register_node(node)
         scheduler.node_heartbeats["test-node-1"] = time.time()
 
         task = TaskInfo(
-            task_id=0,
-            code="print('hello')",
-            required_resources={"cpu": 1.0, "memory": 512}
+            task_id=0, code="print('hello')", required_resources={"cpu": 1.0, "memory": 512}
         )
         scheduler.add_task(task)
 
@@ -103,15 +97,13 @@ class TestSimpleScheduler:
             capacity={"cpu": 4.0, "memory": 8192},
             available_resources={"cpu": 4.0, "memory": 8192},
             is_idle=True,
-            is_available=True
+            is_available=True,
         )
         scheduler.register_node(node)
         scheduler.node_heartbeats["test-node-1"] = time.time()
 
         task = TaskInfo(
-            task_id=0,
-            code="print('hello')",
-            required_resources={"cpu": 1.0, "memory": 512}
+            task_id=0, code="print('hello')", required_resources={"cpu": 1.0, "memory": 512}
         )
         scheduler.add_task(task)
         scheduler.get_task_for_node("test-node-1")
@@ -147,7 +139,7 @@ class TestAdvancedScheduler:
             capacity={"cpu": 4.0, "memory": 8192},
             available_resources={"cpu": 4.0, "memory": 8192},
             is_idle=True,
-            is_available=True
+            is_available=True,
         )
         scheduler.register_node(node)
         scheduler.node_heartbeats["test-node-1"] = time.time()
@@ -171,7 +163,7 @@ class TestAdvancedScheduler:
             capacity={"cpu": 4.0, "memory": 8192},
             available_resources={"cpu": 4.0, "memory": 8192},
             is_idle=True,
-            is_available=True
+            is_available=True,
         )
         scheduler.register_node(node)
         scheduler.node_heartbeats["test-node-1"] = time.time()
@@ -195,19 +187,13 @@ class TestPredicates:
         predicate = ResourcePredicate()
 
         task = TaskInfo(
-            task_id=1,
-            code="print('hello')",
-            required_resources={"cpu": 2.0, "memory": 1024}
+            task_id=1, code="print('hello')", required_resources={"cpu": 2.0, "memory": 1024}
         )
 
-        node_enough = NodeInfo(
-            node_id="node-1",
-            available_resources={"cpu": 4.0, "memory": 2048}
-        )
+        node_enough = NodeInfo(node_id="node-1", available_resources={"cpu": 4.0, "memory": 2048})
 
         node_not_enough = NodeInfo(
-            node_id="node-2",
-            available_resources={"cpu": 1.0, "memory": 512}
+            node_id="node-2", available_resources={"cpu": 1.0, "memory": 512}
         )
 
         assert predicate.evaluate(task, node_enough) is True
@@ -219,15 +205,9 @@ class TestPredicates:
 
         task = TaskInfo(task_id=1, code="print('hello')")
 
-        node_match = NodeInfo(
-            node_id="node-1",
-            tags={"gpu": "true", "type": "worker"}
-        )
+        node_match = NodeInfo(node_id="node-1", tags={"gpu": "true", "type": "worker"})
 
-        node_no_match = NodeInfo(
-            node_id="node-2",
-            tags={"type": "worker"}
-        )
+        node_no_match = NodeInfo(node_id="node-2", tags={"type": "worker"})
 
         assert predicate.evaluate(task, node_match) is True
         assert predicate.evaluate(task, node_no_match) is False
@@ -241,9 +221,7 @@ class TestPriorityPlugins:
         plugin = ResourceBalancePlugin()
 
         task = TaskInfo(
-            task_id=1,
-            code="print('hello')",
-            required_resources={"cpu": 1.0, "memory": 512}
+            task_id=1, code="print('hello')", required_resources={"cpu": 1.0, "memory": 512}
         )
 
         node_idle = NodeInfo(
@@ -251,7 +229,7 @@ class TestPriorityPlugins:
             capacity={"cpu": 4.0, "memory": 8192},
             available_resources={"cpu": 4.0, "memory": 8192},
             current_load={"cpu_usage": 0.0, "memory_usage": 0},
-            is_idle=True
+            is_idle=True,
         )
 
         node_busy = NodeInfo(
@@ -259,7 +237,7 @@ class TestPriorityPlugins:
             capacity={"cpu": 4.0, "memory": 8192},
             available_resources={"cpu": 1.0, "memory": 2048},
             current_load={"cpu_usage": 3.0, "memory_usage": 6144},
-            is_idle=False
+            is_idle=False,
         )
 
         score_idle = plugin.calculate_score(task, node_idle)

@@ -30,10 +30,10 @@
     container.wire(modules=[__name__])
 """
 
-
 try:
     from dependency_injector import containers, providers
     from dependency_injector.wiring import Provide, inject
+
     DEPENDENCY_INJECTOR_AVAILABLE = True
 except ImportError:
     DEPENDENCY_INJECTOR_AVAILABLE = False
@@ -84,7 +84,7 @@ def create_node_repository(backend: str, config):
         return RedisNodeRepository(
             redis_url=config.REDIS_URL,
             key_prefix=config.REDIS_KEY_PREFIX + "node:",
-            ttl=config.DATA_TTL
+            ttl=config.DATA_TTL,
         )
     else:
         return InMemoryNodeRepository()
@@ -98,7 +98,7 @@ def create_task_repository(backend: str, config):
         return RedisTaskRepository(
             redis_url=config.REDIS_URL,
             key_prefix=config.REDIS_KEY_PREFIX + "task:",
-            ttl=config.DATA_TTL
+            ttl=config.DATA_TTL,
         )
     else:
         return InMemoryTaskRepository()
@@ -132,7 +132,11 @@ def create_token_repository(persistence_config, storage_config):
 
 def create_session_backend(persistence_config, storage_config):
     """创建会话后端实例"""
-    session_dir = str(storage_config.TEMP_DIR / "sessions") if hasattr(storage_config.TEMP_DIR, '__truediv__') else "data/sessions"
+    session_dir = (
+        str(storage_config.TEMP_DIR / "sessions")
+        if hasattr(storage_config.TEMP_DIR, "__truediv__")
+        else "data/sessions"
+    )
     return SessionBackendFactory.create_backend(
         backend_type=persistence_config.SESSION_BACKEND_TYPE,
         redis_url=storage_config.REDIS_URL,
@@ -157,31 +161,22 @@ class Container(containers.DeclarativeContainer if DEPENDENCY_INJECTOR_AVAILABLE
     """
 
     if DEPENDENCY_INJECTOR_AVAILABLE:
-        config = providers.Singleton(
-            lambda: get_settings()
-        )
+        config = providers.Singleton(lambda: get_settings())
 
-        cache = providers.Singleton(
-            MemoryCache,
-            max_size=1000,
-            default_ttl=300
-        )
+        cache = providers.Singleton(MemoryCache, max_size=1000, default_ttl=300)
 
         scheduler_client = providers.Singleton(
             SchedulerClient,
             base_url=config.provided.SCHEDULER.URL,
             timeout=config.provided.SCHEDULER.API_TIMEOUT,
             health_check_timeout=config.provided.SCHEDULER.HEALTH_CHECK_TIMEOUT,
-            max_retries=config.provided.SCHEDULER.MAX_RETRIES
+            max_retries=config.provided.SCHEDULER.MAX_RETRIES,
         )
 
-        token_economy = providers.Singleton(
-            TokenEconomy
-        )
+        token_economy = providers.Singleton(TokenEconomy)
 
         token_economy_service = providers.Singleton(
-            TokenEconomyService,
-            token_economy=token_economy
+            TokenEconomyService, token_economy=token_economy
         )
 
         merit_rank_engine = providers.Singleton(MeritRankEngine)
@@ -192,99 +187,79 @@ class Container(containers.DeclarativeContainer if DEPENDENCY_INJECTOR_AVAILABLE
             IdleDetectionService,
             idle_threshold_sec=config.provided.TOKEN.UPTIME_REWARD_INTERVAL,
             cpu_threshold=15.0,
-            memory_threshold=70.0
+            memory_threshold=70.0,
         )
 
-        simple_scheduler = providers.Singleton(
-            SimpleScheduler
-        )
+        simple_scheduler = providers.Singleton(SimpleScheduler)
 
-        advanced_scheduler = providers.Singleton(
-            AdvancedScheduler,
-            policy=SchedulingPolicy.DRF
-        )
+        advanced_scheduler = providers.Singleton(AdvancedScheduler, policy=SchedulingPolicy.DRF)
 
-        sandbox_factory = providers.Singleton(
-            SandboxFactory
-        )
+        sandbox_factory = providers.Singleton(SandboxFactory)
 
         sandbox_config = providers.Singleton(
             SandboxConfig,
             timeout=300,
             memory_limit=512,
             cpu_limit=1.0,
-            isolation_level=IsolationLevel.BASIC
+            isolation_level=IsolationLevel.BASIC,
         )
 
         node_repository = providers.Singleton(
             create_node_repository,
             backend=config.provided.STORAGE.BACKEND,
-            config=config.provided.STORAGE
+            config=config.provided.STORAGE,
         )
 
         task_repository = providers.Singleton(
             create_task_repository,
             backend=config.provided.STORAGE.BACKEND,
-            config=config.provided.STORAGE
+            config=config.provided.STORAGE,
         )
 
         user_repository = providers.Singleton(
-            FileUserRepository,
-            users_dir=config.provided.STORAGE.USERS_DIR
+            FileUserRepository, users_dir=config.provided.STORAGE.USERS_DIR
         )
 
-        persistence_settings = providers.Singleton(
-            lambda c: c.PERSISTENCE,
-            config=config
-        )
+        persistence_settings = providers.Singleton(lambda c: c.PERSISTENCE, config=config)
 
         persistent_task_storage = providers.Singleton(
             create_persistent_task_storage,
             persistence_config=persistence_settings,
-            config=config.provided.STORAGE
+            config=config.provided.STORAGE,
         )
 
         persistent_node_storage = providers.Singleton(
             create_persistent_node_storage,
             persistence_config=persistence_settings,
-            config=config.provided.STORAGE
+            config=config.provided.STORAGE,
         )
 
         token_repository = providers.Singleton(
             create_token_repository,
             persistence_config=persistence_settings,
-            config=config.provided.STORAGE
+            config=config.provided.STORAGE,
         )
 
         session_backend = providers.Singleton(
             create_session_backend,
             persistence_config=persistence_settings,
-            config=config.provided.STORAGE
+            config=config.provided.STORAGE,
         )
 
-        audit_logger = providers.Singleton(
-            AuditLogger,
-            db_path="audit.db"
-        )
+        audit_logger = providers.Singleton(AuditLogger, db_path="audit.db")
 
         register_use_case = providers.Factory(
-            RegisterUseCase,
-            user_repository=user_repository,
-            audit_logger=audit_logger
+            RegisterUseCase, user_repository=user_repository, audit_logger=audit_logger
         )
 
-        login_use_case = providers.Factory(
-            LoginUseCase,
-            user_repository=user_repository
-        )
+        login_use_case = providers.Factory(LoginUseCase, user_repository=user_repository)
 
         permission_service = providers.Singleton(PermissionService)
 
         folder_service = providers.Singleton(FolderService)
 
         create_folders_use_case = providers.Factory(
-            CreateFoldersUseCase,
-            folder_service=folder_service
+            CreateFoldersUseCase, folder_service=folder_service
         )
 
         submit_task_with_token_use_case = providers.Factory(
@@ -292,7 +267,7 @@ class Container(containers.DeclarativeContainer if DEPENDENCY_INJECTOR_AVAILABLE
             task_repository=task_repository,
             scheduler_service=scheduler_client,
             token_economy_service=token_economy_service,
-            audit_logger=audit_logger
+            audit_logger=audit_logger,
         )
 
         complete_task_with_token_use_case = providers.Factory(
@@ -302,25 +277,24 @@ class Container(containers.DeclarativeContainer if DEPENDENCY_INJECTOR_AVAILABLE
             token_economy_service=token_economy_service,
             merit_rank_engine=merit_rank_engine,
             contribution_proof_service=contribution_proof_service,
-            audit_logger=audit_logger
+            audit_logger=audit_logger,
         )
 
         try:
             from legacy.distributed_task import DistributedTaskManager
+
             distributed_task_manager = providers.Singleton(
-                DistributedTaskManager,
-                scheduler_url=config.provided.SCHEDULER.URL
+                DistributedTaskManager, scheduler_url=config.provided.SCHEDULER.URL
             )
             distributed_task_client = providers.Singleton(
-                DistributedTaskClient,
-                distributed_task_manager=distributed_task_manager
+                DistributedTaskClient, distributed_task_manager=distributed_task_manager
             )
         except ImportError:
             distributed_task_client = providers.Singleton(
-                DistributedTaskClient,
-                distributed_task_manager=None
+                DistributedTaskClient, distributed_task_manager=None
             )
     else:
+
         def __init__(self):
             self._config = get_settings()
             self._cache = MemoryCache(max_size=1000, default_ttl=300)
@@ -328,7 +302,7 @@ class Container(containers.DeclarativeContainer if DEPENDENCY_INJECTOR_AVAILABLE
                 base_url=self._config.SCHEDULER.URL,
                 timeout=self._config.SCHEDULER.API_TIMEOUT,
                 health_check_timeout=self._config.SCHEDULER.HEALTH_CHECK_TIMEOUT,
-                max_retries=self._config.SCHEDULER.MAX_RETRIES
+                max_retries=self._config.SCHEDULER.MAX_RETRIES,
             )
             self._token_economy = TokenEconomy()
             self._token_economy_service = TokenEconomyService(self._token_economy)
@@ -341,22 +315,15 @@ class Container(containers.DeclarativeContainer if DEPENDENCY_INJECTOR_AVAILABLE
             self._advanced_scheduler = AdvancedScheduler(policy=SchedulingPolicy.DRF)
             self._sandbox_factory = SandboxFactory()
             self._sandbox_config = SandboxConfig(
-                timeout=300,
-                memory_limit=512,
-                cpu_limit=1.0,
-                isolation_level=IsolationLevel.BASIC
+                timeout=300, memory_limit=512, cpu_limit=1.0, isolation_level=IsolationLevel.BASIC
             )
             self._node_repository = create_node_repository(
-                self._config.STORAGE.BACKEND,
-                self._config.STORAGE
+                self._config.STORAGE.BACKEND, self._config.STORAGE
             )
             self._task_repository = create_task_repository(
-                self._config.STORAGE.BACKEND,
-                self._config.STORAGE
+                self._config.STORAGE.BACKEND, self._config.STORAGE
             )
-            self._user_repository = FileUserRepository(
-                users_dir=self._config.STORAGE.USERS_DIR
-            )
+            self._user_repository = FileUserRepository(users_dir=self._config.STORAGE.USERS_DIR)
             self._persistence_settings = self._config.PERSISTENCE
             self._persistent_task_storage = create_persistent_task_storage(
                 self._persistence_settings, self._config.STORAGE
@@ -371,10 +338,7 @@ class Container(containers.DeclarativeContainer if DEPENDENCY_INJECTOR_AVAILABLE
                 self._persistence_settings, self._config.STORAGE
             )
             self._audit_logger = AuditLogger(db_path="audit.db")
-            self._register_use_case = RegisterUseCase(
-                self._user_repository,
-                self._audit_logger
-            )
+            self._register_use_case = RegisterUseCase(self._user_repository, self._audit_logger)
             self._login_use_case = LoginUseCase(self._user_repository)
             self._permission_service = PermissionService()
             self._folder_service = FolderService()
@@ -383,7 +347,7 @@ class Container(containers.DeclarativeContainer if DEPENDENCY_INJECTOR_AVAILABLE
                 self._task_repository,
                 self._scheduler_client,
                 self._token_economy_service,
-                self._audit_logger
+                self._audit_logger,
             )
             self._complete_task_with_token_use_case = CompleteTaskWithTokenEconomyUseCase(
                 self._task_repository,
@@ -391,10 +355,11 @@ class Container(containers.DeclarativeContainer if DEPENDENCY_INJECTOR_AVAILABLE
                 self._token_economy_service,
                 self._merit_rank_engine,
                 self._contribution_proof_service,
-                self._audit_logger
+                self._audit_logger,
             )
             try:
                 from legacy.distributed_task import DistributedTaskManager
+
                 manager = DistributedTaskManager(self._config.SCHEDULER.URL)
                 self._distributed_task_client = DistributedTaskClient(manager)
             except ImportError:

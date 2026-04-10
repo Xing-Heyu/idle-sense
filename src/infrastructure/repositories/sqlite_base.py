@@ -42,9 +42,7 @@ class SQLiteConnectionPool:
         max_retries: int = 3,
     ):
         self.db_path = db_path
-        self.max_connections = max(
-            max_connections, int(os.getenv("SQLITE_MAX_CONNECTIONS", "5"))
-        )
+        self.max_connections = max(max_connections, int(os.getenv("SQLITE_MAX_CONNECTIONS", "5")))
         self.timeout = max(timeout, float(os.getenv("SQLITE_TIMEOUT", "10.0")))
         self.max_retries = max(max_retries, int(os.getenv("SQLITE_MAX_RETRIES", "3")))
 
@@ -109,9 +107,7 @@ class SQLiteConnectionPool:
         for attempt in range(self.max_retries):
             try:
                 if not self._pool.empty():
-                    conn = await asyncio.wait_for(
-                        self._pool.get(), timeout=self.timeout
-                    )
+                    conn = await asyncio.wait_for(self._pool.get(), timeout=self.timeout)
                     try:
                         cursor = await conn.execute("SELECT 1")
                         await cursor.close()
@@ -127,9 +123,7 @@ class SQLiteConnectionPool:
                             self._current_connections += 1
                             return conn
 
-                conn = await asyncio.wait_for(
-                    self._pool.get(), timeout=self.timeout
-                )
+                conn = await asyncio.wait_for(self._pool.get(), timeout=self.timeout)
                 return conn
 
             except asyncio.TimeoutError:

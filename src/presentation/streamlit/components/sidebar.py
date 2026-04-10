@@ -65,12 +65,9 @@ def _render_user_status():
             if response.success:
                 st.session_state.user_session = {
                     "username": response.username,
-                    "user_id": response.user_id
+                    "user_id": response.user_id,
                 }
-                SessionManager.save_to_localstorage(
-                    response.user_id,
-                    response.username
-                )
+                SessionManager.save_to_localstorage(response.user_id, response.username)
                 container.token_economy_service().get_or_create_account(response.user_id)
                 st.rerun()
             else:
@@ -130,10 +127,7 @@ def _render_node_controls():
     else:
         if st.button("🚀 激活节点", width="stretch", type="primary"):
             success, result = client.activate_local_node(
-                cpu_limit=4.0,
-                memory_limit=4096,
-                storage_limit=10240,
-                user_id=user_id
+                cpu_limit=4.0, memory_limit=4096, storage_limit=10240, user_id=user_id
             )
             if success:
                 st.session_state.active_node_id = result.get("node_id")
@@ -151,10 +145,7 @@ def _render_resource_allocation():
     cpu_allocation = st.slider("CPU核心", 0.5, 16.0, 4.0, 0.5, key="sidebar_cpu")
     memory_allocation = st.slider("内存(MB)", 512, 32768, 4096, 512, key="sidebar_memory")
 
-    st.session_state.resource_allocation = {
-        "cpu": cpu_allocation,
-        "memory": memory_allocation
-    }
+    st.session_state.resource_allocation = {"cpu": cpu_allocation, "memory": memory_allocation}
 
 
 def _render_debug_mode():
@@ -185,14 +176,16 @@ def _render_token_balance(user_id: str):
     with col2:
         st.metric("质押", f"{account_info['staked']:.2f} CMP")
 
-    st.caption(f"总收益: {account_info['total_earned']:.2f} CMP | 总消费: {account_info['total_spent']:.2f} CMP")
+    st.caption(
+        f"总收益: {account_info['total_earned']:.2f} CMP | 总消费: {account_info['total_spent']:.2f} CMP"
+    )
 
 
 def _render_reputation(user_id: str):
     """渲染声誉信息"""
     token_service = container.token_economy_service()
     account_info = token_service.get_account_info(user_id)
-    reputation = account_info.get('reputation', 50.0)
+    reputation = account_info.get("reputation", 50.0)
 
     st.subheader("⭐ 声誉等级")
 
@@ -201,16 +194,20 @@ def _render_reputation(user_id: str):
         "Gold": "#FFD700",
         "Silver": "#C0C0C0",
         "Bronze": "#CD7F32",
-        "Untrusted": "#808080"
+        "Untrusted": "#808080",
     }
 
-    tier = account_info.get('tier', 'Bronze')
+    tier = account_info.get("tier", "Bronze")
     color = tier_colors.get(tier, "#808080")
 
     st.progress(reputation / 100, text=f"声誉: {reputation:.1f}/100")
-    st.markdown(f"<p style='color: {color}; font-weight: bold;'>等级: {tier}</p>", unsafe_allow_html=True)
+    st.markdown(
+        f"<p style='color: {color}; font-weight: bold;'>等级: {tier}</p>", unsafe_allow_html=True
+    )
 
-    st.caption(f"完成任务: {account_info['tasks_completed']} | 失败: {account_info['tasks_failed']}")
+    st.caption(
+        f"完成任务: {account_info['tasks_completed']} | 失败: {account_info['tasks_failed']}"
+    )
 
 
 __all__ = ["render_sidebar"]

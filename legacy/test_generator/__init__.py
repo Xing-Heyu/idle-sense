@@ -92,12 +92,14 @@ class CodeAnalyzer:
                 default_value = repr(param.default)
                 is_required = False
 
-            params.append(ParameterInfo(
-                name=name,
-                type_hint=type_hint,
-                default_value=default_value,
-                is_required=is_required
-            ))
+            params.append(
+                ParameterInfo(
+                    name=name,
+                    type_hint=type_hint,
+                    default_value=default_value,
+                    is_required=is_required,
+                )
+            )
 
         return_type = None
         if sig.return_annotation != inspect.Signature.empty:
@@ -109,7 +111,7 @@ class CodeAnalyzer:
             parameters=params,
             return_type=return_type,
             docstring=inspect.getdoc(func),
-            is_async=inspect.iscoroutinefunction(func)
+            is_async=inspect.iscoroutinefunction(func),
         )
 
     def analyze_class(self, cls: type) -> ClassInfo:
@@ -140,7 +142,7 @@ class CodeAnalyzer:
             methods=methods,
             attributes=attributes,
             bases=bases,
-            docstring=inspect.getdoc(cls)
+            docstring=inspect.getdoc(cls),
         )
 
     def analyze_file(self, file_path: str) -> tuple[list[FunctionInfo], list[ClassInfo]]:
@@ -174,11 +176,7 @@ class CodeAnalyzer:
             if arg.annotation:
                 type_hint = ast.unparse(arg.annotation)
 
-            params.append(ParameterInfo(
-                name=arg.arg,
-                type_hint=type_hint,
-                is_required=True
-            ))
+            params.append(ParameterInfo(name=arg.arg, type_hint=type_hint, is_required=True))
 
         defaults = node.args.defaults
         if defaults:
@@ -203,7 +201,7 @@ class CodeAnalyzer:
             return_type=return_type,
             docstring=ast.get_docstring(node),
             is_async=isinstance(node, ast.AsyncFunctionDef),
-            decorators=decorators
+            decorators=decorators,
         )
 
     def _parse_class(self, node: ast.ClassDef) -> ClassInfo:
@@ -230,7 +228,7 @@ class CodeAnalyzer:
             methods=methods,
             attributes=attributes,
             bases=bases,
-            docstring=ast.get_docstring(node)
+            docstring=ast.get_docstring(node),
         )
 
 
@@ -250,9 +248,7 @@ class TestGenerator:
         }
 
     def generate_for_function(
-        self,
-        func_info: FunctionInfo,
-        module_path: str = ""
+        self, func_info: FunctionInfo, module_path: str = ""
     ) -> list[GeneratedTest]:
         tests = []
 
@@ -262,11 +258,7 @@ class TestGenerator:
 
         return tests
 
-    def _generate_basic_test(
-        self,
-        func_info: FunctionInfo,
-        module_path: str
-    ) -> GeneratedTest:
+    def _generate_basic_test(self, func_info: FunctionInfo, module_path: str) -> GeneratedTest:
         test_name = f"test_{func_info.name}_basic"
 
         args = []
@@ -298,13 +290,11 @@ def {test_name}():
             test_name=test_name,
             test_type=TestType.UNIT,
             test_code=test_code.strip(),
-            description=f"Basic functionality test for {func_info.name}"
+            description=f"Basic functionality test for {func_info.name}",
         )
 
     def _generate_edge_case_tests(
-        self,
-        func_info: FunctionInfo,
-        module_path: str
+        self, func_info: FunctionInfo, module_path: str
     ) -> list[GeneratedTest]:
         tests = []
 
@@ -347,19 +337,19 @@ def {test_name}():
     assert result is not None
 """
 
-                tests.append(GeneratedTest(
-                    test_name=test_name,
-                    test_type=TestType.EDGE_CASE,
-                    test_code=test_code.strip(),
-                    description=f"Edge case test for {func_info.name}"
-                ))
+                tests.append(
+                    GeneratedTest(
+                        test_name=test_name,
+                        test_type=TestType.EDGE_CASE,
+                        test_code=test_code.strip(),
+                        description=f"Edge case test for {func_info.name}",
+                    )
+                )
 
         return tests[:5]
 
     def _generate_error_tests(
-        self,
-        func_info: FunctionInfo,
-        module_path: str
+        self, func_info: FunctionInfo, module_path: str
     ) -> list[GeneratedTest]:
         tests = []
 
@@ -386,20 +376,20 @@ def {test_name}(invalid_input):
         {func_info.name}(invalid_input)
 """
 
-        tests.append(GeneratedTest(
-            test_name=test_name,
-            test_type=TestType.ERROR_HANDLING,
-            test_code=test_code.strip(),
-            imports=["import pytest"],
-            description=f"Error handling test for {func_info.name}"
-        ))
+        tests.append(
+            GeneratedTest(
+                test_name=test_name,
+                test_type=TestType.ERROR_HANDLING,
+                test_code=test_code.strip(),
+                imports=["import pytest"],
+                description=f"Error handling test for {func_info.name}",
+            )
+        )
 
         return tests
 
     def generate_for_class(
-        self,
-        class_info: ClassInfo,
-        module_path: str = ""
+        self, class_info: ClassInfo, module_path: str = ""
     ) -> list[GeneratedTest]:
         tests = []
 
@@ -413,12 +403,14 @@ def {test_name}():
     assert instance is not None
     assert isinstance(instance, {class_info.name})
 """
-        tests.append(GeneratedTest(
-            test_name=test_name,
-            test_type=TestType.UNIT,
-            test_code=test_code.strip(),
-            description=f"Instantiation test for {class_info.name}"
-        ))
+        tests.append(
+            GeneratedTest(
+                test_name=test_name,
+                test_type=TestType.UNIT,
+                test_code=test_code.strip(),
+                description=f"Instantiation test for {class_info.name}",
+            )
+        )
 
         for method in class_info.methods:
             if method.name.startswith("_"):
@@ -429,21 +421,16 @@ def {test_name}():
                 test.test_name = f"test_{class_info.name}_{method.name}"
                 test.test_code = test.test_code.replace(
                     f"from {module_path} import {method.name}",
-                    f"from {module_path} import {class_info.name}"
+                    f"from {module_path} import {class_info.name}",
                 )
                 test.test_code = test.test_code.replace(
-                    f"{method.name}(",
-                    f"{class_info.name}().{method.name}("
+                    f"{method.name}(", f"{class_info.name}().{method.name}("
                 )
             tests.extend(method_tests)
 
         return tests
 
-    def generate_for_file(
-        self,
-        file_path: str,
-        output_dir: str | None = None
-    ) -> str:
+    def generate_for_file(self, file_path: str, output_dir: str | None = None) -> str:
         functions, classes = self.analyzer.analyze_file(file_path)
 
         module_name = Path(file_path).stem
@@ -461,11 +448,7 @@ def {test_name}():
 
         return self._assemble_test_file(all_tests, module_name)
 
-    def _assemble_test_file(
-        self,
-        tests: list[GeneratedTest],
-        module_name: str
-    ) -> str:
+    def _assemble_test_file(self, tests: list[GeneratedTest], module_name: str) -> str:
         lines = [
             f'"""Auto-generated tests for {module_name}."""',
             "",

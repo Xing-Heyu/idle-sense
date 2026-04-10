@@ -25,6 +25,7 @@ _DEFAULT_HEARTBEAT_TIMEOUT = 180
 @dataclass
 class NodeRegistration:
     """节点注册信息"""
+
     node_id: str
     capacity: dict[str, Any] = field(default_factory=dict)
     tags: dict[str, Any] = field(default_factory=dict)
@@ -35,8 +36,11 @@ class NodeRegistration:
 @dataclass
 class NodeHeartbeat:
     """节点心跳数据"""
+
     node_id: str
-    current_load: dict[str, Any] = field(default_factory=lambda: {"cpu_usage": 0.0, "memory_usage": 0})
+    current_load: dict[str, Any] = field(
+        default_factory=lambda: {"cpu_usage": 0.0, "memory_usage": 0}
+    )
     is_idle: bool = True
     is_available: bool = True
     available_resources: dict[str, Any] = field(default_factory=dict)
@@ -50,7 +54,9 @@ class PersistentNodeStorage:
     所有公开方法均为异步，与底层仓储保持一致。
     """
 
-    def __init__(self, db_path: Optional[str] = None, heartbeat_timeout: int = _DEFAULT_HEARTBEAT_TIMEOUT):
+    def __init__(
+        self, db_path: Optional[str] = None, heartbeat_timeout: int = _DEFAULT_HEARTBEAT_TIMEOUT
+    ):
         """
         初始化持久化节点存储
 

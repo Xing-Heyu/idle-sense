@@ -25,6 +25,7 @@ try:
     from cryptography.hazmat.primitives import serialization
     from cryptography.hazmat.primitives.asymmetric import ed25519
     from cryptography.hazmat.primitives.ciphers.aead import AESGCM
+
     CRYPTO_AVAILABLE = True
 except ImportError:
     CRYPTO_AVAILABLE = False
@@ -35,6 +36,7 @@ except ImportError:
 @dataclass
 class NodeIdentity:
     """Node identity with Ed25519 keypair."""
+
     node_id: str
     public_key: bytes
     private_key: Optional[bytes] = None
@@ -54,26 +56,23 @@ class NodeIdentity:
         public_key = private_key.public_key()
 
         public_bytes = public_key.public_bytes(
-            encoding=serialization.Encoding.Raw,
-            format=serialization.PublicFormat.Raw
+            encoding=serialization.Encoding.Raw, format=serialization.PublicFormat.Raw
         )
         private_bytes = private_key.private_bytes(
             encoding=serialization.Encoding.Raw,
             format=serialization.PrivateFormat.Raw,
-            encryption_algorithm=serialization.NoEncryption()
+            encryption_algorithm=serialization.NoEncryption(),
         )
 
         if node_id is None:
             node_id = hashlib.sha256(public_bytes).hexdigest()[:32]
 
-        return cls(
-            node_id=node_id,
-            public_key=public_bytes,
-            private_key=private_bytes
-        )
+        return cls(node_id=node_id, public_key=public_bytes, private_key=private_bytes)
 
     @classmethod
-    def from_private_key(cls, private_key_bytes: bytes, node_id: Optional[str] = None) -> "NodeIdentity":
+    def from_private_key(
+        cls, private_key_bytes: bytes, node_id: Optional[str] = None
+    ) -> "NodeIdentity":
         """Create identity from existing private key."""
         if not CRYPTO_AVAILABLE:
             raise ImportError(
@@ -84,18 +83,13 @@ class NodeIdentity:
         private_key = ed25519.Ed25519PrivateKey.from_private_bytes(private_key_bytes)
         public_key = private_key.public_key()
         public_bytes = public_key.public_bytes(
-            encoding=serialization.Encoding.Raw,
-            format=serialization.PublicFormat.Raw
+            encoding=serialization.Encoding.Raw, format=serialization.PublicFormat.Raw
         )
 
         if node_id is None:
             node_id = hashlib.sha256(public_bytes).hexdigest()[:32]
 
-        return cls(
-            node_id=node_id,
-            public_key=public_bytes,
-            private_key=private_key_bytes
-        )
+        return cls(node_id=node_id, public_key=public_bytes, private_key=private_key_bytes)
 
     def sign(self, data: bytes) -> bytes:
         """Sign data with the private key."""
@@ -144,15 +138,14 @@ class NodeIdentity:
             "node_id": self.node_id,
             "public_key": self.public_key.hex() if self.public_key else None,
             "created_at": self.created_at,
-            "trusted_nodes": {
-                nid: pk.hex() for nid, pk in self.trusted_nodes.items()
-            }
+            "trusted_nodes": {nid: pk.hex() for nid, pk in self.trusted_nodes.items()},
         }
 
 
 @dataclass
 class EncryptedMessage:
     """Encrypted message container."""
+
     sender_id: str
     nonce: bytes
     ciphertext: bytes
@@ -166,7 +159,7 @@ class EncryptedMessage:
             "nonce": self.nonce.hex(),
             "ciphertext": self.ciphertext.hex(),
             "timestamp": self.timestamp,
-            "signature": self.signature.hex() if self.signature else None
+            "signature": self.signature.hex() if self.signature else None,
         }
         return json.dumps(data).encode("utf-8")
 
@@ -179,7 +172,7 @@ class EncryptedMessage:
             nonce=bytes.fromhex(obj["nonce"]),
             ciphertext=bytes.fromhex(obj["ciphertext"]),
             timestamp=obj.get("timestamp", time.time()),
-            signature=bytes.fromhex(obj["signature"]) if obj.get("signature") else None
+            signature=bytes.fromhex(obj["signature"]) if obj.get("signature") else None,
         )
 
 
@@ -218,14 +211,12 @@ class MessageCipher:
                 "Generate one with: secrets.token_bytes(16)"
             )
         return hashlib.pbkdf2_hmac(
-            "sha256",
-            shared_secret,
-            salt,
-            iterations=100000,
-            dklen=cls.KEY_SIZE
+            "sha256", shared_secret, salt, iterations=100000, dklen=cls.KEY_SIZE
         )
 
-    def encrypt(self, plaintext: bytes, associated_data: Optional[bytes] = None) -> tuple[bytes, bytes]:
+    def encrypt(
+        self, plaintext: bytes, associated_data: Optional[bytes] = None
+    ) -> tuple[bytes, bytes]:
         """Encrypt plaintext and return (nonce, ciphertext)."""
         if not CRYPTO_AVAILABLE:
             raise ImportError(
@@ -237,7 +228,9 @@ class MessageCipher:
         ciphertext = self.aesgcm.encrypt(nonce, plaintext, associated_data)
         return nonce, ciphertext
 
-    def decrypt(self, nonce: bytes, ciphertext: bytes, associated_data: Optional[bytes] = None) -> Optional[bytes]:
+    def decrypt(
+        self, nonce: bytes, ciphertext: bytes, associated_data: Optional[bytes] = None
+    ) -> Optional[bytes]:
         """Decrypt ciphertext. Returns None if decryption fails."""
         if not CRYPTO_AVAILABLE:
             raise ImportError(
@@ -250,7 +243,9 @@ class MessageCipher:
         except InvalidTag:
             return None
 
-    def encrypt_message(self, message: bytes, sender_id: str, identity: NodeIdentity) -> EncryptedMessage:
+    def encrypt_message(
+        self, message: bytes, sender_id: str, identity: NodeIdentity
+    ) -> EncryptedMessage:
         """Encrypt and sign a message."""
         nonce, ciphertext = self.encrypt(message, sender_id.encode())
 
@@ -259,17 +254,18 @@ class MessageCipher:
             signature = identity.sign(ciphertext)
 
         return EncryptedMessage(
-            sender_id=sender_id,
-            nonce=nonce,
-            ciphertext=ciphertext,
-            signature=signature
+            sender_id=sender_id, nonce=nonce, ciphertext=ciphertext, signature=signature
         )
 
-    def decrypt_message(self, encrypted: EncryptedMessage, identity: NodeIdentity) -> Optional[bytes]:
+    def decrypt_message(
+        self, encrypted: EncryptedMessage, identity: NodeIdentity
+    ) -> Optional[bytes]:
         """Decrypt and verify a message."""
         if encrypted.signature:
             sender_pub_key = identity.get_trusted_public_key(encrypted.sender_id)
-            if sender_pub_key and not identity.verify(encrypted.ciphertext, encrypted.signature, sender_pub_key):
+            if sender_pub_key and not identity.verify(
+                encrypted.ciphertext, encrypted.signature, sender_pub_key
+            ):
                 return None
 
         return self.decrypt(encrypted.nonce, encrypted.ciphertext, encrypted.sender_id.encode())
@@ -299,7 +295,7 @@ class SecureSession:
             "session_key": session_key,
             "nonce": nonce,
             "timestamp": timestamp,
-            "peer_public_key": None
+            "peer_public_key": None,
         }
 
         self.session_ciphers[peer_id] = MessageCipher(session_key)
@@ -311,7 +307,7 @@ class SecureSession:
             "session_key": session_key.hex(),
             "nonce": nonce.hex(),
             "timestamp": timestamp,
-            "signature": signature.hex()
+            "signature": signature.hex(),
         }
 
     def process_handshake_init(self, handshake: dict[str, Any]) -> Optional[dict[str, Any]]:
@@ -355,7 +351,7 @@ class SecureSession:
             "session_key": session_key,
             "nonce": response_nonce,
             "timestamp": response_timestamp,
-            "peer_public_key": public_key
+            "peer_public_key": public_key,
         }
 
         self.session_ciphers[sender_id] = MessageCipher(session_key)
@@ -366,7 +362,7 @@ class SecureSession:
             "public_key": self.identity.public_key.hex(),
             "nonce": response_nonce.hex(),
             "timestamp": response_timestamp,
-            "signature": response_signature.hex()
+            "signature": response_signature.hex(),
         }
 
     def complete_handshake(self, peer_id: str, response: dict[str, Any]) -> bool:
@@ -456,7 +452,8 @@ class SecureSession:
         """Remove expired sessions."""
         current_time = time.time()
         expired = [
-            peer_id for peer_id, session in self.sessions.items()
+            peer_id
+            for peer_id, session in self.sessions.items()
             if current_time - session.get("timestamp", 0) > self.SESSION_TIMEOUT
         ]
         for peer_id in expired:

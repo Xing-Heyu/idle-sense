@@ -65,7 +65,7 @@ class Node(Generic[T]):
             "active_requests": self.active_requests,
             "avg_response_time": round(self.avg_response_time, 4),
             "error_rate": round(self.error_rate, 4),
-            "load_score": round(self.load_score, 4)
+            "load_score": round(self.load_score, 4),
         }
 
 
@@ -125,9 +125,7 @@ class WeightedRoundRobinStrategy(LoadBalancingStrategy):
                     selected = node
 
             if selected:
-                self._current_weights[selected.id] -= sum(
-                    int(n.weight * 10) for n in healthy_nodes
-                )
+                self._current_weights[selected.id] -= sum(int(n.weight * 10) for n in healthy_nodes)
 
             return selected
 
@@ -205,7 +203,7 @@ class AdaptiveStrategy(LoadBalancingStrategy):
         self._strategies = [
             LeastConnectionsStrategy(),
             LeastResponseTimeStrategy(),
-            WeightedRoundRobinStrategy()
+            WeightedRoundRobinStrategy(),
         ]
         self._strategy_scores: list[float] = [1.0] * len(self._strategies)
         self._current_strategy = 0
@@ -242,9 +240,7 @@ class AdaptiveStrategy(LoadBalancingStrategy):
 
 class LoadBalancer(Generic[T]):
     def __init__(
-        self,
-        strategy: LoadBalancingStrategy | None = None,
-        health_check_interval: float = 30.0
+        self, strategy: LoadBalancingStrategy | None = None, health_check_interval: float = 30.0
     ):
         self.strategy = strategy or RoundRobinStrategy()
         self.health_check_interval = health_check_interval
@@ -278,9 +274,9 @@ class LoadBalancer(Generic[T]):
         with self._lock:
             nodes = list(self._nodes.values())
 
-        if hasattr(self.strategy, 'select'):
+        if hasattr(self.strategy, "select"):
             if isinstance(self.strategy, HashStrategy):
-                return self.strategy.select(nodes, kwargs.get('hash_key'))
+                return self.strategy.select(nodes, kwargs.get("hash_key"))
             return self.strategy.select(nodes)
 
         return None
@@ -293,12 +289,7 @@ class LoadBalancer(Generic[T]):
                 node.request_count += 1
                 node.last_request_time = time.time()
 
-    def record_request_end(
-        self,
-        node_id: str,
-        success: bool = True,
-        response_time: float = 0.0
-    ):
+    def record_request_end(self, node_id: str, success: bool = True, response_time: float = 0.0):
         with self._lock:
             node = self._nodes.get(node_id)
             if node:
@@ -370,7 +361,7 @@ class LoadBalancer(Generic[T]):
                 "active_requests": total_active,
                 "total_errors": total_errors,
                 "error_rate": total_errors / max(total_requests, 1),
-                "nodes": [n.to_dict() for n in nodes]
+                "nodes": [n.to_dict() for n in nodes],
             }
 
     def reset_stats(self):

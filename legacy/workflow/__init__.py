@@ -18,6 +18,7 @@ Usage:
     chord = TaskChord([task1, task2, task3], callback=reduce_task)
     await chord.execute()
 """
+
 import asyncio
 import logging
 import time
@@ -32,6 +33,7 @@ logger = logging.getLogger(__name__)
 
 class WorkflowStatus(str, Enum):
     """Workflow status enumeration."""
+
     PENDING = "pending"
     RUNNING = "running"
     COMPLETED = "completed"
@@ -41,6 +43,7 @@ class WorkflowStatus(str, Enum):
 
 class TaskNodeType(str, Enum):
     """Task node type enumeration."""
+
     TASK = "task"
     CHAIN = "chain"
     GROUP = "group"
@@ -50,6 +53,7 @@ class TaskNodeType(str, Enum):
 @dataclass
 class TaskResult:
     """Result of a task execution."""
+
     task_id: str
     success: bool
     result: Any = None
@@ -60,6 +64,7 @@ class TaskResult:
 @dataclass
 class TaskNode:
     """A node in the workflow graph."""
+
     node_id: str
     node_type: TaskNodeType
     task: Optional[dict[str, Any]] = None
@@ -96,28 +101,20 @@ class DefaultExecutor(WorkflowExecutor):
     async def execute(self, node: TaskNode) -> TaskResult:
         """Execute a task via the scheduler."""
         if node.task is None:
-            return TaskResult(
-                task_id=node.node_id,
-                success=False,
-                error="No task defined"
-            )
+            return TaskResult(task_id=node.node_id, success=False, error="No task defined")
 
         start_time = time.time()
 
         try:
             import requests
 
-            response = requests.post(
-                f"{self.scheduler_url}/submit",
-                json=node.task,
-                timeout=10
-            )
+            response = requests.post(f"{self.scheduler_url}/submit", json=node.task, timeout=10)
 
             if response.status_code != 200:
                 return TaskResult(
                     task_id=node.node_id,
                     success=False,
-                    error=f"Submit failed: {response.status_code}"
+                    error=f"Submit failed: {response.status_code}",
                 )
 
             task_id = response.json().get("task_id")
@@ -126,10 +123,7 @@ class DefaultExecutor(WorkflowExecutor):
             waited = 0
 
             while waited < max_wait:
-                response = requests.get(
-                    f"{self.scheduler_url}/status/{task_id}",
-                    timeout=10
-                )
+                response = requests.get(f"{self.scheduler_url}/status/{task_id}", timeout=10)
 
                 if response.status_code == 200:
                     status = response.json()
@@ -139,7 +133,7 @@ class DefaultExecutor(WorkflowExecutor):
                             task_id=str(task_id),
                             success=True,
                             result=status.get("result"),
-                            execution_time=time.time() - start_time
+                            execution_time=time.time() - start_time,
                         )
 
                     if status.get("status") == "failed":
@@ -147,16 +141,14 @@ class DefaultExecutor(WorkflowExecutor):
                             task_id=str(task_id),
                             success=False,
                             error=status.get("error"),
-                            execution_time=time.time() - start_time
+                            execution_time=time.time() - start_time,
                         )
 
                 await asyncio.sleep(2)
                 waited += 2
 
             return TaskResult(
-                task_id=str(task_id),
-                success=False,
-                error="Timeout waiting for result"
+                task_id=str(task_id), success=False, error="Timeout waiting for result"
             )
 
         except Exception as e:
@@ -164,7 +156,7 @@ class DefaultExecutor(WorkflowExecutor):
                 task_id=node.node_id,
                 success=False,
                 error=str(e),
-                execution_time=time.time() - start_time
+                execution_time=time.time() - start_time,
             )
 
 
@@ -190,11 +182,7 @@ class TaskChain:
 
     def add(self, task: dict[str, Any]) -> "TaskChain":
         """Add a task to the chain."""
-        node = TaskNode(
-            node_id=str(uuid.uuid4())[:8],
-            node_type=TaskNodeType.TASK,
-            task=task
-        )
+        node = TaskNode(node_id=str(uuid.uuid4())[:8], node_type=TaskNodeType.TASK, task=task)
 
         if self.nodes:
             node.dependencies = [self.nodes[-1].node_id]
@@ -257,7 +245,7 @@ class TaskGroup:
     def __init__(
         self,
         tasks: Optional[list[dict[str, Any]]] = None,
-        executor: Optional[WorkflowExecutor] = None
+        executor: Optional[WorkflowExecutor] = None,
     ):
         self.executor = executor or DefaultExecutor()
         self.nodes: list[TaskNode] = []
@@ -270,11 +258,7 @@ class TaskGroup:
 
     def add(self, task: dict[str, Any]) -> "TaskGroup":
         """Add a task to the group."""
-        node = TaskNode(
-            node_id=str(uuid.uuid4())[:8],
-            node_type=TaskNodeType.TASK,
-            task=task
-        )
+        node = TaskNode(node_id=str(uuid.uuid4())[:8], node_type=TaskNodeType.TASK, task=task)
         self.nodes.append(node)
         return self
 
@@ -285,29 +269,22 @@ class TaskGroup:
         for node in self.nodes:
             node.status = WorkflowStatus.RUNNING
 
-        tasks = [
-            self.executor.execute(node)
-            for node in self.nodes
-        ]
+        tasks = [self.executor.execute(node) for node in self.nodes]
 
         results = await asyncio.gather(*tasks, return_exceptions=True)
 
         self.results = []
         for i, result in enumerate(results):
             if isinstance(result, Exception):
-                self.results.append(TaskResult(
-                    task_id=self.nodes[i].node_id,
-                    success=False,
-                    error=str(result)
-                ))
+                self.results.append(
+                    TaskResult(task_id=self.nodes[i].node_id, success=False, error=str(result))
+                )
             else:
                 self.results.append(result)
 
             self.nodes[i].result = self.results[-1]
             self.nodes[i].status = (
-                WorkflowStatus.COMPLETED
-                if self.results[-1].success
-                else WorkflowStatus.FAILED
+                WorkflowStatus.COMPLETED if self.results[-1].success else WorkflowStatus.FAILED
             )
 
         if all(r.success for r in self.results):
@@ -350,7 +327,7 @@ class TaskChord:
         self,
         tasks: list[dict[str, Any]],
         callback: dict[str, Any],
-        executor: Optional[WorkflowExecutor] = None
+        executor: Optional[WorkflowExecutor] = None,
     ):
         self.executor = executor or DefaultExecutor()
         self.group = TaskGroup(tasks, executor)
@@ -366,26 +343,18 @@ class TaskChord:
 
         if not all(r.success for r in group_results):
             self.status = WorkflowStatus.FAILED
-            return TaskResult(
-                task_id="chord",
-                success=False,
-                error="Group execution failed"
-            )
+            return TaskResult(task_id="chord", success=False, error="Group execution failed")
 
         results = [r.result for r in group_results]
 
         callback_node = TaskNode(
             node_id=str(uuid.uuid4())[:8],
             node_type=TaskNodeType.TASK,
-            task={**self.callback_task, "results": results}
+            task={**self.callback_task, "results": results},
         )
 
         self.result = await self.executor.execute(callback_node)
-        self.status = (
-            WorkflowStatus.COMPLETED
-            if self.result.success
-            else WorkflowStatus.FAILED
-        )
+        self.status = WorkflowStatus.COMPLETED if self.result.success else WorkflowStatus.FAILED
 
         return self.result
 
@@ -423,17 +392,11 @@ class Workflow:
         self.results: dict[str, TaskResult] = {}
 
     def add_task(
-        self,
-        task_id: str,
-        task: dict[str, Any],
-        depends_on: Optional[list[str]] = None
+        self, task_id: str, task: dict[str, Any], depends_on: Optional[list[str]] = None
     ) -> "Workflow":
         """Add a task to the workflow."""
         node = TaskNode(
-            node_id=task_id,
-            node_type=TaskNodeType.TASK,
-            task=task,
-            dependencies=depends_on or []
+            node_id=task_id, node_type=TaskNodeType.TASK, task=task, dependencies=depends_on or []
         )
 
         self.nodes[task_id] = node
@@ -448,13 +411,11 @@ class Workflow:
                 continue
 
             all_deps_done = all(
-                self.nodes[dep].status == WorkflowStatus.COMPLETED
-                for dep in node.dependencies
+                self.nodes[dep].status == WorkflowStatus.COMPLETED for dep in node.dependencies
             )
 
             any_dep_failed = any(
-                self.nodes[dep].status == WorkflowStatus.FAILED
-                for dep in node.dependencies
+                self.nodes[dep].status == WorkflowStatus.FAILED for dep in node.dependencies
             )
 
             if any_dep_failed:
@@ -497,15 +458,10 @@ class Workflow:
                 self.results[task_id] = result
                 self.nodes[task_id].result = result
                 self.nodes[task_id].status = (
-                    WorkflowStatus.COMPLETED
-                    if result.success
-                    else WorkflowStatus.FAILED
+                    WorkflowStatus.COMPLETED if result.success else WorkflowStatus.FAILED
                 )
 
-        all_completed = all(
-            n.status == WorkflowStatus.COMPLETED
-            for n in self.nodes.values()
-        )
+        all_completed = all(n.status == WorkflowStatus.COMPLETED for n in self.nodes.values())
 
         self.status = WorkflowStatus.COMPLETED if all_completed else WorkflowStatus.FAILED
 

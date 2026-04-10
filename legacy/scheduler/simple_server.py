@@ -20,6 +20,7 @@ from pydantic import BaseModel
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 try:
     from src.infrastructure.security.rate_limiter import setup_rate_limiting  # noqa: F401
+
     RATE_LIMITING_AVAILABLE = True
 except ImportError:
     RATE_LIMITING_AVAILABLE = False
@@ -28,9 +29,11 @@ except ImportError:
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 try:
     from src.infrastructure.sandbox.sandbox import BasicSandbox, SandboxConfig
+
     SANDBOX_AVAILABLE = True
 except ImportError:
     from sandbox import CodeSandbox
+
     SANDBOX_AVAILABLE = False
     print("Warning: Using legacy sandbox, consider migrating to new architecture")
 
@@ -38,19 +41,24 @@ except ImportError:
 # ==================== 数据模型定义 ====================
 class TaskSubmission(BaseModel):
     """任务提交模型"""
+
     code: str
     timeout: Optional[int] = 300
     resources: Optional[dict[str, Any]] = {"cpu": 1.0, "memory": 512}
     user_id: Optional[str] = None
 
+
 class TaskResult(BaseModel):
     """任务结果模型"""
+
     task_id: int
     result: str
     node_id: Optional[str] = None
 
+
 class TaskInfo(BaseModel):
     """任务信息模型"""
+
     task_id: int
     code: str
     status: str  # pending, assigned, running, completed, failed, deleted
@@ -62,14 +70,18 @@ class TaskInfo(BaseModel):
     required_resources: dict[str, Any] = {"cpu": 1.0, "memory": 512}
     user_id: Optional[str] = None
 
+
 class NodeRegistration(BaseModel):
     """节点注册模型"""
+
     node_id: str
     capacity: dict[str, Any]
     tags: Optional[dict[str, Any]] = {}
 
+
 class NodeHeartbeat(BaseModel):
     """节点心跳模型 - 优化版"""
+
     node_id: str
     current_load: dict[str, Any]
     is_idle: bool
@@ -78,6 +90,7 @@ class NodeHeartbeat(BaseModel):
     cpu_usage: Optional[float] = 0.0
     memory_usage: Optional[float] = 0.0
     is_available: Optional[bool] = True  # 节点是否可用（即使忙）
+
 
 # ==================== 优化的内存存储类 ====================
 class OptimizedMemoryStorage:
@@ -106,11 +119,17 @@ class OptimizedMemoryStorage:
             "tasks_failed": 0,
             "nodes_registered": 0,
             "nodes_dropped": 0,
-            "last_cleanup": time.time()
+            "last_cleanup": time.time(),
         }
 
     # ========== 任务管理方法 ==========
-    def add_task(self, code: str, timeout: int = 300, resources: Optional[dict] = None, user_id: Optional[str] = None) -> int:
+    def add_task(
+        self,
+        code: str,
+        timeout: int = 300,
+        resources: Optional[dict] = None,
+        user_id: Optional[str] = None,
+    ) -> int:
         """添加新任务"""
         with self.lock:
             task_id = self.task_id_counter
@@ -122,7 +141,7 @@ class OptimizedMemoryStorage:
                 status="pending",
                 created_at=time.time(),
                 required_resources=resources or {"cpu": 1.0, "memory": 512},
-                user_id=user_id
+                user_id=user_id,
             )
 
             self.tasks[task_id] = task
@@ -211,7 +230,7 @@ class OptimizedMemoryStorage:
                 "current_load": {"cpu_usage": 0.0, "memory_usage": 0},
                 "available_resources": registration.capacity.copy(),
                 "is_idle": True,
-                "is_available": True  # 新增：默认可用
+                "is_available": True,  # 新增：默认可用
             }
 
             # 更新心跳和状态
@@ -232,13 +251,17 @@ class OptimizedMemoryStorage:
             node_info = self.nodes[node_id]
 
             # 更新基本信息
-            node_info.update({
-                "last_heartbeat": time.time(),
-                "current_load": heartbeat.current_load,
-                "is_idle": heartbeat.is_idle,
-                "available_resources": heartbeat.available_resources,
-                "is_available": heartbeat.is_available if hasattr(heartbeat, 'is_available') else True
-            })
+            node_info.update(
+                {
+                    "last_heartbeat": time.time(),
+                    "current_load": heartbeat.current_load,
+                    "is_idle": heartbeat.is_idle,
+                    "available_resources": heartbeat.available_resources,
+                    "is_available": (
+                        heartbeat.is_available if hasattr(heartbeat, "is_available") else True
+                    ),
+                }
+            )
 
             # 更新心跳时间
             self.node_heartbeats[node_id] = time.time()
@@ -278,7 +301,10 @@ class OptimizedMemoryStorage:
         if not is_available:
             return {"status": "online_unavailable", "reason": "node_unavailable"}
         elif cpu_percent > 90 or memory_percent > 95:
-            return {"status": "online_busy", "reason": f"high_usage_cpu{cpu_percent:.0f}_mem{memory_percent:.0f}"}
+            return {
+                "status": "online_busy",
+                "reason": f"high_usage_cpu{cpu_percent:.0f}_mem{memory_percent:.0f}",
+            }
         elif not is_idle:
             return {"status": "online_light", "reason": "user_active"}
         else:
@@ -298,7 +324,7 @@ class OptimizedMemoryStorage:
                 "is_online": False,
                 "is_idle": False,
                 "reason": "心跳超时",
-                "updated_at": current_time
+                "updated_at": current_time,
             }
             return
         is_idle = node_info.get("is_idle", False)
@@ -316,7 +342,7 @@ class OptimizedMemoryStorage:
             "is_online": True,
             "is_idle": is_idle,
             "reason": "在线" if is_idle else "忙碌",
-            "updated_at": current_time
+            "updated_at": current_time,
         }
 
     def get_available_nodes(self, include_busy: bool = False) -> list[dict[str, Any]]:
@@ -343,7 +369,7 @@ class OptimizedMemoryStorage:
                     "tags": node_info.get("tags", {}),
                     "last_heartbeat": self.node_heartbeats.get(node_id, 0),
                     "current_load": node_info.get("current_load", {}),
-                    "available_resources": node_info.get("available_resources", {})
+                    "available_resources": node_info.get("available_resources", {}),
                 }
                 available_nodes.append(node_data)
 
@@ -408,7 +434,11 @@ class OptimizedMemoryStorage:
         if "cpu" in required and "cpu" in available and required["cpu"] > available.get("cpu", 0):
             return False
 
-        return not ("memory" in required and "memory" in available and required["memory"] > available.get("memory", 0))
+        return not (
+            "memory" in required
+            and "memory" in available
+            and required["memory"] > available.get("memory", 0)
+        )
 
     def _calculate_match_score(self, node_info: dict, task: TaskInfo) -> float:
         """计算匹配分数"""
@@ -428,7 +458,9 @@ class OptimizedMemoryStorage:
             score += 0.2
 
         current_load = node_info.get("current_load", {})
-        cpu_load = current_load.get("cpu_usage", 0) / max(1.0, node_info.get("capacity", {}).get("cpu", 1))
+        cpu_load = current_load.get("cpu_usage", 0) / max(
+            1.0, node_info.get("capacity", {}).get("cpu", 1)
+        )
         score += (1.0 - min(1.0, cpu_load)) * 0.1
 
         return score
@@ -449,8 +481,12 @@ class OptimizedMemoryStorage:
             node_info["current_load"]["cpu_usage"] += cpu_needed
             node_info["current_load"]["memory_usage"] += memory_needed
         elif operation == "remove":
-            node_info["current_load"]["cpu_usage"] = max(0, node_info["current_load"]["cpu_usage"] - cpu_needed)
-            node_info["current_load"]["memory_usage"] = max(0, node_info["current_load"]["memory_usage"] - memory_needed)
+            node_info["current_load"]["cpu_usage"] = max(
+                0, node_info["current_load"]["cpu_usage"] - cpu_needed
+            )
+            node_info["current_load"]["memory_usage"] = max(
+                0, node_info["current_load"]["memory_usage"] - memory_needed
+            )
 
     # ========== API方法 ==========
     def delete_task(self, task_id: int) -> dict[str, Any]:
@@ -462,11 +498,18 @@ class OptimizedMemoryStorage:
             task = self.tasks[task_id]
 
             if task.status not in ["pending", "assigned"]:
-                return {"success": False, "error": f"只能删除pending或assigned状态的任务，当前状态: {task.status}"}
+                return {
+                    "success": False,
+                    "error": f"只能删除pending或assigned状态的任务，当前状态: {task.status}",
+                }
 
             if task.status == "pending" and task_id in self.pending_tasks:
                 self.pending_tasks.remove(task_id)
-            elif task.status == "assigned" and task.assigned_node and task_id in self.assigned_tasks[task.assigned_node]:
+            elif (
+                task.status == "assigned"
+                and task.assigned_node
+                and task_id in self.assigned_tasks[task.assigned_node]
+            ):
                 self.assigned_tasks[task.assigned_node].remove(task_id)
 
             task.status = "deleted"
@@ -487,7 +530,7 @@ class OptimizedMemoryStorage:
             "assigned_node": task.assigned_node,
             "completed_at": task.completed_at,
             "required_resources": task.required_resources,
-            "user_id": task.user_id
+            "user_id": task.user_id,
         }
 
     def get_all_results(self) -> list[dict[str, Any]]:
@@ -499,7 +542,7 @@ class OptimizedMemoryStorage:
                     "result": task.result,
                     "completed_at": task.completed_at,
                     "assigned_node": task.assigned_node,
-                    "user_id": task.user_id
+                    "user_id": task.user_id,
                 }
                 for task in self.tasks.values()
                 if task.status == "completed"
@@ -533,15 +576,15 @@ class OptimizedMemoryStorage:
                     "completed": completed,
                     "pending": pending,
                     "assigned": assigned,
-                    "failed": total_tasks - completed - pending - assigned
+                    "failed": total_tasks - completed - pending - assigned,
                 },
                 "nodes": {
                     "total": total_nodes,
                     "online": online_nodes,  # 包括所有非离线状态
                     "available": available_nodes,  # 真正可用的
-                    "offline": total_nodes - online_nodes
+                    "offline": total_nodes - online_nodes,
                 },
-                "scheduler": self.stats
+                "scheduler": self.stats,
             }
 
     def stop_node(self, node_id: str) -> dict[str, Any]:
@@ -573,6 +616,7 @@ class OptimizedMemoryStorage:
 
             return {"success": True, "message": f"节点 {node_id} 已停止"}
 
+
 # ==================== 持久化存储统一包装类 ====================
 class PersistentSchedulerStorage:
     """
@@ -601,7 +645,7 @@ class PersistentSchedulerStorage:
             "tasks_failed": 0,
             "nodes_registered": 0,
             "nodes_dropped": 0,
-            "last_cleanup": time.time()
+            "last_cleanup": time.time(),
         }
 
     def init_sync(self):
@@ -672,7 +716,13 @@ class PersistentSchedulerStorage:
         return future.result(timeout=30)
 
     # ========== 任务管理方法（委托给 task_storage）==========
-    def add_task(self, code: str, timeout: int = 300, resources: Optional[dict] = None, user_id: Optional[str] = None) -> int:
+    def add_task(
+        self,
+        code: str,
+        timeout: int = 300,
+        resources: Optional[dict] = None,
+        user_id: Optional[str] = None,
+    ) -> int:
         return self.task_storage.add_task(code, timeout, resources, user_id)
 
     def get_task_for_node(self, node_id: str) -> Optional[Any]:
@@ -695,6 +745,7 @@ class PersistentSchedulerStorage:
         from src.infrastructure.persistence.persistent_node_storage import (
             NodeRegistration as PNodeRegistration,
         )
+
         reg = PNodeRegistration(
             node_id=registration.node_id,
             capacity=registration.capacity,
@@ -709,11 +760,12 @@ class PersistentSchedulerStorage:
         from src.infrastructure.persistence.persistent_node_storage import (
             NodeHeartbeat as PNodeHeartbeat,
         )
+
         hb = PNodeHeartbeat(
             node_id=heartbeat.node_id,
             current_load=heartbeat.current_load,
             is_idle=heartbeat.is_idle,
-            is_available=getattr(heartbeat, 'is_available', True),
+            is_available=getattr(heartbeat, "is_available", True),
             available_resources=heartbeat.available_resources,
         )
         return self._run_node_async(self.node_storage.update_node_heartbeat(hb))
@@ -741,22 +793,26 @@ class PersistentSchedulerStorage:
         pass
 
     def get_available_nodes(self, include_busy: bool = False) -> list[dict[str, Any]]:
-        raw_nodes = self._run_node_async(self.node_storage.get_available_nodes(include_busy=include_busy))
+        raw_nodes = self._run_node_async(
+            self.node_storage.get_available_nodes(include_busy=include_busy)
+        )
         result = []
         for n in raw_nodes:
             status_info = self._get_node_status(n.get("node_id", ""))
-            result.append({
-                "node_id": n.get("node_id", ""),
-                "is_online": status_info["status"] != "offline",
-                "is_idle": n.get("is_idle", False),
-                "status": status_info["status"],
-                "status_details": status_info,
-                "capacity": n.get("capacity", {}),
-                "tags": n.get("tags", {}),
-                "last_heartbeat": n.get("last_heartbeat", 0),
-                "current_load": n.get("current_load", {}),
-                "available_resources": n.get("available_resources", {}),
-            })
+            result.append(
+                {
+                    "node_id": n.get("node_id", ""),
+                    "is_online": status_info["status"] != "offline",
+                    "is_idle": n.get("is_idle", False),
+                    "status": status_info["status"],
+                    "status_details": status_info,
+                    "capacity": n.get("capacity", {}),
+                    "tags": n.get("tags", {}),
+                    "last_heartbeat": n.get("last_heartbeat", 0),
+                    "current_load": n.get("current_load", {}),
+                    "available_resources": n.get("available_resources", {}),
+                }
+            )
         return result
 
     def cleanup_dead_nodes(self, timeout_seconds: int = 180) -> int:
@@ -812,7 +868,9 @@ class PersistentSchedulerStorage:
             all_nodes = self._run_node_async(self.node_storage.get_all_nodes())
             total_nodes = len(all_nodes)
             online_nodes = sum(1 for n in all_nodes if n.get("status") != "offline")
-            available_nodes = sum(1 for n in all_nodes if n.get("status") != "offline" and n.get("is_idle", False))
+            available_nodes = sum(
+                1 for n in all_nodes if n.get("status") != "offline" and n.get("is_idle", False)
+            )
 
             return {
                 "tasks": task_stats.get("tasks", {}),
@@ -845,9 +903,7 @@ class PersistentSchedulerStorage:
 
 # ==================== FastAPI 应用 ====================
 app = FastAPI(
-    title="优化版闲置计算调度器",
-    description="修复节点显示问题，增强稳定性",
-    version="2.0.0"
+    title="优化版闲置计算调度器", description="修复节点显示问题，增强稳定性", version="2.0.0"
 )
 
 rate_limiter = None
@@ -866,6 +922,7 @@ if RATE_LIMITING_AVAILABLE:
         @app.exception_handler(RateLimitExceeded)
         async def rate_limit_handler(request: Request, exc: RateLimitExceeded):
             from slowapi import _rate_limit_exceeded_handler
+
             response = _rate_limit_exceeded_handler(request, exc)
             return response
 
@@ -874,13 +931,17 @@ if RATE_LIMITING_AVAILABLE:
     except Exception as e:
         print(f"[警告] 限流器初始化失败: {e}")
 
+
 def rate_limit(limit_value: str):
     """限流装饰器辅助函数"""
+
     def decorator(func):
         if rate_limiter:
             return rate_limiter.limit(limit_value)(func)
         return func
+
     return decorator
+
 
 def _shutdown_persistent_storage():
     """关闭钩子：优雅关闭持久化存储"""
@@ -889,6 +950,7 @@ def _shutdown_persistent_storage():
             storage.shutdown()
         except Exception as e:
             print(f"[警告] 持久化存储关闭异常: {e}")
+
 
 # 初始化存储（支持持久化后端选择）
 backend = os.getenv("STORAGE_BACKEND", "sqlite").strip().lower()
@@ -920,6 +982,7 @@ if SANDBOX_AVAILABLE:
 else:
     sandbox = CodeSandbox()
 
+
 # ==================== 后台任务 ====================
 def periodic_cleanup():
     """定期清理"""
@@ -929,6 +992,7 @@ def periodic_cleanup():
             print(f"[清理] 移除了 {cleaned} 个死亡节点")
     except Exception as e:
         print(f"[清理错误] {e}")
+
 
 @app.on_event("startup")
 def startup_event():
@@ -951,6 +1015,7 @@ def shutdown_event():
     if isinstance(storage, PersistentSchedulerStorage):
         storage.shutdown()
 
+
 # ==================== API端点 ====================
 @app.get("/")
 async def root():
@@ -961,8 +1026,9 @@ async def root():
         "status": "运行中",
         "version": "2.0.0",
         "server_id": storage.server_id,
-        **stats
+        **stats,
     }
+
 
 @app.get("/health")
 async def health_check():
@@ -973,29 +1039,26 @@ async def health_check():
         "timestamp": time.time(),
         "server_id": storage.server_id,
         "nodes": stats["nodes"],
-        "tasks": {
-            "pending": stats["tasks"]["pending"],
-            "assigned": stats["tasks"]["assigned"]
-        }
+        "tasks": {"pending": stats["tasks"]["pending"], "assigned": stats["tasks"]["assigned"]},
     }
+
 
 @app.post("/submit")
 @rate_limit("10/minute")
-async def submit_task(request: Request, submission: TaskSubmission, background_tasks: BackgroundTasks):
+async def submit_task(
+    request: Request, submission: TaskSubmission, background_tasks: BackgroundTasks
+):
     """提交任务 - 限流: 10次/分钟"""
     if not submission.code.strip():
         raise HTTPException(status_code=400, detail="代码不能为空")
 
     # 安全检查
     safety_check = sandbox.check_code_safety(submission.code)
-    if not safety_check['safe']:
+    if not safety_check["safe"]:
         raise HTTPException(status_code=400, detail=f"代码安全检查失败: {safety_check['error']}")
 
     task_id = storage.add_task(
-        submission.code,
-        submission.timeout,
-        submission.resources,
-        submission.user_id
+        submission.code, submission.timeout, submission.resources, submission.user_id
     )
 
     background_tasks.add_task(periodic_cleanup)
@@ -1004,8 +1067,9 @@ async def submit_task(request: Request, submission: TaskSubmission, background_t
         "task_id": task_id,
         "status": "submitted",
         "message": f"任务 {task_id} 已加入队列",
-        "safety_check": "通过"
+        "safety_check": "通过",
     }
+
 
 @app.get("/get_task")
 async def get_task(node_id: Optional[str] = None):
@@ -1026,18 +1090,15 @@ async def get_task(node_id: Optional[str] = None):
                 task = None
 
     if task is None:
-        return {
-            "task_id": None,
-            "code": None,
-            "status": "no_tasks"
-        }
+        return {"task_id": None, "code": None, "status": "no_tasks"}
 
     return {
         "task_id": task.task_id,
         "code": task.code,
         "status": "assigned",
-        "assigned_node": task.assigned_node
+        "assigned_node": task.assigned_node,
     }
+
 
 @app.post("/submit_result")
 async def submit_result(result: TaskResult):
@@ -1047,11 +1108,8 @@ async def submit_result(result: TaskResult):
     if not success:
         raise HTTPException(status_code=404, detail="任务未找到或无法完成")
 
-    return {
-        "success": True,
-        "task_id": result.task_id,
-        "message": f"任务 {result.task_id} 完成"
-    }
+    return {"success": True, "task_id": result.task_id, "message": f"任务 {result.task_id} 完成"}
+
 
 @app.get("/status/{task_id}")
 async def get_status(task_id: int):
@@ -1061,19 +1119,19 @@ async def get_status(task_id: int):
         raise HTTPException(status_code=404, detail="任务未找到")
     return status
 
+
 @app.get("/results")
 async def get_results():
     """获取所有结果"""
     results = storage.get_all_results()
-    return {
-        "count": len(results),
-        "results": results
-    }
+    return {"count": len(results), "results": results}
+
 
 @app.get("/stats")
 async def get_stats():
     """获取统计"""
     return storage.get_system_stats()
+
 
 # ==================== 节点管理API ====================
 @app.post("/api/nodes/register")
@@ -1087,8 +1145,9 @@ async def register_node(request: Request, registration: NodeRegistration):
     return {
         "status": "registered",
         "node_id": registration.node_id,
-        "message": f"节点 {registration.node_id} 注册成功"
+        "message": f"节点 {registration.node_id} 注册成功",
     }
+
 
 @app.post("/api/nodes/{node_id}/heartbeat")
 async def update_heartbeat(node_id: str, heartbeat: NodeHeartbeat):
@@ -1100,11 +1159,8 @@ async def update_heartbeat(node_id: str, heartbeat: NodeHeartbeat):
     if not success:
         raise HTTPException(status_code=404, detail="节点未找到")
 
-    return {
-        "status": "updated",
-        "node_id": node_id,
-        "timestamp": time.time()
-    }
+    return {"status": "updated", "node_id": node_id, "timestamp": time.time()}
+
 
 @app.get("/api/nodes")
 async def list_nodes(online_only: bool = True):
@@ -1117,20 +1173,19 @@ async def list_nodes(online_only: bool = True):
                 nodes = []
                 for node_id, node_info in storage.nodes.items():
                     status_info = storage._get_node_status(node_id)
-                    nodes.append({
-                        "node_id": node_id,
-                        **node_info,
-                        "status": status_info["status"],
-                        "status_details": status_info
-                    })
+                    nodes.append(
+                        {
+                            "node_id": node_id,
+                            **node_info,
+                            "status": status_info["status"],
+                            "status_details": status_info,
+                        }
+                    )
 
-        return {
-            "count": len(nodes),
-            "nodes": nodes,
-            "online_only": online_only
-        }
+        return {"count": len(nodes), "nodes": nodes, "online_only": online_only}
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"获取节点失败: {str(e)}") from e
+
 
 @app.post("/api/nodes/activate-local")
 @rate_limit("5/minute")
@@ -1138,12 +1193,13 @@ async def activate_local_node(request: Request, config: dict = Body(...)):
     """激活本地节点 - 限流: 5次/分钟"""
     try:
         import uuid
+
         node_id = f"local-{uuid.uuid4().hex[:8]}-{int(time.time())}"
 
         capacity = {
             "cpu": config.get("cpu_limit", 4.0),
             "memory": config.get("memory_limit", 8192),
-            "disk": config.get("storage_limit", 10240)
+            "disk": config.get("storage_limit", 10240),
         }
 
         registration = NodeRegistration(
@@ -1153,8 +1209,8 @@ async def activate_local_node(request: Request, config: dict = Body(...)):
                 "type": "local",
                 "platform": "local-web-activated",
                 "auto_activated": True,
-                "user_id": config.get("user_id", "unknown")
-            }
+                "user_id": config.get("user_id", "unknown"),
+            },
         )
 
         success = storage.register_node(registration)
@@ -1167,7 +1223,7 @@ async def activate_local_node(request: Request, config: dict = Body(...)):
             current_load={"cpu_usage": 0.0, "memory_usage": 0},
             is_idle=True,
             available_resources=capacity,
-            is_available=True
+            is_available=True,
         )
 
         storage.update_node_heartbeat(heartbeat)
@@ -1176,10 +1232,11 @@ async def activate_local_node(request: Request, config: dict = Body(...)):
             "success": True,
             "node_id": node_id,
             "capacity": capacity,
-            "message": f"本地节点 {node_id} 激活成功"
+            "message": f"本地节点 {node_id} 激活成功",
         }
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"激活失败: {str(e)}") from e
+
 
 @app.post("/api/nodes/{node_id}/stop")
 async def stop_node_api(node_id: str):
@@ -1189,6 +1246,7 @@ async def stop_node_api(node_id: str):
         raise HTTPException(status_code=400, detail=result["error"])
     return result
 
+
 @app.delete("/api/tasks/{task_id}")
 async def delete_task_api(task_id: int):
     """删除任务"""
@@ -1197,9 +1255,11 @@ async def delete_task_api(task_id: int):
         raise HTTPException(status_code=400, detail=result["error"])
     return result
 
+
 # ==================== CORS 支持 ====================
 try:
     from fastapi.middleware.cors import CORSMiddleware
+
     _cors_origins_str = os.getenv("CORS_ALLOWED_ORIGINS", "http://localhost:8000")
     _cors_origins = [o.strip() for o in _cors_origins_str.split(",") if o.strip()]
     _allow_all = "*" in _cors_origins
@@ -1225,12 +1285,7 @@ if __name__ == "__main__":
     print(f"[调度器] 服务器ID: {storage.server_id}")
     print("[调度器] 提示: 可通过环境变量 PORT 或 SCHEDULER_PORT 修改端口")
 
-    uvicorn.run(
-        app,
-        host=host,
-        port=port,
-        log_level="info"
-    )
+    uvicorn.run(app, host=host, port=port, log_level="info")
 # ==================== 节点显示修复模块 ====================
 # 这个模块可以直接添加到文件末尾，不需要依赖原类定义
 
@@ -1272,28 +1327,31 @@ class NodeStatusFix:
 
     def _save_original_methods(self):
         """保存原方法"""
-        if hasattr(self.storage, '_is_node_online'):
-            self.original_methods['_is_node_online'] = self.storage._is_node_online
+        if hasattr(self.storage, "_is_node_online"):
+            self.original_methods["_is_node_online"] = self.storage._is_node_online
 
-        if hasattr(self.storage, 'cleanup_dead_nodes'):
-            self.original_methods['cleanup_dead_nodes'] = self.storage.cleanup_dead_nodes
+        if hasattr(self.storage, "cleanup_dead_nodes"):
+            self.original_methods["cleanup_dead_nodes"] = self.storage.cleanup_dead_nodes
 
     def _fix_is_node_online(self):
         """修复_is_node_online方法"""
+
         def enhanced_is_node_online(node_id: str) -> bool:
             """
             增强版节点在线判断
             解决节点频繁显示为0的问题
             """
             # 基础检查
-            if not hasattr(self.storage, 'nodes') or node_id not in getattr(self.storage, 'nodes', {}):
+            if not hasattr(self.storage, "nodes") or node_id not in getattr(
+                self.storage, "nodes", {}
+            ):
                 return False
 
-            if not hasattr(self.storage, 'node_heartbeats'):
+            if not hasattr(self.storage, "node_heartbeats"):
                 return False
 
-            nodes = getattr(self.storage, 'nodes', {})
-            node_heartbeats = getattr(self.storage, 'node_heartbeats', {})
+            nodes = getattr(self.storage, "nodes", {})
+            node_heartbeats = getattr(self.storage, "node_heartbeats", {})
 
             node_info = nodes.get(node_id, {})
             last_heartbeat = node_heartbeats.get(node_id, 0)
@@ -1340,10 +1398,10 @@ class NodeStatusFix:
 
     def _fix_cleanup_dead_nodes(self):
         """修复cleanup_dead_nodes方法"""
-        if 'cleanup_dead_nodes' not in self.original_methods:
+        if "cleanup_dead_nodes" not in self.original_methods:
             return
 
-        original_method = self.original_methods['cleanup_dead_nodes']
+        original_method = self.original_methods["cleanup_dead_nodes"]
 
         def enhanced_cleanup_dead_nodes(timeout_seconds: int = 180):
             """增强版清理死亡节点 - 更长的超时"""
@@ -1359,6 +1417,7 @@ class NodeStatusFix:
 
     def _start_monitoring(self):
         """启动节点监控"""
+
         def monitor():
             while True:
                 try:
@@ -1374,10 +1433,10 @@ class NodeStatusFix:
 
     def _log_node_status(self):
         """记录节点状态"""
-        if not hasattr(self.storage, 'nodes'):
+        if not hasattr(self.storage, "nodes"):
             return
 
-        nodes = getattr(self.storage, 'nodes', {})
+        nodes = getattr(self.storage, "nodes", {})
         total = len(nodes)
 
         if total == 0:
@@ -1400,14 +1459,16 @@ class NodeStatusFix:
             idle = "空闲" if node_info.get("is_idle", False) else "忙碌"
             print(f"[节点监控] {status} {node_id[:10]}...: {idle}")
 
+
 # ==================== API端点修复 ====================
+
 
 def enhance_api_endpoints(app_instance, storage_instance):
     """增强API端点"""
 
     # 增强 /api/nodes 端点
     for route in app_instance.routes:
-        if hasattr(route, 'path') and route.path == "/api/nodes":
+        if hasattr(route, "path") and route.path == "/api/nodes":
             original_endpoint = route.endpoint
             break
     else:
@@ -1419,6 +1480,7 @@ def enhance_api_endpoints(app_instance, storage_instance):
         try:
             # 调用原端点
             import inspect
+
             if inspect.iscoroutinefunction(original_endpoint):
                 response = await original_endpoint(online_only)
             else:
@@ -1435,16 +1497,16 @@ def enhance_api_endpoints(app_instance, storage_instance):
                         node["is_online"] = is_online
 
             # 添加统计信息
-            total_nodes = len(getattr(storage_instance, 'nodes', {}))
+            total_nodes = len(getattr(storage_instance, "nodes", {}))
             online_nodes = 0
-            for node_id in getattr(storage_instance, 'nodes', {}):
+            for node_id in getattr(storage_instance, "nodes", {}):
                 if storage_instance._is_node_online(node_id):
                     online_nodes += 1
 
             response["enhanced_stats"] = {
                 "total_nodes": total_nodes,
                 "online_nodes": online_nodes,
-                "fix_applied": True
+                "fix_applied": True,
             }
 
             return response
@@ -1452,6 +1514,7 @@ def enhance_api_endpoints(app_instance, storage_instance):
         except Exception as e:
             print(f"[修复] 增强节点列表失败: {e}")
             import inspect
+
             if inspect.iscoroutinefunction(original_endpoint):
                 return await original_endpoint(online_only)
             else:
@@ -1459,17 +1522,20 @@ def enhance_api_endpoints(app_instance, storage_instance):
 
     # 替换端点
     for route in app_instance.routes:
-        if hasattr(route, 'path') and route.path == "/api/nodes":
+        if hasattr(route, "path") and route.path == "/api/nodes":
             route.endpoint = enhanced_list_nodes
             break
 
     print("[修复] /api/nodes 端点已增强")
 
+
 # ==================== 添加调试端点 ====================
+
 
 def add_debug_endpoints(app_instance, storage_instance):
     """添加调试端点"""
     import os
+
     enable_debug = os.getenv("ENABLE_DEBUG_ENDPOINTS", "false").lower() == "true"
 
     if not enable_debug:
@@ -1481,8 +1547,8 @@ def add_debug_endpoints(app_instance, storage_instance):
         """调试端点：节点状态"""
         try:
             nodes_info = []
-            nodes = getattr(storage_instance, 'nodes', {})
-            node_heartbeats = getattr(storage_instance, 'node_heartbeats', {})
+            nodes = getattr(storage_instance, "nodes", {})
+            node_heartbeats = getattr(storage_instance, "node_heartbeats", {})
 
             for node_id, node_info in nodes.items():
                 is_online = storage_instance._is_node_online(node_id)
@@ -1494,15 +1560,11 @@ def add_debug_endpoints(app_instance, storage_instance):
                     "last_heartbeat": last_heartbeat,
                     "time_since_heartbeat": time.time() - last_heartbeat,
                     "is_idle": node_info.get("is_idle", False),
-                    "tags": node_info.get("tags", {})
+                    "tags": node_info.get("tags", {}),
                 }
                 nodes_info.append(node_data)
 
-            return {
-                "count": len(nodes_info),
-                "nodes": nodes_info,
-                "fix_applied": True
-            }
+            return {"count": len(nodes_info), "nodes": nodes_info, "fix_applied": True}
 
         except Exception as e:
             return {"error": str(e), "fix_applied": False}
@@ -1516,14 +1578,16 @@ def add_debug_endpoints(app_instance, storage_instance):
                 "enhanced_is_node_online",
                 "enhanced_cleanup_dead_nodes",
                 "enhanced_api_nodes",
-                "node_monitoring"
+                "node_monitoring",
             ],
-            "timestamp": time.time()
+            "timestamp": time.time(),
         }
 
     print("[调试端点] 已启用 (仅限开发环境使用)")
 
+
 # ==================== 主修复函数 ====================
+
 
 def apply_node_display_fix():
     """
@@ -1535,11 +1599,11 @@ def apply_node_display_fix():
     print("=" * 60)
 
     # 检查必要的组件
-    if 'storage' not in globals():
+    if "storage" not in globals():
         print("[错误] 未找到 storage 实例")
         return False
 
-    if 'app' not in globals():
+    if "app" not in globals():
         print("[错误] 未找到 app 实例")
         return False
 
@@ -1569,8 +1633,10 @@ def apply_node_display_fix():
     except Exception as e:
         print(f"[错误] 应用修复失败: {e}")
         import traceback
+
         traceback.print_exc()
         return False
+
 
 # ==================== 自动应用修复 ====================
 

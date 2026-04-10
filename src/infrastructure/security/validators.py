@@ -13,6 +13,7 @@ from typing import Any, Optional
 @dataclass
 class ValidationResult:
     """验证结果数据类"""
+
     valid: bool
     errors: list[str] = field(default_factory=list)
     warnings: list[str] = field(default_factory=list)
@@ -165,21 +166,48 @@ class InputValidator:
             return
 
         dangerous_builtins = {
-            'eval', 'exec', 'compile', 'input', 'open',
-            '__import__', 'globals', 'locals', 'vars',
-            'dir', 'getattr', 'setattr', 'delattr', 'hasattr',
-            'breakpoint', 'memoryview',
+            "eval",
+            "exec",
+            "compile",
+            "input",
+            "open",
+            "__import__",
+            "globals",
+            "locals",
+            "vars",
+            "dir",
+            "getattr",
+            "setattr",
+            "delattr",
+            "hasattr",
+            "breakpoint",
+            "memoryview",
         }
 
         dangerous_attrs = {
-            '__class__', '__base__', '__bases__', '__subclasses__',
-            '__mro__', '__init__', '__new__', '__del__',
-            '__getattribute__', '__setattr__', '__delattr__',
-            '__dict__', '__globals__', '__code__', '__builtins__',
+            "__class__",
+            "__base__",
+            "__bases__",
+            "__subclasses__",
+            "__mro__",
+            "__init__",
+            "__new__",
+            "__del__",
+            "__getattribute__",
+            "__setattr__",
+            "__delattr__",
+            "__dict__",
+            "__globals__",
+            "__code__",
+            "__builtins__",
         }
 
         for node in ast.walk(tree):
-            if isinstance(node, ast.Call) and isinstance(node.func, ast.Name) and node.func.id in dangerous_builtins:
+            if (
+                isinstance(node, ast.Call)
+                and isinstance(node.func, ast.Name)
+                and node.func.id in dangerous_builtins
+            ):
                 result.add_error(f"禁止调用危险函数: {node.func.id}")
 
             elif isinstance(node, ast.Attribute):
@@ -188,13 +216,13 @@ class InputValidator:
 
             elif isinstance(node, ast.Import):
                 for alias in node.names:
-                    module_name = alias.name.split('.')[0]
-                    if module_name in {'os', 'sys', 'subprocess', 'socket', 'pickle', 'marshal'}:
+                    module_name = alias.name.split(".")[0]
+                    if module_name in {"os", "sys", "subprocess", "socket", "pickle", "marshal"}:
                         result.add_error(f"禁止导入危险模块: {module_name}")
 
             elif isinstance(node, ast.ImportFrom) and node.module:
-                module_name = node.module.split('.')[0]
-                if module_name in {'os', 'sys', 'subprocess', 'socket', 'pickle', 'marshal'}:
+                module_name = node.module.split(".")[0]
+                if module_name in {"os", "sys", "subprocess", "socket", "pickle", "marshal"}:
                     result.add_error(f"禁止从危险模块导入: {module_name}")
 
     def validate_task_input(
@@ -337,9 +365,11 @@ class InputValidator:
 
             if isinstance(value, str):
                 if len(value) > self.max_string_length:
-                    result.add_error(f"字符串值过长 (键: {key}): {len(value)} > {self.max_string_length}")
+                    result.add_error(
+                        f"字符串值过长 (键: {key}): {len(value)} > {self.max_string_length}"
+                    )
 
-                dangerous_chars = ['<', '>', '"', "'", '&', '\x00']
+                dangerous_chars = ["<", ">", '"', "'", "&", "\x00"]
                 for char in dangerous_chars:
                     if char in value:
                         result.add_warning(f"字符串包含潜在危险字符 (键: {key}): {repr(char)}")

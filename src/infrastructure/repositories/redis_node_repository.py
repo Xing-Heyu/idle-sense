@@ -26,7 +26,7 @@ class RedisNodeRepository(INodeRepository):
         self,
         redis_url: str = "redis://localhost:6379/0",
         key_prefix: str = "idle_sense:node:",
-        ttl: int = 86400
+        ttl: int = 86400,
     ):
         self.redis_url = redis_url
         self.key_prefix = key_prefix
@@ -37,6 +37,7 @@ class RedisNodeRepository(INodeRepository):
         if self._client is None:
             try:
                 import redis.asyncio as redis
+
                 self._client = redis.from_url(self.redis_url)
             except ImportError as e:
                 raise ImportError(
@@ -46,18 +47,20 @@ class RedisNodeRepository(INodeRepository):
         return self._client
 
     def _node_to_dict(self, node: Node) -> str:
-        return json.dumps({
-            "node_id": node.node_id,
-            "platform": node.platform,
-            "status": node.status.value,
-            "capacity": node.capacity,
-            "tags": node.tags,
-            "owner": node.owner,
-            "registered_at": node.registered_at.isoformat() if node.registered_at else None,
-            "last_heartbeat": node.last_heartbeat.isoformat() if node.last_heartbeat else None,
-            "is_available": node.is_available,
-            "is_idle": node.is_idle
-        })
+        return json.dumps(
+            {
+                "node_id": node.node_id,
+                "platform": node.platform,
+                "status": node.status.value,
+                "capacity": node.capacity,
+                "tags": node.tags,
+                "owner": node.owner,
+                "registered_at": node.registered_at.isoformat() if node.registered_at else None,
+                "last_heartbeat": node.last_heartbeat.isoformat() if node.last_heartbeat else None,
+                "is_available": node.is_available,
+                "is_idle": node.is_idle,
+            }
+        )
 
     def _dict_to_node(self, data: str) -> Node:
         obj = json.loads(data)
@@ -68,10 +71,14 @@ class RedisNodeRepository(INodeRepository):
             capacity=obj.get("capacity", {}),
             tags=obj.get("tags", {}),
             owner=obj.get("owner", "unknown"),
-            registered_at=datetime.fromisoformat(obj["registered_at"]) if obj.get("registered_at") else None,
-            last_heartbeat=datetime.fromisoformat(obj["last_heartbeat"]) if obj.get("last_heartbeat") else None,
+            registered_at=(
+                datetime.fromisoformat(obj["registered_at"]) if obj.get("registered_at") else None
+            ),
+            last_heartbeat=(
+                datetime.fromisoformat(obj["last_heartbeat"]) if obj.get("last_heartbeat") else None
+            ),
             is_available=obj.get("is_available", False),
-            is_idle=obj.get("is_idle", False)
+            is_idle=obj.get("is_idle", False),
         )
 
     async def get_by_id(self, node_id: str) -> Optional[Node]:

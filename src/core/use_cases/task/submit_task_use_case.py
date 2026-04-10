@@ -27,6 +27,7 @@ from src.core.interfaces.services import ISchedulerService
 @dataclass
 class SubmitTaskRequest:
     """提交任务请求"""
+
     code: str
     user_id: Optional[str] = None
     timeout: int = 300
@@ -37,6 +38,7 @@ class SubmitTaskRequest:
 @dataclass
 class SubmitTaskResponse:
     """提交任务响应"""
+
     success: bool
     task_id: str = ""
     message: str = ""
@@ -45,11 +47,7 @@ class SubmitTaskResponse:
 class SubmitTaskUseCase:
     """提交任务用例"""
 
-    def __init__(
-        self,
-        task_repository: ITaskRepository,
-        scheduler_service: ISchedulerService
-    ):
+    def __init__(self, task_repository: ITaskRepository, scheduler_service: ISchedulerService):
         """
         初始化提交任务用例
 
@@ -76,7 +74,7 @@ class SubmitTaskUseCase:
             user_id=request.user_id,
             timeout=request.timeout,
             cpu=request.cpu,
-            memory=request.memory
+            memory=request.memory,
         )
 
         # 提交到调度器
@@ -85,24 +83,20 @@ class SubmitTaskUseCase:
             timeout=task.timeout,
             cpu=task.cpu_request,
             memory=task.memory_request,
-            user_id=task.user_id
+            user_id=task.user_id,
         )
 
         if not scheduler_result[0]:
             return SubmitTaskResponse(
                 success=False,
-                message=f"提交到调度器失败: {scheduler_result[1].get('error', '未知错误')}"
+                message=f"提交到调度器失败: {scheduler_result[1].get('error', '未知错误')}",
             )
 
         # 更新任务ID并保存
         task.task_id = scheduler_result[1].get("task_id", task.task_id)
         self._task_repository.save(task)
 
-        return SubmitTaskResponse(
-            success=True,
-            task_id=task.task_id,
-            message="任务提交成功"
-        )
+        return SubmitTaskResponse(success=True, task_id=task.task_id, message="任务提交成功")
 
 
 __all__ = ["SubmitTaskUseCase", "SubmitTaskRequest", "SubmitTaskResponse"]

@@ -43,14 +43,15 @@ class FailureType(Enum):
 @dataclass
 class RetryConfig:
     """Configuration for retry behavior."""
+
     max_retries: int = 3
     policy: RetryPolicy = RetryPolicy.EXPONENTIAL
     base_delay: float = 1.0
     max_delay: float = 60.0
     jitter: bool = True
-    retryable_errors: list[str] = field(default_factory=lambda: [
-        "timeout", "connection", "network", "temporary"
-    ])
+    retryable_errors: list[str] = field(
+        default_factory=lambda: ["timeout", "connection", "network", "temporary"]
+    )
 
     def get_delay(self, attempt: int) -> float:
         """Calculate delay for a given retry attempt."""
@@ -59,7 +60,7 @@ class RetryConfig:
         if self.policy == RetryPolicy.FIXED:
             delay = self.base_delay
         elif self.policy == RetryPolicy.EXPONENTIAL:
-            delay = min(self.base_delay * (2 ** attempt), self.max_delay)
+            delay = min(self.base_delay * (2**attempt), self.max_delay)
         elif self.policy == RetryPolicy.LINEAR:
             delay = min(self.base_delay * (attempt + 1), self.max_delay)
         else:
@@ -74,6 +75,7 @@ class RetryConfig:
 @dataclass
 class FailureRecord:
     """Record of a task failure."""
+
     chunk_id: str
     task_id: str
     failure_type: FailureType
@@ -99,6 +101,7 @@ class FailureRecord:
 @dataclass
 class Checkpoint:
     """Checkpoint for task state."""
+
     checkpoint_id: str
     task_id: str
     stage_id: str
@@ -133,11 +136,7 @@ class CircuitBreaker:
     RECOVERY_TIMEOUT = 30.0
     HALF_OPEN_REQUESTS = 3
 
-    def __init__(
-        self,
-        failure_threshold: int = None,
-        recovery_timeout: float = None
-    ):
+    def __init__(self, failure_threshold: int = None, recovery_timeout: float = None):
         self.failure_threshold = failure_threshold or self.FAILURE_THRESHOLD
         self.recovery_timeout = recovery_timeout or self.RECOVERY_TIMEOUT
 
@@ -179,7 +178,11 @@ class CircuitBreaker:
         self.failure_count += 1
         self.last_failure_time = time.time()
 
-        if self.state == "HALF_OPEN" or self.state == "CLOSED" and self.failure_count >= self.failure_threshold:
+        if (
+            self.state == "HALF_OPEN"
+            or self.state == "CLOSED"
+            and self.failure_count >= self.failure_threshold
+        ):
             self.state = "OPEN"
 
     def get_state(self) -> dict[str, Any]:
@@ -239,10 +242,7 @@ class StragglerDetector:
 
     def get_stragglers(self) -> list[str]:
         """Get all current straggler tasks."""
-        return [
-            chunk_id for chunk_id in self.task_start_times
-            if self.is_straggler(chunk_id)
-        ]
+        return [chunk_id for chunk_id in self.task_start_times if self.is_straggler(chunk_id)]
 
 
 class FaultToleranceManager:
@@ -265,7 +265,7 @@ class FaultToleranceManager:
         self,
         retry_config: RetryConfig = None,
         checkpoint_dir: str = None,
-        speculative_execution: bool = True
+        speculative_execution: bool = True,
     ):
         self.retry_config = retry_config or RetryConfig()
         self.checkpoint_dir = checkpoint_dir or self.CHECKPOINT_DIR
@@ -348,7 +348,7 @@ class FaultToleranceManager:
         task_id: str,
         execute_func: Callable,
         node_id: Optional[str] = None,
-        on_checkpoint: Callable = None
+        on_checkpoint: Callable = None,
     ) -> tuple[bool, Any]:
         """
         Execute a chunk with automatic retry.
@@ -382,9 +382,7 @@ class FaultToleranceManager:
                     self.circuit_breakers[node_id].record_success()
 
                 if on_checkpoint:
-                    await self._create_checkpoint(
-                        chunk_id, task_id, result, on_checkpoint
-                    )
+                    await self._create_checkpoint(chunk_id, task_id, result, on_checkpoint)
 
                 return True, result
 
@@ -398,7 +396,7 @@ class FaultToleranceManager:
                     failure_type=failure_type,
                     error_message=str(e),
                     node_id=node_id,
-                    attempt=attempt + 1
+                    attempt=attempt + 1,
                 )
 
                 if node_id:
@@ -420,7 +418,7 @@ class FaultToleranceManager:
         chunk_id: str,
         task_id: str,
         execute_func: Callable,
-        backup_execute_func: Callable = None
+        backup_execute_func: Callable = None,
     ) -> tuple[bool, Any]:
         """
         Execute with speculative execution for stragglers.
@@ -435,9 +433,7 @@ class FaultToleranceManager:
             Tuple of (success, result_or_error)
         """
         if not self.speculative_execution:
-            return await self.execute_with_retry(
-                chunk_id, task_id, execute_func
-            )
+            return await self.execute_with_retry(chunk_id, task_id, execute_func)
 
         backup_func = backup_execute_func or execute_func
 
@@ -452,8 +448,7 @@ class FaultToleranceManager:
         speculative_task = asyncio.create_task(monitor_and_speculate())
 
         done, pending = await asyncio.wait(
-            [primary_task, speculative_task],
-            return_when=asyncio.FIRST_COMPLETED
+            [primary_task, speculative_task], return_when=asyncio.FIRST_COMPLETED
         )
 
         for task in pending:
@@ -476,7 +471,7 @@ class FaultToleranceManager:
         failure_type: FailureType,
         error_message: str,
         node_id: Optional[str] = None,
-        attempt: int = 1
+        attempt: int = 1,
     ):
         """Record a failure."""
         record = FailureRecord(
@@ -495,16 +490,10 @@ class FaultToleranceManager:
             self.failures.pop(0)
 
     async def _create_checkpoint(
-        self,
-        chunk_id: str,
-        task_id: str,
-        result: Any,
-        state_callback: Callable = None
+        self, chunk_id: str, task_id: str, result: Any, state_callback: Callable = None
     ):
         """Create a checkpoint."""
-        checkpoint_id = hashlib.md5(
-            f"{task_id}:{chunk_id}:{time.time()}".encode()
-        ).hexdigest()[:16]
+        checkpoint_id = hashlib.md5(f"{task_id}:{chunk_id}:{time.time()}".encode()).hexdigest()[:16]
 
         state = {}
         if state_callback:
@@ -523,17 +512,10 @@ class FaultToleranceManager:
         self._stats["checkpoints_created"] += 1
 
         while len(self.checkpoints) > self.MAX_CHECKPOINTS:
-            oldest_key = min(
-                self.checkpoints.keys(),
-                key=lambda k: self.checkpoints[k].timestamp
-            )
+            oldest_key = min(self.checkpoints.keys(), key=lambda k: self.checkpoints[k].timestamp)
             del self.checkpoints[oldest_key]
 
-    async def recover_from_checkpoint(
-        self,
-        task_id: str,
-        chunk_id: str
-    ) -> Optional[Any]:
+    async def recover_from_checkpoint(self, task_id: str, chunk_id: str) -> Optional[Any]:
         """Recover task state from checkpoint."""
         for checkpoint in self.checkpoints.values():
             if checkpoint.task_id == task_id and checkpoint.chunk_id == chunk_id:
@@ -565,8 +547,7 @@ class FaultToleranceManager:
             "failures_by_type": dict(failure_by_type),
             "recovered_failures": self._stats["recovered_failures"],
             "active_circuit_breakers": sum(
-                1 for cb in self.circuit_breakers.values()
-                if cb.state == "OPEN"
+                1 for cb in self.circuit_breakers.values() if cb.state == "OPEN"
             ),
         }
 

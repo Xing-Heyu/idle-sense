@@ -38,7 +38,10 @@ def render(user_id: Optional[str] = None):
                 task_id = str(result.get("task_id", ""))
                 result_text = str(result.get("result", ""))
 
-                if search_query.lower() in task_id.lower() or search_query.lower() in result_text.lower():
+                if (
+                    search_query.lower() in task_id.lower()
+                    or search_query.lower() in result_text.lower()
+                ):
                     filtered_results.append(result)
             results_list = filtered_results
 
@@ -61,12 +64,14 @@ def render(user_id: Optional[str] = None):
                 else:
                     result_preview = result_text or "无结果"
 
-                results_data.append({
-                    "任务ID": result.get("task_id", "N/A"),
-                    "完成时间": time_str,
-                    "执行节点": result.get("assigned_node", "未知"),
-                    "结果预览": result_preview
-                })
+                results_data.append(
+                    {
+                        "任务ID": result.get("task_id", "N/A"),
+                        "完成时间": time_str,
+                        "执行节点": result.get("assigned_node", "未知"),
+                        "结果预览": result_preview,
+                    }
+                )
 
             results_df = pd.DataFrame(results_data)
             st.dataframe(results_df, width="stretch", hide_index=True)
@@ -76,8 +81,7 @@ def render(user_id: Optional[str] = None):
             st.subheader("📄 查看完整结果")
 
             selected_task_id = st.selectbox(
-                "选择任务查看完整结果",
-                [r.get("task_id", "N/A") for r in results_list]
+                "选择任务查看完整结果", [r.get("task_id", "N/A") for r in results_list]
             )
 
             if selected_task_id:
@@ -94,7 +98,10 @@ def render(user_id: Optional[str] = None):
                     with col2:
                         completed_at = full_result.get("completed_at")
                         if completed_at:
-                            st.metric("完成时间", datetime.fromtimestamp(completed_at).strftime("%H:%M:%S"))
+                            st.metric(
+                                "完成时间",
+                                datetime.fromtimestamp(completed_at).strftime("%H:%M:%S"),
+                            )
                     with col3:
                         st.metric("执行节点", full_result.get("assigned_node", "未知"))
 
@@ -109,7 +116,7 @@ def render(user_id: Optional[str] = None):
                             label="📥 下载结果",
                             data=result_text,
                             file_name=f"task_{selected_task_id}_result.txt",
-                            mime="text/plain"
+                            mime="text/plain",
                         )
                     else:
                         st.info("该任务没有结果")

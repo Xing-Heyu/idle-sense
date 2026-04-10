@@ -60,13 +60,14 @@ class NATType(IntEnum):
 @dataclass
 class STUNAttribute:
     """STUN attribute."""
+
     type: int
     value: bytes
 
     def to_bytes(self) -> bytes:
         length = len(self.value)
         padding = (4 - (length % 4)) % 4
-        return struct.pack("!HH", self.type, length) + self.value + b'\x00' * padding
+        return struct.pack("!HH", self.type, length) + self.value + b"\x00" * padding
 
     @classmethod
     def mapped_address(cls, ip: str, port: int, family: int = 1) -> "STUNAttribute":
@@ -76,7 +77,9 @@ class STUNAttribute:
         return cls(STUNAttributeType.MAPPED_ADDRESS, value)
 
     @classmethod
-    def xor_mapped_address(cls, ip: str, port: int, _transaction_id: bytes, magic_cookie: int = 0x2112A442) -> "STUNAttribute":
+    def xor_mapped_address(
+        cls, ip: str, port: int, _transaction_id: bytes, magic_cookie: int = 0x2112A442
+    ) -> "STUNAttribute":
         """Create a XOR-MAPPED-ADDRESS attribute."""
         ip_bytes = socket.inet_pton(socket.AF_INET, ip)
         family = 1
@@ -102,13 +105,14 @@ class STUNAttribute:
     @classmethod
     def fingerprint(cls, message: bytes) -> "STUNAttribute":
         """Create a FINGERPRINT attribute."""
-        crc = binascii.crc32(message) ^ 0x5354554e
+        crc = binascii.crc32(message) ^ 0x5354554E
         return cls(STUNAttributeType.FINGERPRINT, struct.pack("!I", crc))
 
 
 @dataclass
 class STUNMessage:
     """STUN message."""
+
     message_class: int
     method: int = 0x0001
     transaction_id: bytes = field(default_factory=lambda: secrets.token_bytes(12))
@@ -123,7 +127,10 @@ class STUNMessage:
         for attr in self.attributes:
             attr_bytes += attr.to_bytes()
 
-        header = struct.pack("!HHI", message_type, len(attr_bytes), self.magic_cookie) + self.transaction_id
+        header = (
+            struct.pack("!HHI", message_type, len(attr_bytes), self.magic_cookie)
+            + self.transaction_id
+        )
 
         return header + attr_bytes
 
@@ -141,18 +148,22 @@ class STUNMessage:
                 return None
 
             message_class = message_type & 0x0111
-            method = (message_type & 0x3E00) >> 2 | (message_type & 0x00E0) >> 1 | (message_type & 0x000F)
+            method = (
+                (message_type & 0x3E00) >> 2
+                | (message_type & 0x00E0) >> 1
+                | (message_type & 0x000F)
+            )
 
             attributes = []
             offset = 20
             while offset + 4 <= len(data) and offset < 20 + length:
-                attr_type, attr_length = struct.unpack("!HH", data[offset:offset + 4])
+                attr_type, attr_length = struct.unpack("!HH", data[offset : offset + 4])
                 offset += 4
 
                 if offset + attr_length > len(data):
                     break
 
-                attr_value = data[offset:offset + attr_length]
+                attr_value = data[offset : offset + attr_length]
                 attributes.append(STUNAttribute(attr_type, attr_value))
 
                 padding = (4 - (attr_length % 4)) % 4
@@ -163,7 +174,7 @@ class STUNMessage:
                 method=method,
                 transaction_id=transaction_id,
                 attributes=attributes,
-                magic_cookie=magic_cookie
+                magic_cookie=magic_cookie,
             )
         except Exception:
             return None
@@ -279,9 +290,7 @@ class STUNClient:
                 return NATType.PUBLIC
 
             result2 = await self._send_binding_request(
-                primary_server,
-                change_ip=True,
-                change_port=True
+                primary_server, change_ip=True, change_port=True
             )
 
             if result2:
@@ -301,9 +310,7 @@ class STUNClient:
 
             if mapped_addr1[1] == mapped_addr2[1]:
                 result4 = await self._send_binding_request(
-                    primary_server,
-                    change_ip=False,
-                    change_port=True
+                    primary_server, change_ip=False, change_port=True
                 )
 
                 if result4:
@@ -324,7 +331,7 @@ class STUNClient:
         server: tuple[str, int],
         change_ip: bool = False,
         change_port: bool = False,
-        timeout: float = None
+        timeout: float = None,
     ) -> Optional[STUNMessage]:
         """Send a STUN binding request and receive response."""
         timeout = timeout or self.DEFAULT_TIMEOUT
@@ -334,7 +341,7 @@ class STUNClient:
             method=0x0001,
             attributes=[
                 STUNAttribute.software(),
-            ]
+            ],
         )
 
         if change_ip or change_port:
@@ -354,10 +361,7 @@ class STUNClient:
             await loop.sock_sendto(sock, request.to_bytes(), server)
 
             try:
-                data, addr = await asyncio.wait_for(
-                    loop.sock_recvfrom(sock, 4096),
-                    timeout=timeout
-                )
+                data, addr = await asyncio.wait_for(loop.sock_recvfrom(sock, 4096), timeout=timeout)
 
                 response = STUNMessage.from_bytes(data)
 
@@ -460,14 +464,10 @@ class STUNServer:
                 attributes=[
                     STUNAttribute.xor_mapped_address(addr[0], addr[1], request.transaction_id),
                     STUNAttribute.software(),
-                ]
+                ],
             )
 
-            await asyncio.get_event_loop().sock_sendto(
-                self.socket,
-                response.to_bytes(),
-                addr
-            )
+            await asyncio.get_event_loop().sock_sendto(self.socket, response.to_bytes(), addr)
 
 
 __all__ = [

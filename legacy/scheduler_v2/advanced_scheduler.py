@@ -80,10 +80,10 @@ class ResourceSpec:
 
     def fits(self, available: "ResourceSpec") -> bool:
         return (
-            self.cpu <= available.cpu and
-            self.memory <= available.memory and
-            self.gpu <= available.gpu and
-            self.storage <= available.storage
+            self.cpu <= available.cpu
+            and self.memory <= available.memory
+            and self.gpu <= available.gpu
+            and self.storage <= available.storage
         )
 
     def __add__(self, other: "ResourceSpec") -> "ResourceSpec":
@@ -495,11 +495,7 @@ class Scheduler:
 
         return candidates
 
-    def _score_nodes(
-        self,
-        nodes: list[NodeSpec],
-        task: TaskSpec
-    ) -> list[tuple[NodeSpec, float]]:
+    def _score_nodes(self, nodes: list[NodeSpec], task: TaskSpec) -> list[tuple[NodeSpec, float]]:
         """Score nodes using priority functions."""
         scored = []
 
@@ -514,11 +510,7 @@ class Scheduler:
 
         return sorted(scored, key=lambda x: x[1], reverse=True)
 
-    def _select_node_policy(
-        self,
-        candidates: list[NodeSpec],
-        task: TaskSpec
-    ) -> Optional[NodeSpec]:
+    def _select_node_policy(self, candidates: list[NodeSpec], task: TaskSpec) -> Optional[NodeSpec]:
         """Select node based on scheduling policy."""
         if not candidates:
             return None
@@ -559,10 +551,7 @@ class Scheduler:
 
         return candidates[0]
 
-    def _find_preemption_candidates(
-        self,
-        task: TaskSpec
-    ) -> list[tuple[NodeSpec, list[TaskSpec]]]:
+    def _find_preemption_candidates(self, task: TaskSpec) -> list[tuple[NodeSpec, list[TaskSpec]]]:
         """Find nodes where lower priority tasks can be preempted."""
         candidates = []
 
@@ -577,10 +566,7 @@ class Scheduler:
                     lower_priority_tasks.append(running_task)
 
             if lower_priority_tasks:
-                preemptable = sorted(
-                    lower_priority_tasks,
-                    key=lambda t: t.priority
-                )
+                preemptable = sorted(lower_priority_tasks, key=lambda t: t.priority)
 
                 freed_resources = ResourceSpec()
                 needed = task.resources
@@ -594,10 +580,7 @@ class Scheduler:
         return candidates
 
     def _preempt_tasks(
-        self,
-        node: NodeSpec,
-        tasks_to_preempt: list[TaskSpec],
-        new_task: TaskSpec
+        self, node: NodeSpec, tasks_to_preempt: list[TaskSpec], new_task: TaskSpec
     ) -> bool:
         """Preempt lower priority tasks to make room for new task."""
         for task in tasks_to_preempt:
@@ -620,9 +603,7 @@ class Scheduler:
             results = []
 
             sorted_queue = sorted(
-                self._queue,
-                key=lambda tid: self._tasks[tid].priority,
-                reverse=True
+                self._queue, key=lambda tid: self._tasks[tid].priority, reverse=True
             )
 
             for task_id in sorted_queue[:]:
@@ -690,7 +671,9 @@ class Scheduler:
         return {
             "policy": self.policy.value,
             "total_nodes": len(self._nodes),
-            "available_nodes": sum(1 for n in self._nodes.values() if n.state == NodeState.AVAILABLE),
+            "available_nodes": sum(
+                1 for n in self._nodes.values() if n.state == NodeState.AVAILABLE
+            ),
             "total_tasks": len(self._tasks),
             "queued_tasks": len(self._queue),
             "scheduled": self._stats["scheduled"],

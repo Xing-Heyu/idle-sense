@@ -62,25 +62,14 @@ __result__ = result
     # 提交任务到调度中心
     print("🚀 提交蒙特卡洛计算π任务...")
 
-    payload = {
-        "code": code,
-        "timeout": 60,
-        "resources": {
-            "cpu": 1.0,
-            "memory": 256
-        }
-    }
+    payload = {"code": code, "timeout": 60, "resources": {"cpu": 1.0, "memory": 256}}
 
     try:
-        response = requests.post(
-            "http://localhost:8000/submit",
-            json=payload,
-            timeout=10
-        )
+        response = requests.post("http://localhost:8000/submit", json=payload, timeout=10)
 
         if response.status_code == 200:
             result = response.json()
-            task_id = result.get('task_id')
+            task_id = result.get("task_id")
             print(f"✅ 任务提交成功！任务ID: {task_id}")
             print(f"📋 任务详情: {result}")
 
@@ -95,6 +84,7 @@ __result__ = result
         print(f"❌ 提交任务时出错: {e}")
         return False
 
+
 def wait_for_task_completion(task_id, timeout=120):
     """等待任务完成"""
     start_time = time.time()
@@ -106,17 +96,17 @@ def wait_for_task_completion(task_id, timeout=120):
 
             if response.status_code == 200:
                 task_info = response.json()
-                status = task_info.get('status', 'unknown')
+                status = task_info.get("status", "unknown")
 
-                if status == 'completed':
+                if status == "completed":
                     print("\n🎉 任务完成！")
                     print("📝 执行结果:")
-                    print(task_info.get('result', '无结果'))
+                    print(task_info.get("result", "无结果"))
                     return True
-                elif status == 'failed':
+                elif status == "failed":
                     print("❌ 任务执行失败")
                     return False
-                elif status in ['pending', 'assigned', 'running']:
+                elif status in ["pending", "assigned", "running"]:
                     print(f"⏳ 任务状态: {status}")
                 else:
                     print(f"❓ 未知状态: {status}")
@@ -129,6 +119,7 @@ def wait_for_task_completion(task_id, timeout=120):
 
     print(f"⏰ 任务等待超时 ({timeout}秒)")
     return False
+
 
 def check_system_status():
     """检查系统状态"""
@@ -147,7 +138,7 @@ def check_system_status():
         response = requests.get("http://localhost:8000/api/nodes", timeout=5)
         if response.status_code == 200:
             nodes_info = response.json()
-            node_count = nodes_info.get('count', 0)
+            node_count = nodes_info.get("count", 0)
             print(f"✅ 在线节点: {node_count}")
         else:
             print("❌ 无法获取节点信息")
@@ -157,6 +148,7 @@ def check_system_status():
     except Exception as e:
         print(f"❌ 系统状态检查失败: {e}")
         return False
+
 
 def main():
     """主函数"""
@@ -185,6 +177,7 @@ def main():
         print("❌ 测试失败，请检查系统状态")
 
     print("=" * 60)
+
 
 if __name__ == "__main__":
     main()

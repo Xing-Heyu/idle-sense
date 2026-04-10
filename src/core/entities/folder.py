@@ -28,6 +28,7 @@ from typing import Any, Optional
 
 class FolderType(Enum):
     """文件夹类型枚举"""
+
     USER_SYSTEM = "user_system"
     USER_DATA = "user_data"
     TEMP_DATA = "temp_data"
@@ -36,6 +37,7 @@ class FolderType(Enum):
 
 class FolderPermission(Enum):
     """文件夹权限枚举"""
+
     READ = "read"
     WRITE = "write"
     EXECUTE = "execute"
@@ -51,6 +53,7 @@ class Folder:
     - 处理文件夹创建和验证
     - 提供文件夹路径管理
     """
+
     folder_type: FolderType
     path: str
     user_id: str
@@ -166,7 +169,7 @@ class Folder:
             "description": self.description,
             "exists": self.exists,
             "is_writable": self.is_writable,
-            "is_readable": self.is_readable
+            "is_readable": self.is_readable,
         }
 
     @classmethod
@@ -176,10 +179,14 @@ class Folder:
             folder_type=FolderType(data.get("folder_type", "user_data")),
             path=data.get("path", ""),
             user_id=data.get("user_id", ""),
-            created_at=datetime.fromisoformat(data["created_at"]) if data.get("created_at") else datetime.now(),
+            created_at=(
+                datetime.fromisoformat(data["created_at"])
+                if data.get("created_at")
+                else datetime.now()
+            ),
             size=data.get("size", 0),
             file_count=data.get("file_count", 0),
-            description=data.get("description")
+            description=data.get("description"),
         )
 
 
@@ -188,9 +195,7 @@ class FolderFactory:
 
     @staticmethod
     def create_user_folders(
-        base_path: str,
-        user_id: str,
-        username: str  # noqa: ARG004
+        base_path: str, user_id: str, username: str  # noqa: ARG004
     ) -> dict[FolderType, Folder]:
         """
         创建用户文件夹结构
@@ -209,20 +214,19 @@ class FolderFactory:
             FolderType.USER_SYSTEM: ("user_system (系统专用-请勿修改)", "系统文件夹"),
             FolderType.USER_DATA: ("user_data (您的数据文件-主要工作区)", "用户数据文件夹"),
             FolderType.TEMP_DATA: ("temp_data (临时文件-自动清理)", "临时文件夹"),
-            FolderType.DOCS: ("docs (说明文档)", "文档文件夹")
+            FolderType.DOCS: ("docs (说明文档)", "文档文件夹"),
         }
 
         for folder_type, (folder_name, description) in folder_configs.items():
             if folder_type == FolderType.DOCS:
-                path = os.path.join(base_path, "user_system (系统专用-请勿修改)", user_id, folder_name)
+                path = os.path.join(
+                    base_path, "user_system (系统专用-请勿修改)", user_id, folder_name
+                )
             else:
                 path = os.path.join(base_path, folder_name)
 
             folders[folder_type] = Folder(
-                folder_type=folder_type,
-                path=path,
-                user_id=user_id,
-                description=description
+                folder_type=folder_type, path=path, user_id=user_id, description=description
             )
 
         return folders
@@ -238,14 +242,14 @@ FOLDER_TYPE_DESCRIPTIONS = {
     FolderType.USER_SYSTEM: "存放用户ID等系统数据，平时不常用",
     FolderType.USER_DATA: "存放您不会删除的个人文件，系统可读取",
     FolderType.TEMP_DATA: "存放任务执行时的临时文件，会定期清理",
-    FolderType.DOCS: "存放系统说明文档"
+    FolderType.DOCS: "存放系统说明文档",
 }
 
 FOLDER_TYPE_NAMES = {
     FolderType.USER_SYSTEM: "用户系统文件夹",
     FolderType.USER_DATA: "用户数据文件夹",
     FolderType.TEMP_DATA: "临时数据文件夹",
-    FolderType.DOCS: "文档文件夹"
+    FolderType.DOCS: "文档文件夹",
 }
 
 
@@ -255,5 +259,5 @@ __all__ = [
     "FolderPermission",
     "FolderFactory",
     "FOLDER_TYPE_DESCRIPTIONS",
-    "FOLDER_TYPE_NAMES"
+    "FOLDER_TYPE_NAMES",
 ]

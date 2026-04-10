@@ -13,11 +13,13 @@ import requests
 # 添加项目根目录到路径
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
+
 def print_step(step, description):
     """打印步骤信息"""
     print(f"\n{'='*60}")
     print(f"步骤 {step}: {description}")
     print(f"{'='*60}")
+
 
 def test_scheduler_connection(url="http://localhost:8000"):
     """测试调度中心连接"""
@@ -40,6 +42,7 @@ def test_scheduler_connection(url="http://localhost:8000"):
         print("   请确保调度中心正在运行: python scheduler/simple_server.py")
         return False
 
+
 def test_idle_sense_library():
     """测试闲置检测库"""
     print_step(2, "测试闲置检测库")
@@ -53,8 +56,8 @@ def test_idle_sense_library():
 
         # 测试健康检查
         result = core.check_platform_module()
-        success = result.get('loaded', False)
-        message = result.get('error', 'OK') if not success else '模块加载成功'
+        success = result.get("loaded", False)
+        message = result.get("error", "OK") if not success else "模块加载成功"
         print(f"✅ 模块健康: {success} - {message}")
 
         # 测试基本功能
@@ -73,6 +76,7 @@ def test_idle_sense_library():
         print(f"❌ 测试异常: {e}")
         return False
 
+
 def test_task_submission(url="http://localhost:8000"):
     """测试任务提交"""
     print_step(3, "测试任务提交")
@@ -87,11 +91,7 @@ __result__ = f"计算结果: {result:.4f}"
 
     try:
         # 提交任务
-        payload = {
-            "code": test_code,
-            "timeout": 30,
-            "resources": {"cpu": 1.0, "memory": 512}
-        }
+        payload = {"code": test_code, "timeout": 30, "resources": {"cpu": 1.0, "memory": 512}}
 
         response = requests.post(f"{url}/submit", json=payload, timeout=10)
 
@@ -112,6 +112,7 @@ __result__ = f"计算结果: {result:.4f}"
     except Exception as e:
         print(f"❌ 提交错误: {e}")
         return False
+
 
 def check_task_status(url, task_id, max_attempts=10):
     """检查任务状态"""
@@ -148,6 +149,7 @@ def check_task_status(url, task_id, max_attempts=10):
     print(f"❌ 任务未在 {max_attempts} 秒内完成")
     return False
 
+
 def test_web_interface(url="http://localhost:8501"):
     """测试网页界面"""
     print_step(4, "测试网页界面")
@@ -171,6 +173,7 @@ def test_web_interface(url="http://localhost:8501"):
         print(f"❌ 访问网页界面错误: {e}")
         print("   请确保网页界面正在运行: streamlit run web_interface.py")
         return False
+
 
 def test_node_registration(url="http://localhost:8000"):
     """测试节点注册"""
@@ -199,10 +202,11 @@ def test_node_registration(url="http://localhost:8000"):
         print(f"❌ 节点注册测试错误: {e}")
         return False
 
+
 def run_comprehensive_test():
     """运行全面测试"""
     print("⚡ 闲置计算加速器 - 全面测试")
-    print("="*60)
+    print("=" * 60)
 
     # 获取测试URL
     scheduler_url = input("调度中心URL [http://localhost:8000]: ").strip()
@@ -221,9 +225,9 @@ def run_comprehensive_test():
     results.append(("节点注册", test_node_registration(scheduler_url)))
 
     # 显示结果
-    print("\n" + "="*60)
+    print("\n" + "=" * 60)
     print("测试结果总结:")
-    print("="*60)
+    print("=" * 60)
 
     passed = 0
     for name, success in results:
@@ -240,6 +244,7 @@ def run_comprehensive_test():
     else:
         print(f"\n⚠️  有 {len(results)-passed} 个测试失败，请检查相关组件。")
         return 1
+
 
 if __name__ == "__main__":
     try:

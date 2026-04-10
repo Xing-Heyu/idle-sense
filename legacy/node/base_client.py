@@ -4,6 +4,7 @@ Base Node Client - Common functionality for all node clients.
 This module provides the abstract base class and shared functionality
 for node clients, reducing code duplication between platform-specific implementations.
 """
+
 import hashlib
 import logging
 import platform
@@ -20,6 +21,7 @@ logger = logging.getLogger(__name__)
 
 class NodeState(str, Enum):
     """Node state enumeration."""
+
     INITIALIZING = "initializing"
     IDLE = "idle"
     BUSY = "busy"
@@ -30,6 +32,7 @@ class NodeState(str, Enum):
 @dataclass
 class NodeCapacity:
     """Node resource capacity."""
+
     cpu: float = 4.0
     memory: int = 8192
     disk: int = 50000
@@ -49,6 +52,7 @@ class NodeCapacity:
 @dataclass
 class NodeConfig:
     """Node client configuration."""
+
     scheduler_url: str = "http://localhost:8000"
     idle_threshold: int = 300
     cpu_threshold: float = 30.0
@@ -155,9 +159,9 @@ class BaseNodeClient(ABC):
                         "device_type": self._get_device_type(),
                         "platform": platform.system(),
                         "gpu": self.capacity.gpu,
-                    }
+                    },
                 },
-                timeout=10
+                timeout=10,
             )
 
             if response.status_code == 200:
@@ -194,13 +198,14 @@ class BaseNodeClient(ABC):
                     "is_idle": is_idle,
                     "available_resources": {
                         "cpu": self.capacity.cpu * (1 - status.get("cpu_percent", 0) / 100),
-                        "memory": self.capacity.memory * (1 - status.get("memory_percent", 0) / 100),
+                        "memory": self.capacity.memory
+                        * (1 - status.get("memory_percent", 0) / 100),
                     },
                     "cpu_usage": status.get("cpu_percent", 0),
                     "memory_usage": status.get("memory_percent", 0),
                     "is_available": self.state != NodeState.ERROR,
                 },
-                timeout=10
+                timeout=10,
             )
 
             self._last_heartbeat = time.time()
@@ -223,7 +228,7 @@ class BaseNodeClient(ABC):
             response = requests.get(
                 f"{self.config.scheduler_url}/get_task",
                 params={"node_id": self.node_id},
-                timeout=10
+                timeout=10,
             )
 
             if response.status_code == 200:
@@ -238,11 +243,7 @@ class BaseNodeClient(ABC):
             return None
 
     def submit_result(
-        self,
-        task_id: int,
-        result: Any,
-        success: bool = True,
-        error: Optional[str] = None
+        self, task_id: int, result: Any, success: bool = True, error: Optional[str] = None
     ) -> bool:
         """Submit task result to the scheduler."""
         try:
@@ -257,7 +258,7 @@ class BaseNodeClient(ABC):
                     "success": success,
                     "error": error,
                 },
-                timeout=10
+                timeout=10,
             )
 
             return response.status_code == 200
@@ -288,15 +289,12 @@ class BaseNodeClient(ABC):
                                 task_id=task["task_id"],
                                 result=result.get("result"),
                                 success=result.get("success", True),
-                                error=result.get("error")
+                                error=result.get("error"),
                             )
                         except Exception as e:
                             self._error_count += 1
                             self.submit_result(
-                                task_id=task["task_id"],
-                                result=None,
-                                success=False,
-                                error=str(e)
+                                task_id=task["task_id"], result=None, success=False, error=str(e)
                             )
 
                         self.current_task = None

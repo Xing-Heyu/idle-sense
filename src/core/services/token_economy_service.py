@@ -64,10 +64,7 @@ class TokenEconomyService:
         """
         account = self._economy.get_account(user_id)
         if not account:
-            account = self._economy.create_account(
-                user_id,
-                initial_balance=self._initial_balance
-            )
+            account = self._economy.create_account(user_id, initial_balance=self._initial_balance)
         return account
 
     def get_account_info(self, user_id: str) -> dict[str, Any]:
@@ -94,11 +91,7 @@ class TokenEconomyService:
         }
 
     def estimate_task_cost(
-        self,
-        cpu: float,
-        memory: int,
-        timeout: int,
-        priority: float = 0.0
+        self, cpu: float, memory: int, timeout: int, priority: float = 0.0
     ) -> dict[str, Any]:
         """
         估算任务成本
@@ -113,13 +106,10 @@ class TokenEconomyService:
             成本估算信息
         """
         resources = ResourceMetrics(
-            cpu_seconds=cpu * timeout,
-            memory_gb_seconds=(memory / 1024) * timeout
+            cpu_seconds=cpu * timeout, memory_gb_seconds=(memory / 1024) * timeout
         )
 
-        base_price = self._economy.pricing.calculate_price(
-            resources, priority=priority
-        )
+        base_price = self._economy.pricing.calculate_price(resources, priority=priority)
         congestion = self._economy.pricing.get_market_stats()["congestion_level"]
 
         return {
@@ -176,10 +166,7 @@ class TokenEconomyService:
             return False, {"error": str(e)}
 
     def reward_node_uptime(
-        self,
-        node_id: str,
-        uptime_seconds: float,
-        capacity: Optional[dict[str, Any]] = None
+        self, node_id: str, uptime_seconds: float, capacity: Optional[dict[str, Any]] = None
     ) -> tuple[bool, dict[str, Any]]:
         """
         奖励节点在线时间
@@ -193,9 +180,7 @@ class TokenEconomyService:
             (是否成功, 奖励信息)
         """
         return self._economy.reward_node_uptime(
-            node_id=node_id,
-            uptime_seconds=uptime_seconds,
-            capacity=capacity or {}
+            node_id=node_id, uptime_seconds=uptime_seconds, capacity=capacity or {}
         )
 
     def get_node_earnings(self, node_id: str) -> dict[str, Any]:
@@ -219,11 +204,7 @@ class TokenEconomyService:
         """
         return self._economy.get_stats()
 
-    def get_transaction_history(
-        self,
-        user_id: Optional[str] = None,
-        limit: int = 100
-    ) -> list:
+    def get_transaction_history(self, user_id: Optional[str] = None, limit: int = 100) -> list:
         """
         获取交易历史
 

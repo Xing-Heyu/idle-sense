@@ -14,10 +14,7 @@ class TestShufflePartition:
 
     def test_create_partition(self):
         """Test creating a partition."""
-        partition = ShufflePartition(
-            partition_id=0,
-            key="test-key"
-        )
+        partition = ShufflePartition(partition_id=0, key="test-key")
 
         assert partition.partition_id == 0
         assert partition.key == "test-key"
@@ -37,11 +34,7 @@ class TestShufflePartition:
 
     def test_to_dict(self):
         """Test partition serialization."""
-        partition = ShufflePartition(
-            partition_id=1,
-            key="key1",
-            node_id="node-1"
-        )
+        partition = ShufflePartition(partition_id=1, key="key1", node_id="node-1")
         partition.add_value("value1")
 
         data = partition.to_dict()
@@ -57,11 +50,7 @@ class TestShuffleResult:
 
     def test_create_result(self):
         """Test creating a shuffle result."""
-        result = ShuffleResult(
-            shuffle_id="shuffle-001",
-            stage_id="stage-1",
-            task_id="task-001"
-        )
+        result = ShuffleResult(shuffle_id="shuffle-001", stage_id="stage-1", task_id="task-001")
 
         assert result.shuffle_id == "shuffle-001"
         assert result.status == "pending"
@@ -76,7 +65,7 @@ class TestShuffleResult:
             partitions={
                 0: ShufflePartition(0, "k1", values=["v1", "v2"]),
                 1: ShufflePartition(1, "k2", values=["v3"]),
-            }
+            },
         )
 
         assert result.total_size == 3
@@ -90,7 +79,7 @@ class TestShuffleResult:
             partitions={
                 0: ShufflePartition(0, "k1", node_id="node-1"),
                 1: ShufflePartition(1, "k2", node_id=None),
-            }
+            },
         )
 
         assert result.is_complete is False

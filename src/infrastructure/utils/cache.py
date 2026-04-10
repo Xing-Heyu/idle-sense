@@ -84,9 +84,7 @@ class MemoryCache:
     def _evict_expired(self) -> int:
         """清理过期条目"""
         current_time = time.time()
-        expired_keys = [
-            k for k, v in self._cache.items() if v.expire_at < current_time
-        ]
+        expired_keys = [k for k, v in self._cache.items() if v.expire_at < current_time]
         for key in expired_keys:
             del self._cache[key]
         return len(expired_keys)

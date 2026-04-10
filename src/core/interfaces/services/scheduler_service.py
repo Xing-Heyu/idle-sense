@@ -50,7 +50,7 @@ class ISchedulerService(ABC):
         timeout: int = 300,
         cpu: float = 1.0,
         memory: int = 512,
-        user_id: Optional[str] = None
+        user_id: Optional[str] = None,
     ) -> tuple[bool, dict[str, Any]]:
         """
         提交任务到调度中心
@@ -128,11 +128,7 @@ class ISchedulerService(ABC):
 
     @abstractmethod
     def activate_local_node(
-        self,
-        cpu_limit: float,
-        memory_limit: int,
-        storage_limit: int,
-        user_id: Optional[str] = None
+        self, cpu_limit: float, memory_limit: int, storage_limit: int, user_id: Optional[str] = None
     ) -> tuple[bool, dict[str, Any]]:
         """
         激活本地节点

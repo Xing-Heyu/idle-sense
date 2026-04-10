@@ -2,6 +2,7 @@
 examples/simulation.py
 模拟示例 - 物理、经济等系统模拟
 """
+
 import math
 
 
@@ -34,13 +35,7 @@ def physics_simulation():
     # 模拟直到物体落地
     while y >= 0:
         # 记录当前状态
-        trajectory.append({
-            'time': time,
-            'x': x,
-            'y': y,
-            'vx': vx,
-            'vy': vy
-        })
+        trajectory.append({"time": time, "x": x, "y": y, "vx": vx, "vy": vy})
 
         # 更新位置
         x += vx * dt
@@ -55,13 +50,13 @@ def physics_simulation():
     # 分析结果
     if trajectory:
         last_point = trajectory[-1]
-        max_height = max(point['y'] for point in trajectory)
-        range_distance = last_point['x']
-        flight_time = last_point['time']
+        max_height = max(point["y"] for point in trajectory)
+        range_distance = last_point["x"]
+        flight_time = last_point["time"]
 
         # 理论值
-        theoretical_range = (v0**2 * math.sin(2*theta)) / g
-        theoretical_max_height = (v0**2 * math.sin(theta)**2) / (2*g)
+        theoretical_range = (v0**2 * math.sin(2 * theta)) / g
+        theoretical_max_height = (v0**2 * math.sin(theta) ** 2) / (2 * g)
         theoretical_time = (2 * v0 * math.sin(theta)) / g
 
         print("\n模拟参数:")
@@ -85,6 +80,7 @@ def physics_simulation():
 
     return trajectory
 
+
 def economic_simulation():
     """经济模拟 - 投资复利"""
     print("\n" + "=" * 60)
@@ -99,7 +95,7 @@ def economic_simulation():
 
     # 转换为月
     months = years * 12
-    monthly_return = (1 + annual_return/100) ** (1/12) - 1
+    monthly_return = (1 + annual_return / 100) ** (1 / 12) - 1
 
     # 模拟
     balance = initial_investment
@@ -117,12 +113,14 @@ def economic_simulation():
         # 记录
         if month % 12 == 0:  # 每年记录一次
             year = month // 12 + 1
-            history.append({
-                'year': year,
-                'balance': balance,
-                'total_contributions': initial_investment + monthly_contribution * month,
-                'total_interest': balance - (initial_investment + monthly_contribution * month)
-            })
+            history.append(
+                {
+                    "year": year,
+                    "balance": balance,
+                    "total_contributions": initial_investment + monthly_contribution * month,
+                    "total_interest": balance - (initial_investment + monthly_contribution * month),
+                }
+            )
 
     # 输出结果
     if history:
@@ -143,11 +141,12 @@ def economic_simulation():
         print("\n里程碑:")
         for milestone in [5, 10, 15, 20, 25]:
             if milestone <= years:
-                record = next((h for h in history if h['year'] == milestone), None)
+                record = next((h for h in history if h["year"] == milestone), None)
                 if record:
                     print(f"  第{milestone}年: ${record['balance']:,.2f}")
 
     return history
+
 
 def cellular_automaton():
     """细胞自动机 - 生命游戏"""
@@ -187,9 +186,9 @@ def cellular_automaton():
         """打印网格"""
         print(f"\n第 {step} 代:")
         for y in range(min(height, 10)):  # 只显示前10行
-            row = ''
+            row = ""
             for x in range(min(width, 20)):  # 只显示前20列
-                row += '█' if grid[y][x] else '░'
+                row += "█" if grid[y][x] else "░"
             print(row)
 
     # 初始状态
@@ -228,27 +227,29 @@ def cellular_automaton():
     print(f"  活细胞比例: {live_cells/total_cells*100:.1f}%")
 
     return {
-        'width': width,
-        'height': height,
-        'steps': steps,
-        'final_live_cells': live_cells,
-        'initial_pattern': 'glider'
+        "width": width,
+        "height": height,
+        "steps": steps,
+        "final_live_cells": live_cells,
+        "initial_pattern": "glider",
     }
+
 
 def run_simulation_demo():
     """运行模拟演示"""
 
     results = {}
 
-    results['physics'] = physics_simulation()
-    results['economics'] = economic_simulation()
-    results['cellular_automaton'] = cellular_automaton()
+    results["physics"] = physics_simulation()
+    results["economics"] = economic_simulation()
+    results["cellular_automaton"] = cellular_automaton()
 
     print("\n" + "=" * 60)
     print("模拟演示完成!")
     print("=" * 60)
 
     return results
+
 
 if __name__ == "__main__":
     run_simulation_demo()

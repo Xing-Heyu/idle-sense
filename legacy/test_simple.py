@@ -15,7 +15,7 @@ def test_system():
     # 1. 检查调度中心
     print("1. 检查调度中心...")
     try:
-        r = requests.get('http://localhost:8000/', timeout=5)
+        r = requests.get("http://localhost:8000/", timeout=5)
         if r.status_code == 200:
             data = r.json()
             print("   ✅ 调度中心运行正常")
@@ -30,10 +30,10 @@ def test_system():
     # 2. 检查节点状态
     print("2. 检查节点状态...")
     try:
-        r = requests.get('http://localhost:8000/api/nodes', timeout=5)
+        r = requests.get("http://localhost:8000/api/nodes", timeout=5)
         if r.status_code == 200:
             nodes = r.json()
-            count = nodes.get('count', 0)
+            count = nodes.get("count", 0)
             print(f"   ✅ 在线节点: {count}")
             if count == 0:
                 print("   ⚠️  没有在线节点，任务无法执行")
@@ -56,16 +56,13 @@ __result__ = f"计算完成，结果: {result:.2f}"
 """
 
     try:
-        payload = {
-            "code": code,
-            "timeout": 30
-        }
+        payload = {"code": code, "timeout": 30}
 
-        response = requests.post('http://localhost:8000/submit', json=payload, timeout=10)
+        response = requests.post("http://localhost:8000/submit", json=payload, timeout=10)
 
         if response.status_code == 200:
             result = response.json()
-            task_id = result.get('task_id')
+            task_id = result.get("task_id")
             print("   ✅ 任务提交成功")
             print(f"   📋 任务ID: {task_id}")
 
@@ -76,19 +73,19 @@ __result__ = f"计算完成，结果: {result:.2f}"
                 time.sleep(3)
 
                 try:
-                    status_r = requests.get(f'http://localhost:8000/status/{task_id}', timeout=5)
+                    status_r = requests.get(f"http://localhost:8000/status/{task_id}", timeout=5)
                     if status_r.status_code == 200:
                         task_info = status_r.json()
-                        status = task_info.get('status')
+                        status = task_info.get("status")
 
-                        if status == 'completed':
+                        if status == "completed":
                             print("   🎉 任务执行完成！")
                             print(f"   📝 结果: {task_info.get('result', '无结果')}")
                             return True
-                        elif status == 'failed':
+                        elif status == "failed":
                             print("   ❌ 任务执行失败")
                             return False
-                        elif status in ['pending', 'assigned', 'running']:
+                        elif status in ["pending", "assigned", "running"]:
                             print(f"   ⏳ 任务状态: {status}")
                         else:
                             print(f"   ❓ 未知状态: {status}")
@@ -107,6 +104,7 @@ __result__ = f"计算完成，结果: {result:.2f}"
     except Exception as e:
         print(f"   ❌ 提交任务时出错: {e}")
         return False
+
 
 def main():
     """主函数"""
@@ -132,6 +130,7 @@ def main():
     print("2. 访问 http://localhost:8501 使用网页界面")
     print("3. 在网页界面提交更复杂的计算任务")
     print("4. 查看任务执行状态和结果")
+
 
 if __name__ == "__main__":
     main()

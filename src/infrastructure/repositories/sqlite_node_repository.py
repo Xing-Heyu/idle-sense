@@ -81,10 +81,14 @@ class SQLiteNodeRepository(INodeRepository):
             capacity=json.loads(row["capacity"]) if row["capacity"] else {},
             tags=json.loads(row["tags"]) if row["tags"] else {},
             owner=row["owner"],
-            registered_at=datetime.fromisoformat(row["registered_at"]) if row["registered_at"] else None,
-            last_heartbeat=datetime.fromisoformat(row["last_heartbeat"]) if row["last_heartbeat"] else None,
+            registered_at=(
+                datetime.fromisoformat(row["registered_at"]) if row["registered_at"] else None
+            ),
+            last_heartbeat=(
+                datetime.fromisoformat(row["last_heartbeat"]) if row["last_heartbeat"] else None
+            ),
             is_available=bool(row["is_available"]),
-            is_idle=bool(row["is_idle"])
+            is_idle=bool(row["is_idle"]),
         )
 
     async def get_by_id(self, node_id: str) -> Optional[Node]:
@@ -117,8 +121,8 @@ class SQLiteNodeRepository(INodeRepository):
                     node.registered_at.isoformat() if node.registered_at else None,
                     node.last_heartbeat.isoformat() if node.last_heartbeat else None,
                     1 if node.is_available else 0,
-                    1 if node.is_idle else 0
-                )
+                    1 if node.is_idle else 0,
+                ),
             )
             await conn.commit()
             return node
@@ -151,22 +155,23 @@ class SQLiteNodeRepository(INodeRepository):
         conn = await pool.get_connection()
         try:
             async with conn.execute(
-                "SELECT * FROM nodes ORDER BY registered_at DESC LIMIT ? OFFSET ?",
-                (limit, offset)
+                "SELECT * FROM nodes ORDER BY registered_at DESC LIMIT ? OFFSET ?", (limit, offset)
             ) as cursor:
                 rows = await cursor.fetchall()
             return [self._row_to_node(row) for row in rows]
         finally:
             await pool.release_connection(conn)
 
-    async def list_by_status(self, status: NodeStatus, limit: int = 100, offset: int = 0) -> list[Node]:
+    async def list_by_status(
+        self, status: NodeStatus, limit: int = 100, offset: int = 0
+    ) -> list[Node]:
         limit, offset = self._validate_pagination(limit, offset)
         pool = await self._get_pool()
         conn = await pool.get_connection()
         try:
             async with conn.execute(
                 "SELECT * FROM nodes WHERE status = ? LIMIT ? OFFSET ?",
-                (status.value, limit, offset)
+                (status.value, limit, offset),
             ) as cursor:
                 rows = await cursor.fetchall()
             return [self._row_to_node(row) for row in rows]
@@ -180,7 +185,13 @@ class SQLiteNodeRepository(INodeRepository):
         try:
             async with conn.execute(
                 "SELECT * FROM nodes WHERE status IN (?, ?, ?) LIMIT ? OFFSET ?",
-                (NodeStatus.ONLINE.value, NodeStatus.IDLE.value, NodeStatus.BUSY.value, limit, offset)
+                (
+                    NodeStatus.ONLINE.value,
+                    NodeStatus.IDLE.value,
+                    NodeStatus.BUSY.value,
+                    limit,
+                    offset,
+                ),
             ) as cursor:
                 rows = await cursor.fetchall()
             return [self._row_to_node(row) for row in rows]
@@ -193,8 +204,7 @@ class SQLiteNodeRepository(INodeRepository):
         conn = await pool.get_connection()
         try:
             async with conn.execute(
-                "SELECT * FROM nodes WHERE is_idle = 1 LIMIT ? OFFSET ?",
-                (limit, offset)
+                "SELECT * FROM nodes WHERE is_idle = 1 LIMIT ? OFFSET ?", (limit, offset)
             ) as cursor:
                 rows = await cursor.fetchall()
             return [self._row_to_node(row) for row in rows]

@@ -18,6 +18,7 @@ Usage:
     # Trigger hooks
     plugin_manager.trigger("task_pre_execute", task=task)
 """
+
 import inspect
 import logging
 from abc import ABC, abstractmethod
@@ -30,6 +31,7 @@ logger = logging.getLogger(__name__)
 @dataclass
 class PluginInfo:
     """Plugin metadata."""
+
     name: str
     version: str = "1.0.0"
     description: str = ""
@@ -73,7 +75,7 @@ class Hook:
         hook_name: str,
         callback: Callable,
         priority: int = 100,
-        plugin_name: Optional[str] = None
+        plugin_name: Optional[str] = None,
     ):
         self.hook_name = hook_name
         self.callback = callback
@@ -201,8 +203,7 @@ class PluginManager:
         """Remove all hooks registered by a plugin."""
         for hook_name in list(self._hooks.keys()):
             self._hooks[hook_name] = [
-                h for h in self._hooks[hook_name]
-                if h.plugin_name != plugin_name
+                h for h in self._hooks[hook_name] if h.plugin_name != plugin_name
             ]
 
     def register_hook(
@@ -210,14 +211,11 @@ class PluginManager:
         hook_name: str,
         callback: Callable,
         priority: int = 100,
-        plugin_name: Optional[str] = None
+        plugin_name: Optional[str] = None,
     ) -> None:
         """Register a hook callback."""
         hook = Hook(
-            hook_name=hook_name,
-            callback=callback,
-            priority=priority,
-            plugin_name=plugin_name
+            hook_name=hook_name, callback=callback, priority=priority, plugin_name=plugin_name
         )
 
         if hook_name not in self._hooks:
@@ -234,19 +232,11 @@ class PluginManager:
             return False
 
         original_len = len(self._hooks[hook_name])
-        self._hooks[hook_name] = [
-            h for h in self._hooks[hook_name]
-            if h.callback != callback
-        ]
+        self._hooks[hook_name] = [h for h in self._hooks[hook_name] if h.callback != callback]
 
         return len(self._hooks[hook_name]) < original_len
 
-    def trigger(
-        self,
-        hook_name: str,
-        *args,
-        **kwargs
-    ) -> list[Any]:
+    def trigger(self, hook_name: str, *args, **kwargs) -> list[Any]:
         """
         Trigger a hook.
 
@@ -268,18 +258,11 @@ class PluginManager:
                 result = hook.callback(*args, **kwargs)
                 results.append(result)
             except Exception as e:
-                logger.error(
-                    f"Hook callback error ({hook_name}): {e}"
-                )
+                logger.error(f"Hook callback error ({hook_name}): {e}")
 
         return results
 
-    async def trigger_async(
-        self,
-        hook_name: str,
-        *args,
-        **kwargs
-    ) -> list[Any]:
+    async def trigger_async(self, hook_name: str, *args, **kwargs) -> list[Any]:
         """Trigger a hook asynchronously."""
         if hook_name not in self._hooks:
             return []
@@ -296,9 +279,7 @@ class PluginManager:
                     result = hook.callback(*args, **kwargs)
                 results.append(result)
             except Exception as e:
-                logger.error(
-                    f"Async hook callback error ({hook_name}): {e}"
-                )
+                logger.error(f"Async hook callback error ({hook_name}): {e}")
 
         return results
 
@@ -319,7 +300,7 @@ class PluginManager:
         try:
             entry_points = metadata.entry_points()
 
-            if hasattr(entry_points, 'select'):
+            if hasattr(entry_points, "select"):
                 eps = entry_points.select(group=entry_point_group)
             else:
                 eps = entry_points.get(entry_point_group, [])
@@ -341,11 +322,7 @@ class PluginManager:
         return discovered
 
 
-def hook(
-    hook_name: str,
-    priority: int = 100,
-    plugin_name: Optional[str] = None
-) -> Callable:
+def hook(hook_name: str, priority: int = 100, plugin_name: Optional[str] = None) -> Callable:
     """
     Decorator to register a hook.
 
@@ -354,14 +331,13 @@ def hook(
         def my_hook(task):
             print(f"Executing: {task.id}")
     """
+
     def decorator(func: Callable) -> Callable:
         get_plugin_manager().register_hook(
-            hook_name=hook_name,
-            callback=func,
-            priority=priority,
-            plugin_name=plugin_name
+            hook_name=hook_name, callback=func, priority=priority, plugin_name=plugin_name
         )
         return func
+
     return decorator
 
 

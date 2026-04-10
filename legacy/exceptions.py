@@ -44,8 +44,10 @@ class IdleSenseError(Exception):
 
 # ==================== Task Related Errors ====================
 
+
 class TaskError(IdleSenseError):
     """Base exception for task-related errors."""
+
     pass
 
 
@@ -53,10 +55,7 @@ class TaskNotFoundError(TaskError):
     """Raised when a task cannot be found."""
 
     def __init__(self, task_id: str, message: str = None):
-        super().__init__(
-            message or f"Task not found: {task_id}",
-            details={"task_id": task_id}
-        )
+        super().__init__(message or f"Task not found: {task_id}", details={"task_id": task_id})
         self.task_id = task_id
 
 
@@ -66,7 +65,7 @@ class TaskTimeoutError(TaskError):
     def __init__(self, task_id: str, timeout: float, message: str = None):
         super().__init__(
             message or f"Task execution timed out after {timeout} seconds",
-            details={"task_id": task_id, "timeout": timeout}
+            details={"task_id": task_id, "timeout": timeout},
         )
         self.task_id = task_id
         self.timeout = timeout
@@ -75,20 +74,14 @@ class TaskTimeoutError(TaskError):
 class TaskExecutionError(TaskError):
     """Raised when a task fails during execution."""
 
-    def __init__(
-        self,
-        task_id: str,
-        reason: str,
-        output: str = None,
-        message: str = None
-    ):
+    def __init__(self, task_id: str, reason: str, output: str = None, message: str = None):
         super().__init__(
             message or f"Task execution failed: {reason}",
             details={
                 "task_id": task_id,
                 "reason": reason,
                 "output": output,
-            }
+            },
         )
         self.task_id = task_id
         self.reason = reason
@@ -101,7 +94,7 @@ class TaskValidationError(TaskError):
     def __init__(self, task_id: str, validation_errors: list, message: str = None):
         super().__init__(
             message or f"Task validation failed: {validation_errors}",
-            details={"task_id": task_id, "validation_errors": validation_errors}
+            details={"task_id": task_id, "validation_errors": validation_errors},
         )
         self.task_id = task_id
         self.validation_errors = validation_errors
@@ -110,16 +103,10 @@ class TaskValidationError(TaskError):
 class TaskResourceError(TaskError):
     """Raised when task resource requirements cannot be met."""
 
-    def __init__(
-        self,
-        task_id: str,
-        required: dict,
-        available: dict,
-        message: str = None
-    ):
+    def __init__(self, task_id: str, required: dict, available: dict, message: str = None):
         super().__init__(
             message or f"Insufficient resources: required {required}, available {available}",
-            details={"task_id": task_id, "required": required, "available": available}
+            details={"task_id": task_id, "required": required, "available": available},
         )
         self.task_id = task_id
         self.required = required
@@ -128,8 +115,10 @@ class TaskResourceError(TaskError):
 
 # ==================== Node Related Errors ====================
 
+
 class NodeError(IdleSenseError):
     """Base exception for node-related errors."""
+
     pass
 
 
@@ -137,10 +126,7 @@ class NodeNotFoundError(NodeError):
     """Raised when a node cannot be found."""
 
     def __init__(self, node_id: str, message: str = None):
-        super().__init__(
-            message or f"Node not found: {node_id}",
-            details={"node_id": node_id}
-        )
+        super().__init__(message or f"Node not found: {node_id}", details={"node_id": node_id})
         self.node_id = node_id
 
 
@@ -150,7 +136,7 @@ class NodeOfflineError(NodeError):
     def __init__(self, node_id: str, last_seen: float = None, message: str = None):
         super().__init__(
             message or f"Node is offline: {node_id}",
-            details={"node_id": node_id, "last_seen": last_seen}
+            details={"node_id": node_id, "last_seen": last_seen},
         )
         self.node_id = node_id
         self.last_seen = last_seen
@@ -162,7 +148,7 @@ class NodeRegistrationError(NodeError):
     def __init__(self, node_id: str, reason: str, message: str = None):
         super().__init__(
             message or f"Node registration failed: {reason}",
-            details={"node_id": node_id, "reason": reason}
+            details={"node_id": node_id, "reason": reason},
         )
         self.node_id = node_id
         self.reason = reason
@@ -174,7 +160,7 @@ class NodeCapacityError(NodeError):
     def __init__(self, node_id: str, capacity: dict, current_usage: dict, message: str = None):
         super().__init__(
             message or f"Node capacity exceeded: {current_usage} > {capacity}",
-            details={"node_id": node_id, "capacity": capacity, "current_usage": current_usage}
+            details={"node_id": node_id, "capacity": capacity, "current_usage": current_usage},
         )
         self.node_id = node_id
         self.capacity = capacity
@@ -183,8 +169,10 @@ class NodeCapacityError(NodeError):
 
 # ==================== Storage Related Errors ====================
 
+
 class StorageError(IdleSenseError):
     """Base exception for storage-related errors."""
+
     pass
 
 
@@ -194,7 +182,7 @@ class StorageConnectionError(StorageError):
     def __init__(self, backend: str, reason: str, message: str = None):
         super().__init__(
             message or f"Failed to connect to storage backend '{backend}': {reason}",
-            details={"backend": backend, "reason": reason}
+            details={"backend": backend, "reason": reason},
         )
         self.backend = backend
         self.reason = reason
@@ -204,10 +192,7 @@ class StorageKeyError(StorageError):
     """Raised when a storage key is not found."""
 
     def __init__(self, key: str, message: str = None):
-        super().__init__(
-            message or f"Key not found in storage: {key}",
-            details={"key": key}
-        )
+        super().__init__(message or f"Key not found in storage: {key}", details={"key": key})
         self.key = key
 
 
@@ -217,7 +202,7 @@ class StorageBackendError(StorageError):
     def __init__(self, backend: str, available_backends: list = None, message: str = None):
         super().__init__(
             message or f"Unknown storage backend: {backend}. Available: {available_backends}",
-            details={"backend": backend, "available_backends": available_backends or []}
+            details={"backend": backend, "available_backends": available_backends or []},
         )
         self.backend = backend
         self.available_backends = available_backends
@@ -225,8 +210,10 @@ class StorageBackendError(StorageError):
 
 # ==================== Security Related Errors ====================
 
+
 class SecurityError(IdleSenseError):
     """Base exception for security-related errors."""
+
     pass
 
 
@@ -236,7 +223,7 @@ class CodeSecurityError(SecurityError):
     def __init__(self, code: str, violations: list, message: str = None):
         super().__init__(
             message or f"Code security check failed: {violations}",
-            details={"violations": violations, "code_preview": code[:100] if code else None}
+            details={"violations": violations, "code_preview": code[:100] if code else None},
         )
         self.violations = violations
 
@@ -247,7 +234,7 @@ class SandboxError(SecurityError):
     def __init__(self, sandbox_type: str, reason: str, message: str = None):
         super().__init__(
             message or f"Sandbox execution failed ({sandbox_type}): {reason}",
-            details={"sandbox_type": sandbox_type, "reason": reason}
+            details={"sandbox_type": sandbox_type, "reason": reason},
         )
         self.sandbox_type = sandbox_type
         self.reason = reason
@@ -259,7 +246,7 @@ class SandboxLevelError(SecurityError):
     def __init__(self, level: str, available_levels: list = None, message: str = None):
         super().__init__(
             message or f"Unsupported sandbox level: {level}. Available: {available_levels}",
-            details={"level": level, "available_levels": available_levels or []}
+            details={"level": level, "available_levels": available_levels or []},
         )
         self.level = level
         self.available_levels = available_levels
@@ -271,7 +258,7 @@ class AuthenticationError(SecurityError):
     def __init__(self, user_id: str = None, reason: str = None, message: str = None):
         super().__init__(
             message or f"Authentication failed: {reason}",
-            details={"user_id": user_id, "reason": reason}
+            details={"user_id": user_id, "reason": reason},
         )
         self.user_id = user_id
         self.reason = reason
@@ -283,7 +270,7 @@ class AuthorizationError(SecurityError):
     def __init__(self, user_id: str, resource: str, action: str, message: str = None):
         super().__init__(
             message or f"Authorization denied: user '{user_id}' cannot {action} on {resource}",
-            details={"user_id": user_id, "resource": resource, "action": action}
+            details={"user_id": user_id, "resource": resource, "action": action},
         )
         self.user_id = user_id
         self.resource = resource
@@ -292,8 +279,10 @@ class AuthorizationError(SecurityError):
 
 # ==================== Network Related Errors ====================
 
+
 class NetworkError(IdleSenseError):
     """Base exception for network-related errors."""
+
     pass
 
 
@@ -303,7 +292,7 @@ class ConnectionError(NetworkError):
     def __init__(self, host: str, port: int, reason: str = None, message: str = None):
         super().__init__(
             message or f"Failed to connect to {host}:{port}: {reason}",
-            details={"host": host, "port": port, "reason": reason}
+            details={"host": host, "port": port, "reason": reason},
         )
         self.host = host
         self.port = port
@@ -316,7 +305,7 @@ class P2PError(NetworkError):
     def __init__(self, operation: str, reason: str, message: str = None):
         super().__init__(
             message or f"P2P operation '{operation}' failed: {reason}",
-            details={"operation": operation, "reason": reason}
+            details={"operation": operation, "reason": reason},
         )
         self.operation = operation
         self.reason = reason
@@ -328,7 +317,7 @@ class NATTraversalError(NetworkError):
     def __init__(self, nat_type: str, reason: str, message: str = None):
         super().__init__(
             message or f"NAT traversal failed for type '{nat_type}': {reason}",
-            details={"nat_type": nat_type, "reason": reason}
+            details={"nat_type": nat_type, "reason": reason},
         )
         self.nat_type = nat_type
         self.reason = reason
@@ -336,8 +325,10 @@ class NATTraversalError(NetworkError):
 
 # ==================== Economy Related Errors ====================
 
+
 class EconomyError(IdleSenseError):
     """Base exception for economy-related errors."""
+
     pass
 
 
@@ -347,7 +338,7 @@ class InsufficientBalanceError(EconomyError):
     def __init__(self, address: str, required: float, available: float, message: str = None):
         super().__init__(
             message or f"Insufficient balance: required {required}, available {available}",
-            details={"address": address, "required": required, "available": available}
+            details={"address": address, "required": required, "available": available},
         )
         self.address = address
         self.required = required
@@ -360,7 +351,7 @@ class StakingError(EconomyError):
     def __init__(self, address: str, operation: str, reason: str, message: str = None):
         super().__init__(
             message or f"Staking operation '{operation}' failed for {address}: {reason}",
-            details={"address": address, "operation": operation, "reason": reason}
+            details={"address": address, "operation": operation, "reason": reason},
         )
         self.address = address
         self.operation = operation
@@ -373,7 +364,7 @@ class PaymentError(EconomyError):
     def __init__(self, task_id: str, reason: str, message: str = None):
         super().__init__(
             message or f"Payment failed for task {task_id}: {reason}",
-            details={"task_id": task_id, "reason": reason}
+            details={"task_id": task_id, "reason": reason},
         )
         self.task_id = task_id
         self.reason = reason
@@ -381,8 +372,10 @@ class PaymentError(EconomyError):
 
 # ==================== Configuration Related Errors ====================
 
+
 class ConfigError(IdleSenseError):
     """Base exception for configuration-related errors."""
+
     pass
 
 
@@ -392,7 +385,7 @@ class ConfigNotFoundError(ConfigError):
     def __init__(self, config_path: str, message: str = None):
         super().__init__(
             message or f"Configuration file not found: {config_path}",
-            details={"config_path": config_path}
+            details={"config_path": config_path},
         )
         self.config_path = config_path
 
@@ -403,7 +396,7 @@ class ConfigValidationError(ConfigError):
     def __init__(self, config_path: str, errors: list, message: str = None):
         super().__init__(
             message or f"Configuration validation failed: {errors}",
-            details={"config_path": config_path, "errors": errors}
+            details={"config_path": config_path, "errors": errors},
         )
         self.config_path = config_path
         self.errors = errors
@@ -411,13 +404,14 @@ class ConfigValidationError(ConfigError):
 
 # ==================== Serialization Related Errors ====================
 
+
 class SerializationError(IdleSenseError):
     """Raised when serialization fails."""
 
     def __init__(self, data_type: str, reason: str, message: str = None):
         super().__init__(
             message or f"Serialization failed for type '{data_type}': {reason}",
-            details={"data_type": data_type, "reason": reason}
+            details={"data_type": data_type, "reason": reason},
         )
         self.data_type = data_type
         self.reason = reason
@@ -429,7 +423,7 @@ class DeserializationError(IdleSenseError):
     def __init__(self, data: str, reason: str, message: str = None):
         super().__init__(
             message or f"Deserialization failed: {reason}",
-            details={"data_preview": data[:100] if data else None, "reason": reason}
+            details={"data_preview": data[:100] if data else None, "reason": reason},
         )
         self.reason = reason
 

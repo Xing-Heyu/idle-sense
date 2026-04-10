@@ -25,6 +25,7 @@ from src.infrastructure.audit import AuditAction, AuditLogger
 @dataclass
 class SubmitTaskWithTokenRequest:
     """带代币经济的任务提交请求"""
+
     code: str
     user_id: Optional[str] = None
     timeout: int = 300
@@ -36,6 +37,7 @@ class SubmitTaskWithTokenRequest:
 @dataclass
 class SubmitTaskWithTokenResponse:
     """带代币经济的任务提交响应"""
+
     success: bool
     task_id: str = ""
     message: str = ""
@@ -46,6 +48,7 @@ class SubmitTaskWithTokenResponse:
 @dataclass
 class CompleteTaskWithTokenRequest:
     """完成任务并发放奖励请求"""
+
     task_id: str
     result: str
     quality_score: float = 1.0
@@ -56,6 +59,7 @@ class CompleteTaskWithTokenRequest:
 @dataclass
 class CompleteTaskWithTokenResponse:
     """完成任务响应"""
+
     success: bool
     message: str = ""
     reward_info: Optional[dict[str, Any]] = None
@@ -97,17 +101,14 @@ class SubmitTaskWithTokenEconomyUseCase:
             提交响应
         """
         if not request.user_id:
-            return SubmitTaskWithTokenResponse(
-                success=False,
-                message="需要用户ID才能提交任务"
-            )
+            return SubmitTaskWithTokenResponse(success=False, message="需要用户ID才能提交任务")
 
         try:
             cost_estimate = self._token_economy.estimate_task_cost(
                 cpu=request.cpu,
                 memory=request.memory,
                 timeout=request.timeout,
-                priority=request.priority
+                priority=request.priority,
             )
 
             final_price = cost_estimate["final_price"]
@@ -116,14 +117,16 @@ class SubmitTaskWithTokenEconomyUseCase:
             account = economy.get_account(request.user_id)
 
             if account is None:
-                account = economy.create_account(request.user_id, initial_balance=self._token_economy._initial_balance)
+                account = economy.create_account(
+                    request.user_id, initial_balance=self._token_economy._initial_balance
+                )
 
             if account.balance < final_price:
                 return SubmitTaskWithTokenResponse(
                     success=False,
                     message=f"余额不足。需要: {final_price:.4f} CMP, 当前: {account.balance:.4f} CMP",
                     cost_estimate=cost_estimate,
-                    account_info=self._token_economy.get_account_info(request.user_id)
+                    account_info=self._token_economy.get_account_info(request.user_id),
                 )
 
             task = TaskFactory.create(
@@ -131,7 +134,7 @@ class SubmitTaskWithTokenEconomyUseCase:
                 user_id=request.user_id,
                 timeout=request.timeout,
                 cpu=request.cpu,
-                memory=request.memory
+                memory=request.memory,
             )
 
             scheduler_result = self._scheduler_service.submit_task(
@@ -139,13 +142,13 @@ class SubmitTaskWithTokenEconomyUseCase:
                 timeout=task.timeout,
                 cpu=task.cpu_request,
                 memory=task.memory_request,
-                user_id=task.user_id
+                user_id=task.user_id,
             )
 
             if not scheduler_result[0]:
                 return SubmitTaskWithTokenResponse(
                     success=False,
-                    message=f"提交到调度器失败: {scheduler_result[1].get('error', '未知错误')}"
+                    message=f"提交到调度器失败: {scheduler_result[1].get('error', '未知错误')}",
                 )
 
             task.task_id = scheduler_result[1].get("task_id", task.task_id)
@@ -153,7 +156,7 @@ class SubmitTaskWithTokenEconomyUseCase:
 
             resources = ResourceMetrics(
                 cpu_seconds=request.cpu * request.timeout,
-                memory_gb_seconds=(request.memory / 1024) * request.timeout
+                memory_gb_seconds=(request.memory / 1024) * request.timeout,
             )
 
             economy = self._token_economy.economy
@@ -162,7 +165,7 @@ class SubmitTaskWithTokenEconomyUseCase:
                 requester=request.user_id,
                 total_budget=final_price,
                 resources=resources,
-                priority=int(request.priority)
+                priority=int(request.priority),
             )
 
             self._audit_logger.log(
@@ -175,8 +178,8 @@ class SubmitTaskWithTokenEconomyUseCase:
                     "cost": final_price,
                     "cpu": request.cpu,
                     "memory": request.memory,
-                    "timeout": request.timeout
-                }
+                    "timeout": request.timeout,
+                },
             )
 
             return SubmitTaskWithTokenResponse(
@@ -184,14 +187,11 @@ class SubmitTaskWithTokenEconomyUseCase:
                 task_id=task.task_id,
                 message="任务提交成功",
                 cost_estimate=cost_estimate,
-                account_info=self._token_economy.get_account_info(request.user_id)
+                account_info=self._token_economy.get_account_info(request.user_id),
             )
 
         except Exception as e:
-            return SubmitTaskWithTokenResponse(
-                success=False,
-                message=f"提交任务失败: {str(e)}"
-            )
+            return SubmitTaskWithTokenResponse(success=False, message=f"提交任务失败: {str(e)}")
 
 
 class CompleteTaskWithTokenEconomyUseCase:
@@ -236,14 +236,12 @@ class CompleteTaskWithTokenEconomyUseCase:
             task = self._task_repository.get_by_id(request.task_id)
             if not task:
                 return CompleteTaskWithTokenResponse(
-                    success=False,
-                    message=f"任务ID '{request.task_id}' 不存在"
+                    success=False, message=f"任务ID '{request.task_id}' 不存在"
                 )
 
             if task.status in [TaskStatus.COMPLETED, TaskStatus.CANCELLED, TaskStatus.FAILED]:
                 return CompleteTaskWithTokenResponse(
-                    success=False,
-                    message=f"任务已处于 {task.status.value} 状态"
+                    success=False, message=f"任务已处于 {task.status.value} 状态"
                 )
 
             task.status = TaskStatus.COMPLETED
@@ -252,14 +250,12 @@ class CompleteTaskWithTokenEconomyUseCase:
             self._task_repository.save(task)
 
             scheduler_success = self._scheduler_service.complete_task(
-                task_id=request.task_id,
-                result=request.result
+                task_id=request.task_id, result=request.result
             )
 
             if not scheduler_success:
                 return CompleteTaskWithTokenResponse(
-                    success=False,
-                    message="调度器标记任务完成失败"
+                    success=False, message="调度器标记任务完成失败"
                 )
 
             reward_info = None
@@ -269,7 +265,8 @@ class CompleteTaskWithTokenEconomyUseCase:
             if task.user_id and node_address != "unknown":
                 resource_metrics = ResourceMetrics(
                     cpu_seconds=request.execution_time_seconds,
-                    memory_gb_seconds=(request.peak_memory_mb / 1024) * request.execution_time_seconds,
+                    memory_gb_seconds=(request.peak_memory_mb / 1024)
+                    * request.execution_time_seconds,
                 )
 
                 economy = self._token_economy.economy
@@ -277,15 +274,11 @@ class CompleteTaskWithTokenEconomyUseCase:
                     task_id=request.task_id,
                     worker_address=node_address,
                     actual_resources=resource_metrics,
-                    quality_score=request.quality_score
+                    quality_score=request.quality_score,
                 )
 
                 if reward_amount > 0:
-                    reward_info = {
-                        "worker_reward": reward_amount,
-                        "quality_bonus": 0,
-                        "refund": 0
-                    }
+                    reward_info = {"worker_reward": reward_amount, "quality_bonus": 0, "refund": 0}
 
                 economy.finalize_task(task_id=request.task_id)
 
@@ -293,12 +286,11 @@ class CompleteTaskWithTokenEconomyUseCase:
                     self._merit_rank.record_task_completion(
                         node_address=node_address,
                         requester_address=task.user_id,
-                        quality_score=request.quality_score
+                        quality_score=request.quality_score,
                     )
                 else:
                     self._merit_rank.record_task_failure(
-                        node_address=node_address,
-                        requester_address=task.user_id
+                        node_address=node_address, requester_address=task.user_id
                     )
 
                 proof = self._contribution_proof.generate_proof(
@@ -307,7 +299,7 @@ class CompleteTaskWithTokenEconomyUseCase:
                     resource_metrics=resource_metrics,
                     quality_score=request.quality_score,
                     code_length=len(task.code),
-                    reputation=self._merit_rank.get_reputation(node_address)
+                    reputation=self._merit_rank.get_reputation(node_address),
                 )
                 contribution_proof_id = proof.proof_id
 
@@ -321,22 +313,19 @@ class CompleteTaskWithTokenEconomyUseCase:
                     "node_address": node_address,
                     "quality_score": request.quality_score,
                     "reward_info": reward_info,
-                    "contribution_proof_id": contribution_proof_id
-                }
+                    "contribution_proof_id": contribution_proof_id,
+                },
             )
 
             return CompleteTaskWithTokenResponse(
                 success=True,
                 message="任务完成成功",
                 reward_info=reward_info,
-                contribution_proof_id=contribution_proof_id
+                contribution_proof_id=contribution_proof_id,
             )
 
         except Exception as e:
-            return CompleteTaskWithTokenResponse(
-                success=False,
-                message=f"完成任务失败: {str(e)}"
-            )
+            return CompleteTaskWithTokenResponse(success=False, message=f"完成任务失败: {str(e)}")
 
 
 __all__ = [

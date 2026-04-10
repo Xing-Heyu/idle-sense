@@ -97,7 +97,9 @@ class Message:
     type: MessageType
     sender_id: str
     timestamp: float = field(default_factory=time.time)
-    message_id: str = field(default_factory=lambda: hashlib.sha256(str(time.time()).encode()).hexdigest()[:16])
+    message_id: str = field(
+        default_factory=lambda: hashlib.sha256(str(time.time()).encode()).hexdigest()[:16]
+    )
     payload: dict[str, Any] = field(default_factory=dict)
     ttl: int = 3600
 
@@ -138,12 +140,8 @@ class KademliaDHT:
 
     def __init__(self, node_id: str):
         self.node_id = node_id
-        self.node_id_int = int.from_bytes(
-            hashlib.sha256(node_id.encode()).digest(), "big"
-        )
-        self.k_buckets: list[OrderedDict] = [
-            OrderedDict() for _ in range(self.ID_BITS)
-        ]
+        self.node_id_int = int.from_bytes(hashlib.sha256(node_id.encode()).digest(), "big")
+        self.k_buckets: list[OrderedDict] = [OrderedDict() for _ in range(self.ID_BITS)]
         self.storage: dict[str, tuple[Any, float]] = {}
         self.pending_lookups: dict[str, asyncio.Event] = {}
 
@@ -157,9 +155,7 @@ class KademliaDHT:
         return distance.bit_length() - 1
 
     def _peer_id_to_int(self, peer_id: str) -> int:
-        return int.from_bytes(
-            hashlib.sha256(peer_id.encode()).digest(), "big"
-        )
+        return int.from_bytes(hashlib.sha256(peer_id.encode()).digest(), "big")
 
     def add_peer(self, peer: PeerInfo) -> bool:
         peer_id_int = self._peer_id_to_int(peer.node_id)
@@ -206,9 +202,7 @@ class KademliaDHT:
 
         for bucket in self.k_buckets:
             for peer in bucket.values():
-                distance = self._xor_distance(
-                    target_int, self._peer_id_to_int(peer.node_id)
-                )
+                distance = self._xor_distance(target_int, self._peer_id_to_int(peer.node_id))
                 closest.append((distance, peer))
 
         closest.sort(key=lambda x: x[0])
@@ -289,7 +283,8 @@ class GossipProtocol:
     def _cleanup_cache(self):
         now = time.time()
         expired = [
-            msg_id for msg_id, timestamp in self.message_cache.items()
+            msg_id
+            for msg_id, timestamp in self.message_cache.items()
             if now - timestamp > self.DEFAULT_TTL
         ]
         for msg_id in expired:
@@ -301,8 +296,7 @@ class GossipProtocol:
 
         all_peers = self.dht.get_all_peers()
         candidates = [
-            p for p in all_peers
-            if p.node_id not in exclude and p.state == PeerState.ONLINE
+            p for p in all_peers if p.node_id not in exclude and p.state == PeerState.ONLINE
         ]
 
         if len(candidates) <= self.fanout:
@@ -315,7 +309,7 @@ class GossipProtocol:
         topic: str,
         data: dict[str, Any],
         exclude_peers: set[str] = None,
-        send_func: Callable = None
+        send_func: Callable = None,
     ) -> int:
         message = Message(
             type=MessageType.GOSSIP,
@@ -339,11 +333,7 @@ class GossipProtocol:
 
         return sent_count
 
-    async def handle_message(
-        self,
-        message: Message,
-        send_func: Callable = None
-    ):
+    async def handle_message(self, message: Message, send_func: Callable = None):
         if self._is_message_seen(message.message_id):
             return
 
@@ -429,6 +419,7 @@ class NATTraversal:
     def _check_public_ip(self) -> bool:
         try:
             import urllib.request
+
             with urllib.request.urlopen("https://api.ipify.org?format=text", timeout=5) as response:
                 external_ip = response.read().decode("utf-8").strip()
                 local_ip = self.get_local_ip()
@@ -474,10 +465,7 @@ class NATTraversal:
             return False
 
     async def hole_punch(
-        self,
-        peer_ip: str,
-        peer_port: int,
-        timeout: float = 10.0
+        self, peer_ip: str, peer_port: int, timeout: float = 10.0
     ) -> Optional[socket.socket]:
         sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
@@ -576,6 +564,7 @@ class P2PNode:
 
     def _generate_node_id(self) -> str:
         import uuid
+
         return hashlib.sha256(uuid.uuid4().bytes).hexdigest()[:32]
 
     def _register_default_handlers(self):
@@ -637,10 +626,13 @@ class P2PNode:
         self._running = False
 
         for peer in self._peers.values():
-            await self._send_to_peer(peer, Message(
-                type=MessageType.PEER_DISCONNECT,
-                sender_id=self.node_id,
-            ))
+            await self._send_to_peer(
+                peer,
+                Message(
+                    type=MessageType.PEER_DISCONNECT,
+                    sender_id=self.node_id,
+                ),
+            )
 
         for task in self._tasks:
             task.cancel()
@@ -653,11 +645,7 @@ class P2PNode:
 
         print("[P2P] Node stopped")
 
-    async def _handle_connection(
-        self,
-        reader: asyncio.StreamReader,
-        writer: asyncio.StreamWriter
-    ):
+    async def _handle_connection(self, reader: asyncio.StreamReader, writer: asyncio.StreamWriter):
         try:
             data = await reader.read(65536)
             if not data:
@@ -672,11 +660,7 @@ class P2PNode:
             writer.close()
             await writer.wait_closed()
 
-    async def _process_message(
-        self,
-        message: Message,
-        writer: asyncio.StreamWriter = None
-    ):
+    async def _process_message(self, message: Message, writer: asyncio.StreamWriter = None):
         handler = self._message_handlers.get(message.type)
         if handler:
             try:
@@ -722,7 +706,9 @@ class P2PNode:
             writer.write(response.to_bytes())
             await writer.drain()
 
-    async def _handle_find_node_response(self, message: Message, writer: asyncio.StreamReader = None):
+    async def _handle_find_node_response(
+        self, message: Message, writer: asyncio.StreamReader = None
+    ):
         peers_data = message.payload.get("peers", [])
 
         for peer_dict in peers_data:
@@ -763,7 +749,9 @@ class P2PNode:
             writer.write(response.to_bytes())
             await writer.drain()
 
-    async def _handle_find_value_response(self, message: Message, writer: asyncio.StreamReader = None):
+    async def _handle_find_value_response(
+        self, message: Message, writer: asyncio.StreamReader = None
+    ):
         key = message.payload.get("key")
         value = message.payload.get("value")
         closest = message.payload.get("closest", [])
@@ -845,10 +833,13 @@ class P2PNode:
                 if time.time() - peer.last_seen > self.HEARTBEAT_TIMEOUT:
                     peer.state = PeerState.OFFLINE
                 else:
-                    await self._send_to_peer(peer, Message(
-                        type=MessageType.PING,
-                        sender_id=self.node_id,
-                    ))
+                    await self._send_to_peer(
+                        peer,
+                        Message(
+                            type=MessageType.PING,
+                            sender_id=self.node_id,
+                        ),
+                    )
 
     async def _run_discovery_loop(self):
         while self._running:
@@ -856,19 +847,21 @@ class P2PNode:
 
             closest = self.dht.find_closest_peers(self.node_id)
             for peer in closest[:3]:
-                await self._send_to_peer(peer, Message(
-                    type=MessageType.FIND_NODE,
-                    sender_id=self.node_id,
-                    payload={"target_id": self.node_id},
-                ))
+                await self._send_to_peer(
+                    peer,
+                    Message(
+                        type=MessageType.FIND_NODE,
+                        sender_id=self.node_id,
+                        payload={"target_id": self.node_id},
+                    ),
+                )
 
     async def _run_cleanup_loop(self):
         while self._running:
             await asyncio.sleep(60)
 
             offline_peers = [
-                peer_id for peer_id, peer in self._peers.items()
-                if peer.state == PeerState.OFFLINE
+                peer_id for peer_id, peer in self._peers.items() if peer.state == PeerState.OFFLINE
             ]
 
             for peer_id in offline_peers:
@@ -887,12 +880,15 @@ class P2PNode:
     async def store_value(self, key: str, value: Any, ttl: int = 3600) -> bool:
         closest = self.dht.find_closest_peers(key)
 
-        for peer in closest[:self.dht.K]:
-            await self._send_to_peer(peer, Message(
-                type=MessageType.STORE,
-                sender_id=self.node_id,
-                payload={"key": key, "value": value, "ttl": ttl},
-            ))
+        for peer in closest[: self.dht.K]:
+            await self._send_to_peer(
+                peer,
+                Message(
+                    type=MessageType.STORE,
+                    sender_id=self.node_id,
+                    payload={"key": key, "value": value, "ttl": ttl},
+                ),
+            )
 
         self.dht.store(key, value, ttl)
         return True
@@ -904,7 +900,7 @@ class P2PNode:
 
         closest = self.dht.find_closest_peers(key)
 
-        for peer in closest[:self.dht.ALPHA]:
+        for peer in closest[: self.dht.ALPHA]:
             try:
                 reader, writer = await asyncio.open_connection(peer.ip, peer.port)
 

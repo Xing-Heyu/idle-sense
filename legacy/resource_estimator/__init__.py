@@ -40,7 +40,7 @@ class ResourceEstimate:
             "gpu_count": self.gpu_count,
             "estimated_duration_seconds": self.estimated_duration_seconds,
             "confidence": self.confidence,
-            "based_on_samples": self.based_on_samples
+            "based_on_samples": self.based_on_samples,
         }
 
     def __add__(self, other: ResourceEstimate) -> ResourceEstimate:
@@ -50,9 +50,10 @@ class ResourceEstimate:
             disk_mb=self.disk_mb + other.disk_mb,
             network_mbps=self.network_mbps + other.network_mbps,
             gpu_count=max(self.gpu_count, other.gpu_count),
-            estimated_duration_seconds=self.estimated_duration_seconds + other.estimated_duration_seconds,
+            estimated_duration_seconds=self.estimated_duration_seconds
+            + other.estimated_duration_seconds,
             confidence=min(self.confidence, other.confidence),
-            based_on_samples=self.based_on_samples + other.based_on_samples
+            based_on_samples=self.based_on_samples + other.based_on_samples,
         )
 
     def __mul__(self, factor: float) -> ResourceEstimate:
@@ -64,7 +65,7 @@ class ResourceEstimate:
             gpu_count=self.gpu_count,
             estimated_duration_seconds=self.estimated_duration_seconds * factor,
             confidence=self.confidence,
-            based_on_samples=self.based_on_samples
+            based_on_samples=self.based_on_samples,
         )
 
 
@@ -85,20 +86,14 @@ class TaskMetrics:
 class EstimationStrategy(ABC):
     @abstractmethod
     def estimate(
-        self,
-        task_type: str,
-        input_size: int,
-        historical_data: list[TaskMetrics]
+        self, task_type: str, input_size: int, historical_data: list[TaskMetrics]
     ) -> ResourceEstimate:
         pass
 
 
 class LinearRegressionEstimator(EstimationStrategy):
     def estimate(
-        self,
-        task_type: str,
-        input_size: int,
-        historical_data: list[TaskMetrics]
+        self, task_type: str, input_size: int, historical_data: list[TaskMetrics]
     ) -> ResourceEstimate:
         if not historical_data:
             return ResourceEstimate()
@@ -130,7 +125,7 @@ class LinearRegressionEstimator(EstimationStrategy):
             memory_mb=estimated_memory,
             estimated_duration_seconds=estimated_duration,
             confidence=confidence,
-            based_on_samples=len(data)
+            based_on_samples=len(data),
         )
 
     def _compute_average(self, metrics: list[TaskMetrics]) -> ResourceEstimate:
@@ -143,14 +138,10 @@ class LinearRegressionEstimator(EstimationStrategy):
             disk_mb=statistics.mean(m.actual_disk for m in metrics),
             network_mbps=statistics.mean(m.actual_network for m in metrics),
             estimated_duration_seconds=statistics.mean(m.actual_duration for m in metrics),
-            confidence=0.5
+            confidence=0.5,
         )
 
-    def _linear_regression(
-        self,
-        x: list[float],
-        y: list[float]
-    ) -> tuple[float, float]:
+    def _linear_regression(self, x: list[float], y: list[float]) -> tuple[float, float]:
         n = len(x)
         if n == 0:
             return 0, 0
@@ -175,10 +166,7 @@ class PercentileEstimator(EstimationStrategy):
         self.percentile = percentile
 
     def estimate(
-        self,
-        task_type: str,
-        input_size: int,
-        historical_data: list[TaskMetrics]
+        self, task_type: str, input_size: int, historical_data: list[TaskMetrics]
     ) -> ResourceEstimate:
         if not historical_data:
             return ResourceEstimate()
@@ -188,8 +176,7 @@ class PercentileEstimator(EstimationStrategy):
             return ResourceEstimate()
 
         similar_size = [
-            m for m in success_data
-            if abs(m.input_size - input_size) <= input_size * 0.5
+            m for m in success_data if abs(m.input_size - input_size) <= input_size * 0.5
         ]
 
         data = similar_size if similar_size else success_data
@@ -201,7 +188,7 @@ class PercentileEstimator(EstimationStrategy):
             network_mbps=self._percentile([m.actual_network for m in data]),
             estimated_duration_seconds=self._percentile([m.actual_duration for m in data]),
             confidence=min(1.0, len(data) / 5.0),
-            based_on_samples=len(data)
+            based_on_samples=len(data),
         )
 
     def _percentile(self, values: list[float]) -> float:
@@ -218,18 +205,13 @@ class WeightedAverageEstimator(EstimationStrategy):
         self.decay_factor = decay_factor
 
     def estimate(
-        self,
-        task_type: str,
-        input_size: int,
-        historical_data: list[TaskMetrics]
+        self, task_type: str, input_size: int, historical_data: list[TaskMetrics]
     ) -> ResourceEstimate:
         if not historical_data:
             return ResourceEstimate()
 
         success_data = sorted(
-            [m for m in historical_data if m.success],
-            key=lambda m: m.timestamp,
-            reverse=True
+            [m for m in historical_data if m.success], key=lambda m: m.timestamp, reverse=True
         )
 
         if not success_data:
@@ -238,7 +220,7 @@ class WeightedAverageEstimator(EstimationStrategy):
         weights = []
         for i, m in enumerate(success_data):
             size_weight = 1.0 / (1 + abs(m.input_size - input_size) / max(1, input_size))
-            time_weight = self.decay_factor ** i
+            time_weight = self.decay_factor**i
             weights.append(size_weight * time_weight)
 
         total_weight = sum(weights)
@@ -253,16 +235,12 @@ class WeightedAverageEstimator(EstimationStrategy):
             network_mbps=weighted_avg([m.actual_network for m in success_data]),
             estimated_duration_seconds=weighted_avg([m.actual_duration for m in success_data]),
             confidence=min(1.0, len(success_data) / 10.0),
-            based_on_samples=len(success_data)
+            based_on_samples=len(success_data),
         )
 
 
 class ResourceEstimator:
-    def __init__(
-        self,
-        strategy: EstimationStrategy | None = None,
-        max_history: int = 1000
-    ):
+    def __init__(self, strategy: EstimationStrategy | None = None, max_history: int = 1000):
         self.strategy = strategy or LinearRegressionEstimator()
         self.max_history = max_history
         self._history: dict[str, list[TaskMetrics]] = {}
@@ -280,14 +258,11 @@ class ResourceEstimator:
             self._history[metrics.task_type].append(metrics)
 
             if len(self._history[metrics.task_type]) > self.max_history:
-                self._history[metrics.task_type] = \
-                    self._history[metrics.task_type][-self.max_history:]
+                self._history[metrics.task_type] = self._history[metrics.task_type][
+                    -self.max_history :
+                ]
 
-    def estimate(
-        self,
-        task_type: str,
-        input_size: int = 0
-    ) -> ResourceEstimate:
+    def estimate(self, task_type: str, input_size: int = 0) -> ResourceEstimate:
         with self._lock:
             historical_data = self._history.get(task_type, [])
 
@@ -299,10 +274,7 @@ class ResourceEstimator:
 
             return self.strategy.estimate(task_type, input_size, historical_data)
 
-    def estimate_batch(
-        self,
-        tasks: list[tuple[str, int]]
-    ) -> ResourceEstimate:
+    def estimate_batch(self, tasks: list[tuple[str, int]]) -> ResourceEstimate:
         total = ResourceEstimate()
 
         for task_type, input_size in tasks:
@@ -323,10 +295,16 @@ class ResourceEstimator:
             return {
                 "total_count": len(data),
                 "success_count": len(success_data),
-                "avg_duration": statistics.mean(m.actual_duration for m in success_data) if success_data else 0,
-                "avg_memory": statistics.mean(m.actual_memory for m in success_data) if success_data else 0,
-                "avg_cpu": statistics.mean(m.actual_cpu for m in success_data) if success_data else 0,
-                "success_rate": len(success_data) / len(data) if data else 0
+                "avg_duration": (
+                    statistics.mean(m.actual_duration for m in success_data) if success_data else 0
+                ),
+                "avg_memory": (
+                    statistics.mean(m.actual_memory for m in success_data) if success_data else 0
+                ),
+                "avg_cpu": (
+                    statistics.mean(m.actual_cpu for m in success_data) if success_data else 0
+                ),
+                "success_rate": len(success_data) / len(data) if data else 0,
             }
 
     def clear_history(self, task_type: str | None = None):
@@ -343,26 +321,18 @@ class ResourceProfiler:
         self._active_tasks: dict[str, dict[str, Any]] = {}
         self._lock = threading.RLock()
 
-    def start_task(
-        self,
-        task_id: str,
-        task_type: str,
-        input_size: int = 0
-    ):
+    def start_task(self, task_id: str, task_type: str, input_size: int = 0):
         with self._lock:
             self._active_tasks[task_id] = {
                 "task_type": task_type,
                 "input_size": input_size,
                 "start_time": time.time(),
                 "start_cpu": 0,
-                "start_memory": 0
+                "start_memory": 0,
             }
 
     def end_task(
-        self,
-        task_id: str,
-        success: bool = True,
-        node_id: str | None = None
+        self, task_id: str, success: bool = True, node_id: str | None = None
     ) -> TaskMetrics | None:
         with self._lock:
             task_info = self._active_tasks.pop(task_id, None)
@@ -381,7 +351,7 @@ class ResourceProfiler:
                 actual_network=0,
                 actual_duration=duration,
                 success=success,
-                node_id=node_id
+                node_id=node_id,
             )
 
             self.estimator.record(metrics)

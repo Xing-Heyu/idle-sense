@@ -17,6 +17,7 @@ logger = logging.getLogger(__name__)
 @dataclass
 class RateLimitConfig:
     """限流配置"""
+
     enabled: bool = True
     default_limit: str = "60/minute"
     storage_uri: str = "memory://"
@@ -58,6 +59,7 @@ class RateLimiter:
             @app.exception_handler(RateLimitExceeded)
             async def rate_limit_handler(request: Request, exc: RateLimitExceeded):
                 from slowapi import _rate_limit_exceeded_handler
+
                 response = _rate_limit_exceeded_handler(request, exc)
                 return response
 
@@ -84,11 +86,14 @@ class RateLimiter:
             装饰器函数
         """
         if not self._limiter:
+
             def decorator(func: Callable) -> Callable:
                 @wraps(func)
                 async def wrapper(*args, **kwargs):
                     return await func(*args, **kwargs)
+
                 return wrapper
+
             return decorator
 
         return self._limiter.limit(limit_value)

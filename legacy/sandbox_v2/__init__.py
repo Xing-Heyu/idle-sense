@@ -16,6 +16,7 @@ Usage:
     sandbox = SecureSandbox(level=SandboxLevel.CONTAINER)
     result = await sandbox.execute("print('hello')", timeout=30)
 """
+
 import ast
 import asyncio
 import contextlib
@@ -31,6 +32,7 @@ from typing import Any, Optional
 
 class SandboxLevel(Enum):
     """Sandbox isolation levels."""
+
     BASIC = "basic"
     CONTAINER = "container"
     GVISOR = "gvisor"
@@ -41,6 +43,7 @@ class SandboxLevel(Enum):
 @dataclass
 class SandboxResult:
     """Result of sandbox execution."""
+
     success: bool
     output: str = ""
     result: Any = None
@@ -53,23 +56,58 @@ class SandboxResult:
 @dataclass
 class SandboxConfig:
     """Sandbox configuration."""
+
     timeout: int = 300
     memory_limit_mb: int = 512
     cpu_limit: float = 1.0
     network_disabled: bool = True
     max_output_size: int = 10000
-    allowed_modules: set[str] = field(default_factory=lambda: {
-        "math", "random", "statistics", "time", "datetime",
-        "collections", "itertools", "functools", "operator",
-        "json", "re", "string", "hashlib", "base64",
-        "decimal", "fractions", "typing", "dataclasses",
-    })
-    dangerous_builtins: set[str] = field(default_factory=lambda: {
-        "eval", "exec", "compile", "input", "open", "file",
-        "__import__", "reload", "globals", "locals", "vars",
-        "dir", "help", "exit", "quit", "license", "credits",
-        "breakpoint", "__build_class__", "__debug__",
-    })
+    allowed_modules: set[str] = field(
+        default_factory=lambda: {
+            "math",
+            "random",
+            "statistics",
+            "time",
+            "datetime",
+            "collections",
+            "itertools",
+            "functools",
+            "operator",
+            "json",
+            "re",
+            "string",
+            "hashlib",
+            "base64",
+            "decimal",
+            "fractions",
+            "typing",
+            "dataclasses",
+        }
+    )
+    dangerous_builtins: set[str] = field(
+        default_factory=lambda: {
+            "eval",
+            "exec",
+            "compile",
+            "input",
+            "open",
+            "file",
+            "__import__",
+            "reload",
+            "globals",
+            "locals",
+            "vars",
+            "dir",
+            "help",
+            "exit",
+            "quit",
+            "license",
+            "credits",
+            "breakpoint",
+            "__build_class__",
+            "__debug__",
+        }
+    )
 
 
 class CodeAnalyzer:
@@ -106,16 +144,26 @@ class CodeAnalyzer:
         for node in ast.walk(tree):
             if isinstance(node, ast.Import):
                 for alias in node.names:
-                    if alias.name in ("os", "sys", "subprocess", "socket",
-                                      "threading", "multiprocessing", "shutil"):
+                    if alias.name in (
+                        "os",
+                        "sys",
+                        "subprocess",
+                        "socket",
+                        "threading",
+                        "multiprocessing",
+                        "shutil",
+                    ):
                         warnings.append(f"Dangerous import: {alias.name}")
 
             elif isinstance(node, ast.ImportFrom) and node.module:
-                if node.module.split(".")[0] in ("os", "sys", "subprocess",
-                                                  "socket", "threading"):
+                if node.module.split(".")[0] in ("os", "sys", "subprocess", "socket", "threading"):
                     warnings.append(f"Dangerous import from: {node.module}")
 
-            elif isinstance(node, ast.Call) and isinstance(node.func, ast.Name) and node.func.id in ("eval", "exec", "compile", "open", "__import__"):
+            elif (
+                isinstance(node, ast.Call)
+                and isinstance(node.func, ast.Name)
+                and node.func.id in ("eval", "exec", "compile", "open", "__import__")
+            ):
                 warnings.append(f"Dangerous function call: {node.func.id}")
 
         is_safe = len(warnings) == 0
@@ -153,22 +201,53 @@ class BasicSandbox:
 
         def safe_import(name, globals=None, locals=None, fromlist=(), level=0):
             """Restricted import that only allows safe modules."""
-            base_name = name.split('.')[0]
+            base_name = name.split(".")[0]
             if base_name not in ALLOWED_MODULES:
                 raise ImportError(f"Module '{name}' is not allowed in sandbox")
             return __import__(name, globals, locals, fromlist, level)
 
         safe_builtins = {
-            "abs": abs, "all": all, "any": any, "bool": bool,
-            "chr": chr, "ord": ord, "dict": dict, "enumerate": enumerate,
-            "filter": filter, "float": float, "format": format, "frozenset": frozenset,
-            "hex": hex, "int": int, "isinstance": isinstance, "issubclass": issubclass,
-            "iter": iter, "len": len, "list": list, "map": map, "max": max,
-            "min": min, "next": next, "oct": oct, "pow": pow, "print": print,
-            "range": range, "repr": repr, "reversed": reversed, "round": round,
-            "set": set, "slice": slice, "sorted": sorted, "str": str,
-            "sum": sum, "tuple": tuple, "type": type, "zip": zip,
-            "True": True, "False": False, "None": None,
+            "abs": abs,
+            "all": all,
+            "any": any,
+            "bool": bool,
+            "chr": chr,
+            "ord": ord,
+            "dict": dict,
+            "enumerate": enumerate,
+            "filter": filter,
+            "float": float,
+            "format": format,
+            "frozenset": frozenset,
+            "hex": hex,
+            "int": int,
+            "isinstance": isinstance,
+            "issubclass": issubclass,
+            "iter": iter,
+            "len": len,
+            "list": list,
+            "map": map,
+            "max": max,
+            "min": min,
+            "next": next,
+            "oct": oct,
+            "pow": pow,
+            "print": print,
+            "range": range,
+            "repr": repr,
+            "reversed": reversed,
+            "round": round,
+            "set": set,
+            "slice": slice,
+            "sorted": sorted,
+            "str": str,
+            "sum": sum,
+            "tuple": tuple,
+            "type": type,
+            "zip": zip,
+            "True": True,
+            "False": False,
+            "None": None,
             "__import__": safe_import,
         }
 
@@ -198,8 +277,7 @@ class BasicSandbox:
         is_safe, warnings = CodeAnalyzer.analyze(code)
         if not is_safe:
             return SandboxResult(
-                success=False,
-                error=f"Security check failed: {'; '.join(warnings)}"
+                success=False, error=f"Security check failed: {'; '.join(warnings)}"
             )
 
         if self.config.memory_limit_mb < 512:
@@ -242,7 +320,7 @@ class BasicSandbox:
             return SandboxResult(
                 success=False,
                 error=f"Execution timed out after {timeout} seconds",
-                execution_time=time.time() - start_time
+                execution_time=time.time() - start_time,
             )
 
         if execution_error:
@@ -251,20 +329,20 @@ class BasicSandbox:
                     success=False,
                     output="\n".join(output_buffer),
                     error="Memory limit exceeded",
-                    execution_time=time.time() - start_time
+                    execution_time=time.time() - start_time,
                 )
             return SandboxResult(
                 success=False,
                 output="\n".join(output_buffer),
                 error=f"{type(execution_error).__name__}: {str(execution_error)}",
-                execution_time=time.time() - start_time
+                execution_time=time.time() - start_time,
             )
 
         return SandboxResult(
             success=True,
             output="\n".join(output_buffer),
             result=execution_result,
-            execution_time=time.time() - start_time
+            execution_time=time.time() - start_time,
         )
 
     def _execute_with_subprocess(self, code: str, timeout: int, start_time: float) -> SandboxResult:
@@ -274,7 +352,7 @@ class BasicSandbox:
         if platform.system() == "Windows":
             return self._execute_with_subprocess_windows(code, timeout, start_time)
 
-        wrapper_code = f'''
+        wrapper_code = f"""
 import sys
 import json
 import resource
@@ -312,7 +390,7 @@ except MemoryError:
     print(json.dumps({{"success": False, "error": "Memory limit exceeded"}}))
 except Exception as e:
     print(json.dumps({{"success": False, "error": f"{{type(e).__name__}}: {{str(e)}}"}}))
-'''
+"""
 
         try:
             result = subprocess.run(
@@ -321,19 +399,20 @@ except Exception as e:
                 text=True,
                 timeout=timeout,
                 env={},
-                cwd=tempfile.gettempdir()
+                cwd=tempfile.gettempdir(),
             )
 
             import json as json_module
+
             try:
-                output_data = json_module.loads(result.stdout.strip().split('\n')[-1])
+                output_data = json_module.loads(result.stdout.strip().split("\n")[-1])
                 if output_data.get("success"):
                     return SandboxResult(
                         success=True,
                         output=result.stdout,
                         result=output_data.get("result"),
                         execution_time=time.time() - start_time,
-                        exit_code=0
+                        exit_code=0,
                     )
                 else:
                     return SandboxResult(
@@ -341,7 +420,7 @@ except Exception as e:
                         output=result.stdout,
                         error=output_data.get("error", "Unknown error"),
                         execution_time=time.time() - start_time,
-                        exit_code=result.returncode
+                        exit_code=result.returncode,
                     )
             except (json_module.JSONDecodeError, IndexError):
                 if result.returncode == 0:
@@ -349,32 +428,34 @@ except Exception as e:
                         success=True,
                         output=result.stdout,
                         execution_time=time.time() - start_time,
-                        exit_code=0
+                        exit_code=0,
                     )
                 return SandboxResult(
                     success=False,
                     output=result.stdout,
                     error=result.stderr or "Execution failed",
                     execution_time=time.time() - start_time,
-                    exit_code=result.returncode
+                    exit_code=result.returncode,
                 )
 
         except subprocess.TimeoutExpired:
             return SandboxResult(
                 success=False,
                 error=f"Execution timed out after {timeout} seconds",
-                execution_time=time.time() - start_time
+                execution_time=time.time() - start_time,
             )
         except Exception as e:
             return SandboxResult(
                 success=False,
                 error=f"Execution error: {str(e)}",
-                execution_time=time.time() - start_time
+                execution_time=time.time() - start_time,
             )
 
-    def _execute_with_subprocess_windows(self, code: str, timeout: int, start_time: float) -> SandboxResult:
+    def _execute_with_subprocess_windows(
+        self, code: str, timeout: int, start_time: float
+    ) -> SandboxResult:
         """Execute code in subprocess on Windows with memory monitoring."""
-        wrapper_code = f'''
+        wrapper_code = f"""
 import sys
 import json
 import tracemalloc
@@ -408,7 +489,7 @@ except MemoryError:
     print(json.dumps({{"success": False, "error": "Memory limit exceeded"}}))
 except Exception as e:
     print(json.dumps({{"success": False, "error": f"{{type(e).__name__}}: {{str(e)}}"}}))
-'''
+"""
 
         try:
             process = subprocess.Popen(
@@ -417,7 +498,7 @@ except Exception as e:
                 stderr=subprocess.PIPE,
                 text=True,
                 env={},
-                cwd=tempfile.gettempdir()
+                cwd=tempfile.gettempdir(),
             )
 
             memory_exceeded = False
@@ -425,6 +506,7 @@ except Exception as e:
 
             try:
                 import psutil
+
                 psutil_process = psutil.Process(process.pid)
 
                 while process.poll() is None:
@@ -447,12 +529,13 @@ except Exception as e:
                 return SandboxResult(
                     success=False,
                     error=f"Memory limit exceeded ({self.config.memory_limit_mb} MB)",
-                    execution_time=time.time() - start_time
+                    execution_time=time.time() - start_time,
                 )
 
             import json as json_module
+
             try:
-                output_data = json_module.loads(stdout.strip().split('\n')[-1])
+                output_data = json_module.loads(stdout.strip().split("\n")[-1])
                 if output_data.get("success"):
                     return SandboxResult(
                         success=True,
@@ -460,7 +543,7 @@ except Exception as e:
                         result=output_data.get("result"),
                         memory_used_mb=output_data.get("memory_mb", 0),
                         execution_time=time.time() - start_time,
-                        exit_code=0
+                        exit_code=0,
                     )
                 else:
                     return SandboxResult(
@@ -468,7 +551,7 @@ except Exception as e:
                         output=stdout,
                         error=output_data.get("error", "Unknown error"),
                         execution_time=time.time() - start_time,
-                        exit_code=process.returncode
+                        exit_code=process.returncode,
                     )
             except (json_module.JSONDecodeError, IndexError):
                 if process.returncode == 0:
@@ -476,14 +559,14 @@ except Exception as e:
                         success=True,
                         output=stdout,
                         execution_time=time.time() - start_time,
-                        exit_code=0
+                        exit_code=0,
                     )
                 return SandboxResult(
                     success=False,
                     output=stdout,
                     error=stderr or "Execution failed",
                     execution_time=time.time() - start_time,
-                    exit_code=process.returncode
+                    exit_code=process.returncode,
                 )
 
         except subprocess.TimeoutExpired:
@@ -492,13 +575,13 @@ except Exception as e:
             return SandboxResult(
                 success=False,
                 error=f"Execution timed out after {timeout} seconds",
-                execution_time=time.time() - start_time
+                execution_time=time.time() - start_time,
             )
         except Exception as e:
             return SandboxResult(
                 success=False,
                 error=f"Execution error: {str(e)}",
-                execution_time=time.time() - start_time
+                execution_time=time.time() - start_time,
             )
 
 
@@ -524,6 +607,7 @@ class DockerSandbox:
         if self._client is None:
             try:
                 import docker
+
                 self._client = docker.from_env()
             except ImportError as e:
                 raise ImportError(
@@ -540,8 +624,7 @@ class DockerSandbox:
         is_safe, warnings = CodeAnalyzer.analyze(code)
         if not is_safe:
             return SandboxResult(
-                success=False,
-                error=f"Security check failed: {'; '.join(warnings)}"
+                success=False, error=f"Security check failed: {'; '.join(warnings)}"
             )
 
         try:
@@ -559,29 +642,29 @@ class DockerSandbox:
                 stdout=True,
                 stderr=True,
                 detach=False,
-                timeout=timeout
+                timeout=timeout,
             )
 
             output = container.decode("utf-8") if isinstance(container, bytes) else str(container)
 
             return SandboxResult(
                 success=True,
-                output=output[:self.config.max_output_size],
+                output=output[: self.config.max_output_size],
                 execution_time=time.time() - start_time,
-                exit_code=0
+                exit_code=0,
             )
 
         except subprocess.TimeoutExpired:
             return SandboxResult(
                 success=False,
                 error=f"Execution timed out after {timeout} seconds",
-                execution_time=time.time() - start_time
+                execution_time=time.time() - start_time,
             )
         except Exception as e:
             return SandboxResult(
                 success=False,
                 error=f"Docker error: {str(e)}",
-                execution_time=time.time() - start_time
+                execution_time=time.time() - start_time,
             )
 
 
@@ -639,11 +722,11 @@ class WASMSandbox:
         if self._engine is None:
             try:
                 import wasmtime
+
                 self._engine = wasmtime.Engine()
             except ImportError as e:
                 raise ImportError(
-                    "WASM sandbox requires wasmtime. "
-                    "Install it with: pip install wasmtime"
+                    "WASM sandbox requires wasmtime. " "Install it with: pip install wasmtime"
                 ) from e
         return self._engine
 
@@ -655,7 +738,7 @@ class WASMSandbox:
         1. Use Pyodide to compile Python to WASM
         2. Or use a pre-compiled Python WASM runtime
         """
-        wrapper = f'''
+        wrapper = f"""
 import json
 import sys
 
@@ -667,14 +750,11 @@ if 'result' in dir():
     print(json.dumps({{"success": True, "result": str(result)}}))
 else:
     print(json.dumps({{"success": True, "output": "completed"}}))
-'''
-        return wrapper.encode('utf-8')
+"""
+        return wrapper.encode("utf-8")
 
     def execute_wasm(
-        self,
-        wasm_bytes: bytes,
-        function_name: str = "_start",
-        args: Optional[list[Any]] = None
+        self, wasm_bytes: bytes, function_name: str = "_start", args: Optional[list[Any]] = None
     ) -> SandboxResult:
         """Execute a WASM module."""
         start_time = time.time()
@@ -697,7 +777,7 @@ else:
                 return SandboxResult(
                     success=False,
                     error=f"Function '{function_name}' not found in WASM module",
-                    execution_time=time.time() - start_time
+                    execution_time=time.time() - start_time,
                 )
 
             result = func(store, *(args or []))
@@ -706,20 +786,20 @@ else:
                 success=True,
                 output=str(result) if result else "",
                 result=result,
-                execution_time=time.time() - start_time
+                execution_time=time.time() - start_time,
             )
 
         except ImportError:
             return SandboxResult(
                 success=False,
                 error="WASM runtime not available. Install: pip install wasmtime",
-                execution_time=time.time() - start_time
+                execution_time=time.time() - start_time,
             )
         except Exception as e:
             return SandboxResult(
                 success=False,
                 error=f"WASM execution error: {str(e)}",
-                execution_time=time.time() - start_time
+                execution_time=time.time() - start_time,
             )
 
     def execute(self, code: str, timeout: Optional[int] = None) -> SandboxResult:
@@ -735,8 +815,7 @@ else:
         is_safe, warnings = CodeAnalyzer.analyze(code)
         if not is_safe:
             return SandboxResult(
-                success=False,
-                error=f"Security check failed: {'; '.join(warnings)}"
+                success=False, error=f"Security check failed: {'; '.join(warnings)}"
             )
 
         try:
@@ -745,7 +824,7 @@ else:
             import tempfile
 
             with tempfile.NamedTemporaryFile(
-                mode='w', suffix='.py', delete=False, encoding='utf-8'
+                mode="w", suffix=".py", delete=False, encoding="utf-8"
             ) as f:
                 f.write(code)
                 temp_file = f.name
@@ -759,7 +838,7 @@ else:
                     env={
                         "PYTHONPATH": "",
                         "PATH": os.environ.get("PATH", ""),
-                    }
+                    },
                 )
 
                 output = result.stdout
@@ -767,17 +846,17 @@ else:
                 if result.returncode == 0:
                     return SandboxResult(
                         success=True,
-                        output=output[:self.config.max_output_size],
+                        output=output[: self.config.max_output_size],
                         execution_time=time.time() - start_time,
-                        exit_code=0
+                        exit_code=0,
                     )
                 else:
                     return SandboxResult(
                         success=False,
-                        output=output[:self.config.max_output_size],
-                        error=result.stderr[:self.config.max_output_size],
+                        output=output[: self.config.max_output_size],
+                        error=result.stderr[: self.config.max_output_size],
                         execution_time=time.time() - start_time,
-                        exit_code=result.returncode
+                        exit_code=result.returncode,
                     )
 
             finally:
@@ -787,19 +866,20 @@ else:
             return SandboxResult(
                 success=False,
                 error=f"Execution timed out after {timeout} seconds",
-                execution_time=time.time() - start_time
+                execution_time=time.time() - start_time,
             )
         except Exception as e:
             return SandboxResult(
                 success=False,
                 error=f"Execution error: {str(e)}",
-                execution_time=time.time() - start_time
+                execution_time=time.time() - start_time,
             )
 
     def is_available(self) -> bool:
         """Check if WASM runtime is available."""
         try:
             import wasmtime  # noqa: F401
+
             return True
         except ImportError:
             return False
@@ -832,24 +912,20 @@ class FirecrackerSandbox:
         self.config = config or SandboxConfig()
         self._api_url = f"unix://{self.FIRECRACKER_SOCKET}"
 
-    def _create_vm_config(
-        self,
-        vcpu_count: int = 1,
-        mem_size_mb: int = 512
-    ) -> dict[str, Any]:
+    def _create_vm_config(self, vcpu_count: int = 1, mem_size_mb: int = 512) -> dict[str, Any]:
         """Create Firecracker VM configuration."""
         return {
             "vcpu_count": vcpu_count,
             "mem_size_mib": mem_size_mb,
             "smt": False,
-            "track_dirty_pages": False
+            "track_dirty_pages": False,
         }
 
     def _create_boot_source(self) -> dict[str, Any]:
         """Create boot source configuration."""
         return {
             "kernel_image_path": self.KERNEL_PATH,
-            "boot_args": "console=ttyS0 reboot=k panic=1 pci=off"
+            "boot_args": "console=ttyS0 reboot=k panic=1 pci=off",
         }
 
     def _create_drive(self, drive_id: str = "rootfs") -> dict[str, Any]:
@@ -858,16 +934,12 @@ class FirecrackerSandbox:
             "drive_id": drive_id,
             "path_on_host": self.ROOTFS_PATH,
             "is_root_device": True,
-            "is_read_only": False
+            "is_read_only": False,
         }
 
     def _create_network_interface(self) -> dict[str, Any]:
         """Create network interface (disabled by default)."""
-        return {
-            "iface_id": "eth0",
-            "guest_mac": "AA:FC:00:00:00:01",
-            "host_dev_name": "tap0"
-        }
+        return {"iface_id": "eth0", "guest_mac": "AA:FC:00:00:00:01", "host_dev_name": "tap0"}
 
     def execute(self, code: str, timeout: Optional[int] = None) -> SandboxResult:
         """
@@ -882,8 +954,7 @@ class FirecrackerSandbox:
         is_safe, warnings = CodeAnalyzer.analyze(code)
         if not is_safe:
             return SandboxResult(
-                success=False,
-                error=f"Security check failed: {'; '.join(warnings)}"
+                success=False, error=f"Security check failed: {'; '.join(warnings)}"
             )
 
         if not self.is_available():
@@ -894,15 +965,12 @@ class FirecrackerSandbox:
 
             import requests
 
-            subprocess.run(
-                ["rm", "-f", self.FIRECRACKER_SOCKET],
-                capture_output=True
-            )
+            subprocess.run(["rm", "-f", self.FIRECRACKER_SOCKET], capture_output=True)
 
             fc_process = subprocess.Popen(
                 ["firecracker", "--api-sock", self.FIRECRACKER_SOCKET],
                 stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE
+                stderr=subprocess.PIPE,
             )
 
             time.sleep(0.1)
@@ -912,39 +980,29 @@ class FirecrackerSandbox:
 
             vm_config = self._create_vm_config(
                 vcpu_count=max(1, int(self.config.cpu_limit)),
-                mem_size_mb=self.config.memory_limit_mb
+                mem_size_mb=self.config.memory_limit_mb,
             )
 
             try:
-                session.put(
-                    f"{self._api_url}/machine-config",
-                    json=vm_config,
-                    timeout=5
-                )
+                session.put(f"{self._api_url}/machine-config", json=vm_config, timeout=5)
 
                 session.put(
-                    f"{self._api_url}/boot-source",
-                    json=self._create_boot_source(),
-                    timeout=5
+                    f"{self._api_url}/boot-source", json=self._create_boot_source(), timeout=5
                 )
 
-                session.put(
-                    f"{self._api_url}/drives/rootfs",
-                    json=self._create_drive(),
-                    timeout=5
-                )
+                session.put(f"{self._api_url}/drives/rootfs", json=self._create_drive(), timeout=5)
 
                 if not self.config.network_disabled:
                     session.put(
                         f"{self._api_url}/network-interfaces/eth0",
                         json=self._create_network_interface(),
-                        timeout=5
+                        timeout=5,
                     )
 
                 actions_response = session.put(
                     f"{self._api_url}/actions",
                     json={"action_type": "InstanceStart"},
-                    timeout=timeout
+                    timeout=timeout,
                 )
 
                 if actions_response.status_code == 204:
@@ -952,23 +1010,21 @@ class FirecrackerSandbox:
 
                     return SandboxResult(
                         success=True,
-                        output=stdout.decode('utf-8')[:self.config.max_output_size],
+                        output=stdout.decode("utf-8")[: self.config.max_output_size],
                         execution_time=time.time() - start_time,
-                        exit_code=fc_process.returncode
+                        exit_code=fc_process.returncode,
                     )
                 else:
                     return SandboxResult(
                         success=False,
                         error=f"Failed to start VM: {actions_response.text}",
-                        execution_time=time.time() - start_time
+                        execution_time=time.time() - start_time,
                     )
 
             finally:
                 with contextlib.suppress(Exception):
                     session.put(
-                        f"{self._api_url}/actions",
-                        json={"action_type": "InstanceHalt"},
-                        timeout=5
+                        f"{self._api_url}/actions", json={"action_type": "InstanceHalt"}, timeout=5
                     )
 
                 fc_process.terminate()
@@ -978,7 +1034,7 @@ class FirecrackerSandbox:
             return SandboxResult(
                 success=False,
                 error=f"VM execution timed out after {timeout} seconds",
-                execution_time=time.time() - start_time
+                execution_time=time.time() - start_time,
             )
         except FileNotFoundError:
             return self._fallback_execute(code, timeout, start_time)
@@ -986,49 +1042,40 @@ class FirecrackerSandbox:
             return SandboxResult(
                 success=False,
                 error=f"Firecracker error: {str(e)}",
-                execution_time=time.time() - start_time
+                execution_time=time.time() - start_time,
             )
 
-    def _fallback_execute(
-        self,
-        code: str,
-        timeout: int,
-        start_time: float
-    ) -> SandboxResult:
+    def _fallback_execute(self, code: str, timeout: int, start_time: float) -> SandboxResult:
         """Fallback to subprocess execution."""
         import os
         import subprocess
         import tempfile
 
         with tempfile.NamedTemporaryFile(
-            mode='w', suffix='.py', delete=False, encoding='utf-8'
+            mode="w", suffix=".py", delete=False, encoding="utf-8"
         ) as f:
             f.write(code)
             temp_file = f.name
 
         try:
             result = subprocess.run(
-                [sys.executable, temp_file],
-                capture_output=True,
-                text=True,
-                timeout=timeout,
-                env={}
+                [sys.executable, temp_file], capture_output=True, text=True, timeout=timeout, env={}
             )
 
             if result.returncode == 0:
                 return SandboxResult(
                     success=True,
-                    output=result.stdout[:self.config.max_output_size],
+                    output=result.stdout[: self.config.max_output_size],
                     execution_time=time.time() - start_time,
-                    exit_code=0
+                    exit_code=0,
                 )
             else:
                 return SandboxResult(
                     success=False,
-                    output=result.stdout[:self.config.max_output_size],
-                    error=result.stderr[:self.config.max_output_size],
+                    output=result.stdout[: self.config.max_output_size],
+                    error=result.stderr[: self.config.max_output_size],
                     execution_time=time.time() - start_time,
-                    exit_code=result.returncode
+                    exit_code=result.returncode,
                 )
         finally:
             os.unlink(temp_file)
@@ -1036,10 +1083,7 @@ class FirecrackerSandbox:
     def is_available(self) -> bool:
         """Check if Firecracker is available."""
         try:
-            result = subprocess.run(
-                ["which", "firecracker"],
-                capture_output=True
-            )
+            result = subprocess.run(["which", "firecracker"], capture_output=True)
             return result.returncode == 0
         except Exception:
             return False
@@ -1068,6 +1112,7 @@ class ResourceMonitor:
 
         try:
             import psutil
+
             process = psutil.Process(self.pid)
             self._start_cpu = process.cpu_times()
             self._start_memory = process.memory_info()
@@ -1089,6 +1134,7 @@ class ResourceMonitor:
 
         try:
             import psutil
+
             process = psutil.Process(self.pid)
 
             end_cpu = process.cpu_times()
@@ -1099,9 +1145,7 @@ class ResourceMonitor:
                 result["cpu_time_system"] = end_cpu.system - self._start_cpu.system
 
             if self._start_memory:
-                result["memory_used_mb"] = (
-                    end_memory.rss - self._start_memory.rss
-                ) / (1024 * 1024)
+                result["memory_used_mb"] = (end_memory.rss - self._start_memory.rss) / (1024 * 1024)
 
             result["memory_peak_mb"] = end_memory.rss / (1024 * 1024)
 
@@ -1124,9 +1168,7 @@ class SecureSandbox:
     """
 
     def __init__(
-        self,
-        level: SandboxLevel = SandboxLevel.BASIC,
-        config: Optional[SandboxConfig] = None
+        self, level: SandboxLevel = SandboxLevel.BASIC, config: Optional[SandboxConfig] = None
     ):
         self.level = level
         self.config = config or SandboxConfig()
@@ -1147,12 +1189,7 @@ class SecureSandbox:
         else:
             raise ValueError(f"Unsupported sandbox level: {self.level}")
 
-    def execute(
-        self,
-        code: str,
-        timeout: Optional[int] = None,
-        **kwargs
-    ) -> SandboxResult:
+    def execute(self, code: str, timeout: Optional[int] = None, **kwargs) -> SandboxResult:
         """
         Execute code in sandbox.
 
@@ -1167,17 +1204,11 @@ class SecureSandbox:
         return self._impl.execute(code, timeout)
 
     async def execute_async(
-        self,
-        code: str,
-        timeout: Optional[int] = None,
-        **kwargs
+        self, code: str, timeout: Optional[int] = None, **kwargs
     ) -> SandboxResult:
         """Async version of execute."""
         loop = asyncio.get_event_loop()
-        return await loop.run_in_executor(
-            None,
-            lambda: self.execute(code, timeout, **kwargs)
-        )
+        return await loop.run_in_executor(None, lambda: self.execute(code, timeout, **kwargs))
 
     @classmethod
     def auto_select(cls, config: Optional[SandboxConfig] = None) -> "SecureSandbox":

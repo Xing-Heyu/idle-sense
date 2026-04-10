@@ -16,8 +16,9 @@ class LocalOperationAuthorization:
         self.log_dir = Path(log_dir)
         self.log_dir.mkdir(exist_ok=True)
 
-    def request_folder_creation_authorization(self, user_id: str, username: str,
-                                            target_paths: dict[str, str]) -> dict[str, Any]:
+    def request_folder_creation_authorization(
+        self, user_id: str, username: str, target_paths: dict[str, str]
+    ) -> dict[str, Any]:
         """
         请求文件夹创建授权
 
@@ -39,7 +40,7 @@ class LocalOperationAuthorization:
             "operation_type": "文件夹创建授权",
             "target_paths": target_paths,
             "request_time": datetime.now().isoformat(),
-            "status": "pending"
+            "status": "pending",
         }
         self._log_operation(request_log)
 
@@ -47,15 +48,12 @@ class LocalOperationAuthorization:
         return {
             "requires_authorization": True,
             "authorization_prompt": authorization_prompt,
-            "operation_details": {
-                "type": "文件夹创建",
-                "paths": target_paths,
-                "user_id": user_id
-            }
+            "operation_details": {"type": "文件夹创建", "paths": target_paths, "user_id": user_id},
         }
 
-    def confirm_authorization(self, user_id: str, operation_details: dict[str, Any],
-                            user_agreed: bool) -> dict[str, Any]:
+    def confirm_authorization(
+        self, user_id: str, operation_details: dict[str, Any], user_agreed: bool
+    ) -> dict[str, Any]:
         """
         确认授权结果
 
@@ -74,7 +72,7 @@ class LocalOperationAuthorization:
             "target_paths": operation_details.get("paths", {}),
             "confirmation_time": datetime.now().isoformat(),
             "user_agreed": user_agreed,
-            "status": "confirmed" if user_agreed else "rejected"
+            "status": "confirmed" if user_agreed else "rejected",
         }
 
         self._log_operation(confirmation_log)
@@ -83,13 +81,13 @@ class LocalOperationAuthorization:
             return {
                 "authorized": False,
                 "message": "用户拒绝授权，操作已终止",
-                "log_entry": confirmation_log
+                "log_entry": confirmation_log,
             }
 
         return {
             "authorized": True,
             "message": "用户已确认授权，可以执行本地操作",
-            "log_entry": confirmation_log
+            "log_entry": confirmation_log,
         }
 
     def _build_authorization_prompt(self, target_paths: dict[str, str]) -> dict[str, str]:
@@ -126,7 +124,7 @@ class LocalOperationAuthorization:
 2. 用户授权后，系统仅执行用户明确触发的单次操作，不会在后台进行任何未告知的本地文件操作，不会收集、上传本地文件中的任何数据。
 3. 因用户授权操作导致的本地文件目录变更、数据覆盖、设备存储异常等问题，均由用户自行承担责任；本软件开发方仅提供功能实现，不对操作结果及后续风险负责。
 4. 如用户发现软件存在未授权本地操作行为，可立即停止使用并反馈，开发方将第一时间核查处理。
-"""
+""",
         }
 
     def _log_operation(self, log_entry: dict[str, Any]):
@@ -136,21 +134,24 @@ class LocalOperationAuthorization:
 
             # 如果文件不存在，创建并写入header
             if not log_file.exists():
-                with open(log_file, 'w', encoding='utf-8') as f:
+                with open(log_file, "w", encoding="utf-8") as f:
                     f.write("# 本地操作授权日志\n")
                     f.write("# 格式: JSONL (每行一个JSON对象)\n")
                     f.write("# 记录所有本地文件操作授权请求和确认\n\n")
 
             # 追加日志条目
-            with open(log_file, 'a', encoding='utf-8') as f:
-                f.write(json.dumps(log_entry, ensure_ascii=False) + '\n')
+            with open(log_file, "a", encoding="utf-8") as f:
+                f.write(json.dumps(log_entry, ensure_ascii=False) + "\n")
 
         except Exception as e:
             print(f"警告: 无法写入操作日志: {e}")
 
-    def get_operation_logs(self, user_id: Optional[str] = None,
-                          start_time: Optional[str] = None,
-                          end_time: Optional[str] = None) -> list:
+    def get_operation_logs(
+        self,
+        user_id: Optional[str] = None,
+        start_time: Optional[str] = None,
+        end_time: Optional[str] = None,
+    ) -> list:
         """获取操作日志"""
         try:
             log_file = self.log_dir / "local_operations.log"
@@ -158,23 +159,23 @@ class LocalOperationAuthorization:
                 return []
 
             logs = []
-            with open(log_file, encoding='utf-8') as f:
+            with open(log_file, encoding="utf-8") as f:
                 for line in f:
                     line = line.strip()
-                    if not line or line.startswith('#'):
+                    if not line or line.startswith("#"):
                         continue
 
                     try:
                         log_entry = json.loads(line)
 
                         # 过滤条件
-                        if user_id and log_entry.get('user_id') != user_id:
+                        if user_id and log_entry.get("user_id") != user_id:
                             continue
 
-                        if start_time and log_entry.get('request_time', '') < start_time:
+                        if start_time and log_entry.get("request_time", "") < start_time:
                             continue
 
-                        if end_time and log_entry.get('request_time', '') > end_time:
+                        if end_time and log_entry.get("request_time", "") > end_time:
                             continue
 
                         logs.append(log_entry)

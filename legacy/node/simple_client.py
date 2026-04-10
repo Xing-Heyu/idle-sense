@@ -12,8 +12,9 @@ if SILENT_MODE:
     import atexit
     import os
     import sys
-    stdout_file = open(os.devnull, 'w')  # noqa: SIM115
-    stderr_file = open(os.devnull, 'w')  # noqa: SIM115
+
+    stdout_file = open(os.devnull, "w")  # noqa: SIM115
+    stderr_file = open(os.devnull, "w")  # noqa: SIM115
     sys.stdout = stdout_file
     sys.stderr = stderr_file
 
@@ -23,13 +24,13 @@ if SILENT_MODE:
             stderr_file.close()
         except Exception:
             pass
+
     atexit.register(_close_files)
-    if sys.platform == 'win32':
+    if sys.platform == "win32":
         try:
             import ctypes
-            ctypes.windll.user32.ShowWindow(
-                ctypes.windll.kernel32.GetConsoleWindow(), 0
-            )
+
+            ctypes.windll.user32.ShowWindow(ctypes.windll.kernel32.GetConsoleWindow(), 0)
         except (AttributeError, OSError):
             pass
 
@@ -49,9 +50,11 @@ def log(msg):
     if not SILENT_MODE:
         print(msg)
 
+
 # 尝试导入psutil，如果没有就使用简化版本
 try:
     import psutil
+
     PSUTIL_AVAILABLE = True
 except ImportError:
     log("提示: psutil未安装，将使用简化系统检测")
@@ -65,11 +68,12 @@ HEARTBEAT_INTERVAL = 20
 TASK_TIMEOUT = 300
 MAX_RETRIES = 3
 
+
 class NodeClient:
     """全兼容节点客户端 - 支持所有电脑类型"""
 
     def __init__(self, server_url: str = SERVER_URL):
-        self.server_url = server_url.rstrip('/')
+        self.server_url = server_url.rstrip("/")
         self.node_id = self._generate_node_id()
         self.is_registered = False
         self.last_heartbeat = 0
@@ -90,17 +94,20 @@ class NodeClient:
 
         log(f"[初始化] 节点ID: {self.node_id}")
         log(f"[初始化] 设备类型: {self.device_type}")
-        log(f"[初始化] 容量配置: CPU={self.capacity['cpu']}核, "
-              f"内存={self.capacity['memory']}MB, 磁盘={self.capacity['disk']}MB")
+        log(
+            f"[初始化] 容量配置: CPU={self.capacity['cpu']}核, "
+            f"内存={self.capacity['memory']}MB, 磁盘={self.capacity['disk']}MB"
+        )
 
-        if not SILENT_MODE and sys.platform == 'win32':
+        if not SILENT_MODE and sys.platform == "win32":
             try:
                 import ctypes
+
                 ctypes.windll.user32.MessageBoxW(
                     0,
                     f"闲置计算节点已启动\n节点ID: {self.node_id}\n设备类型: {self.device_type}",
                     "闲置计算加速器 - 通用版",
-                    0x00000040
+                    0x00000040,
                 )
             except (AttributeError, OSError):
                 pass
@@ -108,10 +115,10 @@ class NodeClient:
     def _generate_node_id(self) -> str:
         import os
 
-    # 用户目录，永远可写
+        # 用户目录，永远可写
         id_file = os.path.join(os.path.expanduser("~"), ".idle_sense_node_id")
 
-    # 如果已经有保存的ID，直接使用
+        # 如果已经有保存的ID，直接使用
         if os.path.exists(id_file):
             try:
                 with open(id_file) as f:
@@ -122,7 +129,7 @@ class NodeClient:
             except OSError:
                 pass
 
-    # 第一次运行，生成新ID并保存
+        # 第一次运行，生成新ID并保存
         hostname = socket.gethostname()
         timestamp = int(time.time())
         random_suffix = os.urandom(4).hex()
@@ -131,7 +138,7 @@ class NodeClient:
 
         # 保存到用户目录
         try:
-            with open(id_file, 'w') as f:
+            with open(id_file, "w") as f:
                 f.write(node_id)
             log(f"[节点ID] 生成并保存新ID: {node_id}")
         except Exception as e:
@@ -160,26 +167,10 @@ class NodeClient:
 
     def _get_capacity_by_device_type(self) -> dict[str, float]:
         capacities = {
-            "gaming_laptop": {
-                "cpu": 4.0,
-                "memory": 8192,
-                "disk": 30000
-            },
-            "ultrabook": {
-                "cpu": 2.0,
-                "memory": 4096,
-                "disk": 10000
-            },
-            "desktop": {
-                "cpu": 6.0,
-                "memory": 12288,
-                "disk": 50000
-            },
-            "unknown": {
-                "cpu": 2.0,
-                "memory": 2048,
-                "disk": 10000
-            }
+            "gaming_laptop": {"cpu": 4.0, "memory": 8192, "disk": 30000},
+            "ultrabook": {"cpu": 2.0, "memory": 4096, "disk": 10000},
+            "desktop": {"cpu": 6.0, "memory": 12288, "disk": 50000},
+            "unknown": {"cpu": 2.0, "memory": 2048, "disk": 10000},
         }
         return capacities.get(self.device_type, capacities["unknown"])
 
@@ -189,20 +180,22 @@ class NodeClient:
             "platform": platform.platform(),
             "python_version": sys.version.split()[0],
             "device_type": self.device_type,
-            "capacity": self.capacity.copy()
+            "capacity": self.capacity.copy(),
         }
 
         if PSUTIL_AVAILABLE:
             try:
                 cpu_percent = psutil.cpu_percent(interval=0.5)
                 memory = psutil.virtual_memory()
-                system_info.update({
-                    "cpu_percent": cpu_percent,
-                    "memory_percent": memory.percent,
-                    "cpu_cores": psutil.cpu_count(logical=True),
-                    "memory_total_gb": memory.total / (1024**3),
-                    "memory_available_gb": memory.available / (1024**3)
-                })
+                system_info.update(
+                    {
+                        "cpu_percent": cpu_percent,
+                        "memory_percent": memory.percent,
+                        "cpu_cores": psutil.cpu_count(logical=True),
+                        "memory_total_gb": memory.total / (1024**3),
+                        "memory_available_gb": memory.available / (1024**3),
+                    }
+                )
             except (AttributeError, OSError):
                 pass
 
@@ -217,27 +210,27 @@ class NodeClient:
                 cpu_safe_margin = 0.3
                 memory_safe_margin = 0.4
 
-                cpu_available = max(0.5, self.capacity["cpu"] * (1 - cpu_percent/100 - cpu_safe_margin))
-                memory_available = int(self.capacity["memory"] * (1 - memory.percent/100 - memory_safe_margin))
+                cpu_available = max(
+                    0.5, self.capacity["cpu"] * (1 - cpu_percent / 100 - cpu_safe_margin)
+                )
+                memory_available = int(
+                    self.capacity["memory"] * (1 - memory.percent / 100 - memory_safe_margin)
+                )
 
                 available = {
                     "cpu": cpu_available,
                     "memory": max(512, memory_available),
-                    "disk": self.capacity["disk"] * 0.5
+                    "disk": self.capacity["disk"] * 0.5,
                 }
             else:
                 available = {
                     "cpu": self.capacity["cpu"] * 0.3,
                     "memory": int(self.capacity["memory"] * 0.3),
-                    "disk": self.capacity["disk"] * 0.3
+                    "disk": self.capacity["disk"] * 0.3,
                 }
             return available
         except Exception:
-            return {
-                "cpu": 0.5,
-                "memory": 512,
-                "disk": 1000
-            }
+            return {"cpu": 0.5, "memory": 512, "disk": 1000}
 
     def _check_idle(self) -> tuple[bool, dict[str, Any]]:
         try:
@@ -248,25 +241,16 @@ class NodeClient:
                     "user_idle_time_sec": 300,
                     "is_screen_locked": False,
                     "is_idle": True,
-                    "reason": "no_psutil_assume_idle"
+                    "reason": "no_psutil_assume_idle",
                 }
 
             cpu_percent = psutil.cpu_percent(interval=0.5)
             memory = psutil.virtual_memory()
 
             idle_thresholds = {
-                "gaming_laptop": {
-                    "cpu_threshold": 75.0,
-                    "memory_threshold": 85.0
-                },
-                "ultrabook": {
-                    "cpu_threshold": 70.0,
-                    "memory_threshold": 80.0
-                },
-                "desktop": {
-                    "cpu_threshold": 80.0,
-                    "memory_threshold": 90.0
-                }
+                "gaming_laptop": {"cpu_threshold": 75.0, "memory_threshold": 85.0},
+                "ultrabook": {"cpu_threshold": 70.0, "memory_threshold": 80.0},
+                "desktop": {"cpu_threshold": 80.0, "memory_threshold": 90.0},
             }
 
             thresholds = idle_thresholds.get(self.device_type, idle_thresholds["desktop"])
@@ -293,14 +277,20 @@ class NodeClient:
                 "user_idle_time_sec": 300,
                 "is_screen_locked": False,
                 "is_idle": is_system_idle,
-                "reason": "idle" if is_system_idle else f"busy_cpu{cpu_percent}_mem{memory.percent}",
-                "device_type": self.device_type
+                "reason": (
+                    "idle" if is_system_idle else f"busy_cpu{cpu_percent}_mem{memory.percent}"
+                ),
+                "device_type": self.device_type,
             }
 
             if is_system_idle:
-                log(f"[状态] 设备空闲 - {self.device_type}: CPU{cpu_percent}%, 内存{memory.percent}%")
+                log(
+                    f"[状态] 设备空闲 - {self.device_type}: CPU{cpu_percent}%, 内存{memory.percent}%"
+                )
             else:
-                log(f"[状态] 设备忙碌 - {self.device_type}: CPU{cpu_percent}%, 内存{memory.percent}%")
+                log(
+                    f"[状态] 设备忙碌 - {self.device_type}: CPU{cpu_percent}%, 内存{memory.percent}%"
+                )
 
             return is_system_idle, idle_info
         except Exception as e:
@@ -312,7 +302,7 @@ class NodeClient:
                 "is_screen_locked": False,
                 "is_idle": True,
                 "reason": f"error_fallback: {str(e)[:30]}",
-                "device_type": self.device_type
+                "device_type": self.device_type,
             }
 
     def register_node(self) -> bool:
@@ -324,14 +314,12 @@ class NodeClient:
                 "tags": {
                     "client_version": "3.0-compatible",
                     "psutil_available": PSUTIL_AVAILABLE,
-                    "platform": platform.system()
-                }
+                    "platform": platform.system(),
+                },
             }
 
             response = requests.post(
-                f"{self.server_url}/api/nodes/register",
-                json=registration_data,
-                timeout=10
+                f"{self.server_url}/api/nodes/register", json=registration_data, timeout=10
             )
 
             if response.status_code == 200:
@@ -355,17 +343,17 @@ class NodeClient:
                 "device_type": self.device_type,
                 "current_load": {
                     "cpu_usage": idle_info.get("cpu_percent", 0),
-                    "memory_usage": idle_info.get("memory_percent", 0)
+                    "memory_usage": idle_info.get("memory_percent", 0),
                 },
                 "is_idle": is_idle_state,
                 "available_resources": available_resources,
-                "idle_info": idle_info
+                "idle_info": idle_info,
             }
 
             response = requests.post(
                 f"{self.server_url}/api/nodes/{self.node_id}/heartbeat",
                 json=heartbeat_data,
-                timeout=10
+                timeout=10,
             )
 
             if response.status_code == 200:
@@ -404,12 +392,13 @@ class NodeClient:
 
         try:
             from src.infrastructure.sandbox.security import CodeValidator
+
             validator = CodeValidator()
             is_valid, errors = validator.validate(code)
             if not is_valid:
                 return f"代码安全检查失败: {'; '.join(errors)}"
 
-        # ===== 自动包装用户代码 =====
+            # ===== 自动包装用户代码 =====
             wrapper = f"""
 # ===== 系统环境初始化 =====
 import json, time
@@ -456,7 +445,7 @@ __result__ = f"[{{__node_id__}}] {{__result__}}"
             response = requests.get(
                 f"{self.server_url}/get_task",
                 params={"node_id": self.node_id, "device_type": self.device_type},
-                timeout=10
+                timeout=10,
             )
             if response.status_code == 200:
                 return response.json()
@@ -471,12 +460,10 @@ __result__ = f"[{{__node_id__}}] {{__result__}}"
                 "task_id": task_id,  # ← 确保这里有 task_id
                 "result": result,
                 "node_id": self.node_id,
-                "device_type": self.device_type
+                "device_type": self.device_type,
             }
             response = requests.post(
-                f"{self.server_url}/submit_result",
-                json=result_data,
-                timeout=10
+                f"{self.server_url}/submit_result", json=result_data, timeout=10
             )
             return response.status_code == 200
         except Exception as e:
@@ -508,7 +495,7 @@ __result__ = f"[{{__node_id__}}] {{__result__}}"
         try:
             while self.running:
                 try:
-                    current_time = datetime.now().strftime('%H:%M:%S')
+                    current_time = datetime.now().strftime("%H:%M:%S")
                     is_idle_state, idle_info = self._check_idle()
 
                     if is_idle_state:
@@ -543,11 +530,15 @@ __result__ = f"[{{__node_id__}}] {{__result__}}"
                     else:
                         cpu_percent = idle_info.get("cpu_percent", 0)
                         memory_percent = idle_info.get("memory_percent", 0)
-                        log(f"[{current_time}] 系统忙碌 - CPU: {cpu_percent}%, 内存: {memory_percent}%")
+                        log(
+                            f"[{current_time}] 系统忙碌 - CPU: {cpu_percent}%, 内存: {memory_percent}%"
+                        )
 
                     if self.task_count > 0 and self.task_count % 3 == 0:
                         uptime = time.time() - self.start_time
-                        log(f"\n[统计] 任务: {self.task_count}, 错误: {self.error_count}, 运行: {uptime:.0f}秒, 计算: {self.total_compute_time:.0f}秒")
+                        log(
+                            f"\n[统计] 任务: {self.task_count}, 错误: {self.error_count}, 运行: {uptime:.0f}秒, 计算: {self.total_compute_time:.0f}秒"
+                        )
 
                     log("-" * 40)
 
@@ -562,7 +553,7 @@ __result__ = f"[{{__node_id__}}] {{__result__}}"
                     break
                 except Exception as e:
                     self.error_count += 1
-                    error_time = datetime.now().strftime('%H:%M:%S')
+                    error_time = datetime.now().strftime("%H:%M:%S")
                     log(f"[{error_time}] 意外错误: {e}")
                     time.sleep(min(30, CHECK_INTERVAL))
         finally:
@@ -581,9 +572,11 @@ __result__ = f"[{{__node_id__}}] {{__result__}}"
             log(f"  运行时间: {time.time() - self.start_time:.0f}秒")
             log("=" * 60)
 
+
 def main():
     client = NodeClient()
     client.run()
+
 
 if __name__ == "__main__":
     main()

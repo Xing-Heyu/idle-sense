@@ -3,6 +3,7 @@ Security Audit Module.
 
 Provides comprehensive security auditing and logging capabilities.
 """
+
 import hashlib
 import json
 import logging
@@ -19,6 +20,7 @@ logger = logging.getLogger(__name__)
 
 class AuditEventType(str, Enum):
     """Audit event types."""
+
     AUTH_LOGIN = "auth_login"
     AUTH_LOGOUT = "auth_logout"
     AUTH_FAILURE = "auth_failure"
@@ -45,6 +47,7 @@ class AuditEventType(str, Enum):
 
 class AuditSeverity(str, Enum):
     """Audit severity levels."""
+
     INFO = "info"
     WARNING = "warning"
     ERROR = "error"
@@ -54,6 +57,7 @@ class AuditSeverity(str, Enum):
 @dataclass
 class AuditEvent:
     """An audit event record."""
+
     event_type: AuditEventType
     severity: AuditSeverity
     message: str
@@ -108,7 +112,7 @@ class AuditLogger:
         log_dir: str = "logs/audit",
         max_file_size: int = 10 * 1024 * 1024,
         retention_days: int = 90,
-        enable_console: bool = True
+        enable_console: bool = True,
     ):
         self.log_dir = Path(log_dir)
         self.log_dir.mkdir(parents=True, exist_ok=True)
@@ -131,7 +135,7 @@ class AuditLogger:
             self._events.append(event)
 
             if len(self._events) > self._max_events:
-                self._events = self._events[-self._max_events:]
+                self._events = self._events[-self._max_events :]
 
             self._write_event(event)
 
@@ -180,7 +184,7 @@ class AuditLogger:
         severity: Optional[AuditSeverity] = None,
         start_time: Optional[float] = None,
         end_time: Optional[float] = None,
-        limit: int = 100
+        limit: int = 100,
     ) -> list[AuditEvent]:
         """Search audit events."""
         results = []
@@ -229,18 +233,10 @@ class AuditLogger:
 
 
 def audit_log(
-    event_type: AuditEventType,
-    message: str,
-    severity: AuditSeverity = AuditSeverity.INFO,
-    **kwargs
+    event_type: AuditEventType, message: str, severity: AuditSeverity = AuditSeverity.INFO, **kwargs
 ) -> None:
     """Convenience function to log an audit event."""
-    event = AuditEvent(
-        event_type=event_type,
-        severity=severity,
-        message=message,
-        **kwargs
-    )
+    event = AuditEvent(event_type=event_type, severity=severity, message=message, **kwargs)
     get_audit_logger().log(event)
 
 

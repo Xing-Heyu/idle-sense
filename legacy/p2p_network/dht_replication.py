@@ -32,6 +32,7 @@ class ReplicationStatus(Enum):
 @dataclass
 class ReplicatedValue:
     """A value stored in the DHT with replication metadata."""
+
     key: str
     value: Any
     original_publisher: str
@@ -86,6 +87,7 @@ class ReplicatedValue:
 @dataclass
 class ReplicationTask:
     """A task for replicating data to other nodes."""
+
     key: str
     value: Any
     target_nodes: list[str]
@@ -125,7 +127,7 @@ class DHTReplicationManager:
         node_id: str,
         replication_factor: int = None,
         send_func: Callable = None,
-        find_nodes_func: Callable = None
+        find_nodes_func: Callable = None,
     ):
         self.node_id = node_id
         self.replication_factor = replication_factor or self.DEFAULT_REPLICATION_FACTOR
@@ -166,13 +168,7 @@ class DHTReplicationManager:
                 await task
         self._tasks = []
 
-    async def store(
-        self,
-        key: str,
-        value: Any,
-        ttl: float = 86400,
-        replicate: bool = True
-    ) -> bool:
+    async def store(self, key: str, value: Any, ttl: float = 86400, replicate: bool = True) -> bool:
         """
         Store a value in the DHT with replication.
 
@@ -243,7 +239,7 @@ class DHTReplicationManager:
         original_publisher: str,
         timestamp: float,
         ttl: float,
-        version: int = 1
+        version: int = 1,
     ) -> bool:
         """
         Receive a replica from another node.
@@ -288,10 +284,7 @@ class DHTReplicationManager:
         try:
             closest_nodes = await self.find_nodes_func(key, count=self.replication_factor)
 
-            target_nodes = [
-                node.node_id for node in closest_nodes
-                if node.node_id != self.node_id
-            ]
+            target_nodes = [node.node_id for node in closest_nodes if node.node_id != self.node_id]
 
             if not target_nodes:
                 return
@@ -299,7 +292,7 @@ class DHTReplicationManager:
             task = ReplicationTask(
                 key=key,
                 value=value,
-                target_nodes=target_nodes[:self.replication_factor],
+                target_nodes=target_nodes[: self.replication_factor],
             )
 
             self.pending_replications[key] = task
@@ -329,7 +322,8 @@ class DHTReplicationManager:
                     continue
 
                 remaining_nodes = [
-                    n for n in task.target_nodes
+                    n
+                    for n in task.target_nodes
                     if n not in task.completed_nodes and n not in task.failed_nodes
                 ]
 
@@ -386,7 +380,9 @@ class DHTReplicationManager:
             keys_to_refresh = []
 
             for key, value in self.local_storage.items():
-                if value.original_publisher == self.node_id and value.needs_refresh(self.REFRESH_INTERVAL):
+                if value.original_publisher == self.node_id and value.needs_refresh(
+                    self.REFRESH_INTERVAL
+                ):
                     keys_to_refresh.append(key)
 
             for key in keys_to_refresh:
@@ -405,10 +401,7 @@ class DHTReplicationManager:
         while self._running:
             await asyncio.sleep(300)
 
-            expired_keys = [
-                key for key, value in self.local_storage.items()
-                if value.is_expired()
-            ]
+            expired_keys = [key for key, value in self.local_storage.items() if value.is_expired()]
 
             for key in expired_keys:
                 del self.local_storage[key]
@@ -426,11 +419,7 @@ class DHTReplicationManager:
 
     def get_storage_info(self) -> list[dict[str, Any]]:
         """Get information about all stored values."""
-        return [
-            value.to_dict()
-            for value in self.local_storage.values()
-            if not value.is_expired()
-        ]
+        return [value.to_dict() for value in self.local_storage.values() if not value.is_expired()]
 
 
 class ConsistentHashRing:
@@ -463,10 +452,7 @@ class ConsistentHashRing:
 
     def remove_node(self, node_id: str):
         """Remove a node from the ring."""
-        keys_to_remove = [
-            k for k, v in self.ring.items()
-            if v == node_id
-        ]
+        keys_to_remove = [k for k, v in self.ring.items() if v == node_id]
 
         for key in keys_to_remove:
             del self.ring[key]

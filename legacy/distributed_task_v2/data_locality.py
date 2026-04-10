@@ -37,6 +37,7 @@ class DataType(IntEnum):
 @dataclass
 class DataLocation:
     """Represents the location of a piece of data."""
+
     data_id: str
     data_type: DataType
     node_id: str
@@ -65,6 +66,7 @@ class DataLocation:
 @dataclass
 class NodeInfo:
     """Information about a node for locality calculations."""
+
     node_id: str
     rack_id: Optional[str] = None
     data_center: Optional[str] = None
@@ -81,6 +83,7 @@ class NodeInfo:
 @dataclass
 class LocalityScore:
     """Score for data locality."""
+
     node_id: str
     level: LocalityLevel
     score: float
@@ -129,12 +132,7 @@ class DataLocalityManager:
             "locality_hit_rate": 0.0,
         }
 
-    def register_node(
-        self,
-        node_id: str,
-        rack_id: str = None,
-        data_center: str = None
-    ):
+    def register_node(self, node_id: str, rack_id: str = None, data_center: str = None):
         """Register a node with its topology information."""
         self.nodes[node_id] = NodeInfo(
             node_id=node_id,
@@ -149,8 +147,7 @@ class DataLocalityManager:
 
         for data_id in list(self.data_locations.keys()):
             self.data_locations[data_id] = [
-                loc for loc in self.data_locations[data_id]
-                if loc.node_id != node_id
+                loc for loc in self.data_locations[data_id] if loc.node_id != node_id
             ]
 
     def register_data(
@@ -159,7 +156,7 @@ class DataLocalityManager:
         node_id: str,
         data_type: DataType = DataType.FILE,
         path: str = None,
-        size_bytes: int = 0
+        size_bytes: int = 0,
     ):
         """Register data location on a node."""
         location = DataLocation(
@@ -179,8 +176,7 @@ class DataLocalityManager:
         """Unregister data location."""
         if node_id:
             self.data_locations[data_id] = [
-                loc for loc in self.data_locations[data_id]
-                if loc.node_id != node_id
+                loc for loc in self.data_locations[data_id] if loc.node_id != node_id
             ]
             if node_id in self.nodes:
                 self.nodes[node_id].available_data.discard(data_id)
@@ -189,15 +185,9 @@ class DataLocalityManager:
 
     def get_data_nodes(self, data_id: str) -> list[str]:
         """Get all nodes that have a piece of data."""
-        return [
-            loc.node_id for loc in self.data_locations.get(data_id, [])
-        ]
+        return [loc.node_id for loc in self.data_locations.get(data_id, [])]
 
-    def calculate_locality_score(
-        self,
-        node_id: str,
-        required_data: list[str]
-    ) -> LocalityScore:
+    def calculate_locality_score(self, node_id: str, required_data: list[str]) -> LocalityScore:
         """
         Calculate locality score for a node given required data.
 
@@ -240,7 +230,10 @@ class DataLocalityManager:
                     break
                 elif node.rack_id and self.nodes.get(loc.node_id, {}).rack_id == node.rack_id:
                     found_rack = True
-                elif node.data_center and self.nodes.get(loc.node_id, {}).data_center == node.data_center:
+                elif (
+                    node.data_center
+                    and self.nodes.get(loc.node_id, {}).data_center == node.data_center
+                ):
                     found_dc = True
 
             if not found_local:
@@ -270,10 +263,10 @@ class DataLocalityManager:
                 level = LocalityLevel.ANY
 
             score = (
-                local_ratio * 1.0 +
-                rack_ratio * 0.5 +
-                dc_ratio * 0.2 +
-                (len(remote_data) / total_data) * 0.0
+                local_ratio * 1.0
+                + rack_ratio * 0.5
+                + dc_ratio * 0.2
+                + (len(remote_data) / total_data) * 0.0
             )
 
         transfer_cost = self._calculate_transfer_cost(
@@ -289,11 +282,7 @@ class DataLocalityManager:
         )
 
     def _calculate_transfer_cost(
-        self,
-        local: list[str],
-        rack_local: list[str],
-        dc_local: list[str],
-        remote: list[str]
+        self, local: list[str], rack_local: list[str], dc_local: list[str], remote: list[str]
     ) -> float:
         """Calculate the network transfer cost."""
         cost = 0.0
@@ -313,9 +302,7 @@ class DataLocalityManager:
         return cost
 
     def select_best_node(
-        self,
-        required_data: list[str],
-        available_nodes: list[str] = None
+        self, required_data: list[str], available_nodes: list[str] = None
     ) -> Optional[str]:
         """
         Select the best node for a task based on data locality.
@@ -355,19 +342,15 @@ class DataLocalityManager:
             self._stats["tasks_remote"] += 1
 
         total = (
-            self._stats["tasks_local"] +
-            self._stats["tasks_rack_local"] +
-            self._stats["tasks_remote"]
+            self._stats["tasks_local"]
+            + self._stats["tasks_rack_local"]
+            + self._stats["tasks_remote"]
         )
         if total > 0:
-            self._stats["locality_hit_rate"] = (
-                self._stats["tasks_local"] / total
-            )
+            self._stats["locality_hit_rate"] = self._stats["tasks_local"] / total
 
     def get_locality_recommendations(
-        self,
-        required_data: list[str],
-        available_nodes: list[str] = None
+        self, required_data: list[str], available_nodes: list[str] = None
     ) -> list[LocalityScore]:
         """
         Get locality recommendations for all available nodes.
@@ -381,19 +364,12 @@ class DataLocalityManager:
         """
         nodes = available_nodes or list(self.nodes.keys())
 
-        scores = [
-            self.calculate_locality_score(node_id, required_data)
-            for node_id in nodes
-        ]
+        scores = [self.calculate_locality_score(node_id, required_data) for node_id in nodes]
 
         scores.sort(key=lambda x: (-x.score, x.transfer_cost))
         return scores
 
-    def optimize_data_placement(
-        self,
-        data_id: str,
-        replication_factor: int = 3
-    ) -> list[str]:
+    def optimize_data_placement(self, data_id: str, replication_factor: int = 3) -> list[str]:
         """
         Recommend optimal nodes for data placement.
 
@@ -411,10 +387,7 @@ class DataLocalityManager:
 
         needed = replication_factor - len(current_nodes)
 
-        candidates = [
-            node_id for node_id in self.nodes
-            if node_id not in current_nodes
-        ]
+        candidates = [node_id for node_id in self.nodes if node_id not in current_nodes]
 
         if not candidates:
             return current_nodes
@@ -425,11 +398,11 @@ class DataLocalityManager:
             first_node = self.nodes.get(current_nodes[0])
             if first_node:
                 same_rack = [
-                    n for n in candidates
-                    if self.nodes.get(n, {}).rack_id == first_node.rack_id
+                    n for n in candidates if self.nodes.get(n, {}).rack_id == first_node.rack_id
                 ]
                 same_dc = [
-                    n for n in candidates
+                    n
+                    for n in candidates
                     if self.nodes.get(n, {}).data_center == first_node.data_center
                 ]
 

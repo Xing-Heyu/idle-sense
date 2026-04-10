@@ -37,7 +37,7 @@ def task_repository():
         user_id="user_001",
         timeout=300,
         cpu_request=1.0,
-        memory_request=512
+        memory_request=512,
     )
     repo.save = Mock()
     repo.get_by_id = Mock(return_value=task)
@@ -58,6 +58,7 @@ def scheduler_service():
 def token_economy_service():
     """代币经济服务"""
     from legacy.token_economy import TokenEconomy
+
     economy = TokenEconomy()
     service = TokenEconomyService(economy)
     return service
@@ -86,35 +87,31 @@ class TestSubmitTaskWithTokenEconomy:
     """测试带代币经济的任务提交"""
 
     def test_submit_task_success_with_sufficient_balance(
-        self,
-        task_repository,
-        scheduler_service,
-        token_economy_service,
-        audit_logger
+        self, task_repository, scheduler_service, token_economy_service, audit_logger
     ):
         """测试余额充足时的任务提交"""
         user_id = "user_001"
-        
+
         account = token_economy_service.get_or_create_account(user_id)
-        
+
         use_case = SubmitTaskWithTokenEconomyUseCase(
             task_repository=task_repository,
             scheduler_service=scheduler_service,
             token_economy_service=token_economy_service,
-            audit_logger=audit_logger
+            audit_logger=audit_logger,
         )
-        
+
         request = SubmitTaskWithTokenRequest(
             code="print('hello world')",
             user_id=user_id,
             timeout=300,
             cpu=1.0,
             memory=512,
-            priority=0.0
+            priority=0.0,
         )
-        
+
         response = use_case.execute(request)
-        
+
         assert response.success is True
         assert response.task_id == "task_001"
         assert response.cost_estimate is not None
@@ -123,65 +120,53 @@ class TestSubmitTaskWithTokenEconomy:
         assert scheduler_service.submit_task.called
 
     def test_submit_task_insufficient_balance(
-        self,
-        task_repository,
-        scheduler_service,
-        token_economy_service,
-        audit_logger
+        self, task_repository, scheduler_service, token_economy_service, audit_logger
     ):
         """测试余额不足时的任务提交"""
         user_id = "user_poor"
-        
+
         use_case = SubmitTaskWithTokenEconomyUseCase(
             task_repository=task_repository,
             scheduler_service=scheduler_service,
             token_economy_service=token_economy_service,
-            audit_logger=audit_logger
+            audit_logger=audit_logger,
         )
-        
+
         economy = token_economy_service.economy
         account = economy.create_account(user_id, initial_balance=0.0001)
-        
+
         request = SubmitTaskWithTokenRequest(
             code="print('expensive task')",
             user_id=user_id,
             timeout=300,
             cpu=1.0,
             memory=512,
-            priority=1.0
+            priority=1.0,
         )
-        
+
         response = use_case.execute(request)
-        
+
         assert response.success is False
         assert "余额不足" in response.message
         assert not scheduler_service.submit_task.called
 
     def test_submit_task_no_user_id(
-        self,
-        task_repository,
-        scheduler_service,
-        token_economy_service,
-        audit_logger
+        self, task_repository, scheduler_service, token_economy_service, audit_logger
     ):
         """测试没有用户ID时的任务提交"""
         use_case = SubmitTaskWithTokenEconomyUseCase(
             task_repository=task_repository,
             scheduler_service=scheduler_service,
             token_economy_service=token_economy_service,
-            audit_logger=audit_logger
+            audit_logger=audit_logger,
         )
-        
+
         request = SubmitTaskWithTokenRequest(
-            code="print('no user')",
-            user_id=None,
-            timeout=300,
-            cpu=1.0,
-            memory=512
+            code="print('no user')", user_id=None, timeout=300, cpu=1.0, memory=512
         )
-        
+
         response = use_case.execute(request)
-        
+
         assert response.success is False
         assert "需要用户ID" in response.message
 
@@ -196,52 +181,45 @@ class TestCompleteTaskWithTokenEconomy:
         token_economy_service,
         merit_rank_engine,
         contribution_proof_service,
-        audit_logger
+        audit_logger,
     ):
         """测试任务成功完成"""
         user_id = "user_002"
         node_address = "node_001"
         task_id = "task_001"
-        
+
         economy = token_economy_service.economy
         account = economy.create_account(user_id, initial_balance=1000.0)
-        
-        resources = ResourceMetrics(
-            cpu_seconds=1.0 * 300,
-            memory_gb_seconds=(512 / 1024) * 300
-        )
-        
+
+        resources = ResourceMetrics(cpu_seconds=1.0 * 300, memory_gb_seconds=(512 / 1024) * 300)
+
         economy.create_task_payment(
-            task_id=task_id,
-            requester=user_id,
-            total_budget=10.0,
-            resources=resources,
-            priority=0
+            task_id=task_id, requester=user_id, total_budget=10.0, resources=resources, priority=0
         )
-        
+
         use_case = CompleteTaskWithTokenEconomyUseCase(
             task_repository=task_repository,
             scheduler_service=scheduler_service,
             token_economy_service=token_economy_service,
             merit_rank_engine=merit_rank_engine,
             contribution_proof_service=contribution_proof_service,
-            audit_logger=audit_logger
+            audit_logger=audit_logger,
         )
-        
+
         task = task_repository.get_by_id(task_id)
         task.assigned_node = node_address
         task.user_id = user_id
-        
+
         request = CompleteTaskWithTokenRequest(
             task_id=task_id,
             result="task completed successfully",
             quality_score=1.0,
             execution_time_seconds=10.5,
-            peak_memory_mb=256.0
+            peak_memory_mb=256.0,
         )
-        
+
         response = use_case.execute(request)
-        
+
         assert response.success is True
         assert response.reward_info is not None
         assert response.contribution_proof_id is not None
@@ -254,30 +232,30 @@ class TestCompleteTaskWithTokenEconomy:
         token_economy_service,
         merit_rank_engine,
         contribution_proof_service,
-        audit_logger
+        audit_logger,
     ):
         """测试完成不存在的任务"""
         task_repository.get_by_id = Mock(return_value=None)
-        
+
         use_case = CompleteTaskWithTokenEconomyUseCase(
             task_repository=task_repository,
             scheduler_service=scheduler_service,
             token_economy_service=token_economy_service,
             merit_rank_engine=merit_rank_engine,
             contribution_proof_service=contribution_proof_service,
-            audit_logger=audit_logger
+            audit_logger=audit_logger,
         )
-        
+
         request = CompleteTaskWithTokenRequest(
             task_id="nonexistent_task",
             result="",
             quality_score=1.0,
             execution_time_seconds=0.0,
-            peak_memory_mb=0.0
+            peak_memory_mb=0.0,
         )
-        
+
         response = use_case.execute(request)
-        
+
         assert response.success is False
         assert "不存在" in response.message
 
@@ -289,15 +267,13 @@ class TestMeritRankIntegration:
         """测试任务完成更新声誉"""
         node_address = "node_repu_001"
         requester_address = "requester_001"
-        
+
         initial_reputation = merit_rank_engine.get_reputation(node_address)
-        
+
         merit_rank_engine.record_task_completion(
-            node_address=node_address,
-            requester_address=requester_address,
-            quality_score=1.0
+            node_address=node_address, requester_address=requester_address, quality_score=1.0
         )
-        
+
         new_reputation = merit_rank_engine.get_reputation(node_address)
         assert new_reputation > initial_reputation
 
@@ -305,20 +281,17 @@ class TestMeritRankIntegration:
         """测试任务失败惩罚声誉"""
         node_address = "node_repu_002"
         requester_address = "requester_002"
-        
+
         merit_rank_engine.record_task_completion(
-            node_address=node_address,
-            requester_address=requester_address,
-            quality_score=1.0
+            node_address=node_address, requester_address=requester_address, quality_score=1.0
         )
-        
+
         high_reputation = merit_rank_engine.get_reputation(node_address)
-        
+
         merit_rank_engine.record_task_failure(
-            node_address=node_address,
-            requester_address=requester_address
+            node_address=node_address, requester_address=requester_address
         )
-        
+
         low_reputation = merit_rank_engine.get_reputation(node_address)
         assert low_reputation < high_reputation
 
@@ -330,23 +303,20 @@ class TestContributionProofIntegration:
         """测试生成贡献证明"""
         node_address = "node_proof_001"
         task_id = "task_proof_001"
-        
+
         resource_metrics = ResourceMetrics(
-            cpu_seconds=10.0,
-            memory_gb_seconds=0.5,
-            storage_gb=0.0,
-            network_gb=0.0
+            cpu_seconds=10.0, memory_gb_seconds=0.5, storage_gb=0.0, network_gb=0.0
         )
-        
+
         proof = contribution_proof_service.generate_proof(
             node_address=node_address,
             task_id=task_id,
             resource_metrics=resource_metrics,
             quality_score=1.0,
             code_length=100,
-            reputation=50.0
+            reputation=50.0,
         )
-        
+
         assert proof is not None
         assert proof.proof_id is not None
         assert proof.node_address == node_address
@@ -357,19 +327,16 @@ class TestContributionProofIntegration:
         """测试验证贡献证明"""
         node_address = "node_proof_002"
         task_id = "task_proof_002"
-        
-        resource_metrics = ResourceMetrics(
-            cpu_seconds=5.0,
-            memory_gb_seconds=0.25
-        )
-        
+
+        resource_metrics = ResourceMetrics(cpu_seconds=5.0, memory_gb_seconds=0.25)
+
         proof = contribution_proof_service.generate_proof(
             node_address=node_address,
             task_id=task_id,
             resource_metrics=resource_metrics,
-            quality_score=0.9
+            quality_score=0.9,
         )
-        
+
         is_valid = contribution_proof_service.verify_proof(proof)
         assert is_valid is True
 
@@ -380,15 +347,15 @@ class TestAuditLogIntegration:
     def test_task_submit_audit_log(self, audit_logger):
         """测试任务提交审计日志"""
         user_id = "user_audit_001"
-        
+
         audit_logger.log(
             action=AuditAction.TASK_SUBMIT,
             user_id=user_id,
             resource_type="task",
             resource_id="task_audit_001",
-            details={"cost": 10.5, "cpu": 1.0, "memory": 512}
+            details={"cost": 10.5, "cpu": 1.0, "memory": 512},
         )
-        
+
         logs = audit_logger.query(user_id=user_id)
         assert len(logs) == 1
         assert logs[0].action == AuditAction.TASK_SUBMIT
@@ -396,15 +363,15 @@ class TestAuditLogIntegration:
     def test_task_complete_audit_log(self, audit_logger):
         """测试任务完成审计日志"""
         user_id = "user_audit_002"
-        
+
         audit_logger.log(
             action=AuditAction.TASK_COMPLETE,
             user_id=user_id,
             resource_type="task",
             resource_id="task_audit_002",
-            details={"quality_score": 1.0, "reward": 5.0}
+            details={"quality_score": 1.0, "reward": 5.0},
         )
-        
+
         logs = audit_logger.query(user_id=user_id)
         assert len(logs) == 1
         assert logs[0].action == AuditAction.TASK_COMPLETE
@@ -420,58 +387,54 @@ class TestEndToEndWorkflow:
         token_economy_service,
         merit_rank_engine,
         contribution_proof_service,
-        audit_logger
+        audit_logger,
     ):
         """测试完整的任务生命周期：提交 -> 完成"""
         user_id = "user_e2e_001"
         node_address = "node_e2e_001"
-        
+
         submit_use_case = SubmitTaskWithTokenEconomyUseCase(
             task_repository=task_repository,
             scheduler_service=scheduler_service,
             token_economy_service=token_economy_service,
-            audit_logger=audit_logger
+            audit_logger=audit_logger,
         )
-        
+
         submit_request = SubmitTaskWithTokenRequest(
-            code="print('e2e test')",
-            user_id=user_id,
-            timeout=300,
-            cpu=1.0,
-            memory=512
+            code="print('e2e test')", user_id=user_id, timeout=300, cpu=1.0, memory=512
         )
-        
+
         submit_response = submit_use_case.execute(submit_request)
         assert submit_response.success is True
         task_id = submit_response.task_id
-        
+
         task = task_repository.get_by_id(task_id)
         task.assigned_node = node_address
-        
+
         complete_use_case = CompleteTaskWithTokenEconomyUseCase(
             task_repository=task_repository,
             scheduler_service=scheduler_service,
             token_economy_service=token_economy_service,
             merit_rank_engine=merit_rank_engine,
             contribution_proof_service=contribution_proof_service,
-            audit_logger=audit_logger
+            audit_logger=audit_logger,
         )
-        
+
         complete_request = CompleteTaskWithTokenRequest(
             task_id=task_id,
             result="e2e test completed",
             quality_score=1.0,
             execution_time_seconds=15.0,
-            peak_memory_mb=384.0
+            peak_memory_mb=384.0,
         )
-        
+
         complete_response = complete_use_case.execute(complete_request)
         assert complete_response.success is True
         assert complete_response.contribution_proof_id is not None
-        
+
         node_reputation = merit_rank_engine.get_reputation(node_address)
         assert node_reputation > 50.0
-        
+
         audit_logs = audit_logger.query()
         assert len(audit_logs) >= 2
 
@@ -491,10 +454,7 @@ class TestTokenEncryptionIntegration:
         sensitive_data = {
             "balance": 1000.0,
             "user_id": "user_enc_001",
-            "transactions": [
-                {"id": "tx_001", "amount": 100.0},
-                {"id": "tx_002", "amount": -50.0}
-            ]
+            "transactions": [{"id": "tx_001", "amount": 100.0}, {"id": "tx_002", "amount": -50.0}],
         }
 
         encrypted = encryption.encrypt(sensitive_data)
@@ -520,6 +480,7 @@ class TestTokenEncryptionIntegration:
         assert isinstance(encrypted_str, str)
 
         import json
+
         parsed = json.loads(encrypted_str)
         assert "ciphertext" in parsed
         assert "nonce" in parsed
@@ -549,10 +510,11 @@ class TestTokenEncryptionIntegration:
             ciphertext=bytes(tampered_ciphertext),
             nonce=encrypted.nonce,
             salt=encrypted.salt,
-            hmac=encrypted.hmac
+            hmac=encrypted.hmac,
         )
 
         import pytest
+
         with pytest.raises(IntegrityError):
             encryption.decrypt(tampered_data)
 
@@ -584,7 +546,7 @@ class TestFullTokenEconomyWithEncryption:
             "balance": 1000.0,
             "staked": 500.0,
             "reputation": 75.5,
-            "contribution_score": 120.0
+            "contribution_score": 120.0,
         }
 
         encrypted_str = encryption.encrypt_to_string(token_data)
@@ -622,9 +584,7 @@ class TestMeritRankContributionProofIntegration:
     """测试MeritRank与ContributionProof深度集成"""
 
     def test_reputation_affects_contribution_score(
-        self,
-        merit_rank_engine,
-        contribution_proof_service
+        self, merit_rank_engine, contribution_proof_service
     ):
         """测试声誉影响贡献分计算"""
         node_address = "node_merit_001"
@@ -634,7 +594,7 @@ class TestMeritRankContributionProofIntegration:
             merit_rank_engine.record_task_completion(
                 node_address=node_address,
                 requester_address=f"{requester_address}_{i}",
-                quality_score=0.9 + (i * 0.02)
+                quality_score=0.9 + (i * 0.02),
             )
 
         high_reputation = merit_rank_engine.get_reputation(node_address)
@@ -645,7 +605,7 @@ class TestMeritRankContributionProofIntegration:
             resource_metrics=ResourceMetrics(cpu_seconds=10.0, memory_gb_seconds=0.5),
             quality_score=1.0,
             code_length=100,
-            reputation=high_reputation
+            reputation=high_reputation,
         )
 
         expected_bonus = 1.0 + ((high_reputation - 50.0) / 100.0)
@@ -663,13 +623,10 @@ class TestMeritRankContributionProofIntegration:
                 merit_rank_engine.record_task_completion(
                     node_address=node,
                     requester_address=f"requester_rank_{i}_{j}",
-                    quality_score=quality
+                    quality_score=quality,
                 )
 
-        reputations = [
-            (node, merit_rank_engine.get_reputation(node))
-            for node in nodes
-        ]
+        reputations = [(node, merit_rank_engine.get_reputation(node)) for node in nodes]
         reputations.sort(key=lambda x: x[1], reverse=True)
 
         assert reputations[0][1] >= reputations[-1][1]
@@ -686,7 +643,7 @@ class TestSecurityEnhancedWorkflow:
         merit_rank_engine,
         contribution_proof_service,
         audit_logger,
-        tmp_path
+        tmp_path,
     ):
         """测试完整的安全增强任务工作流"""
         from src.core.services.token_encryption_service import TokenEncryption
@@ -700,15 +657,11 @@ class TestSecurityEnhancedWorkflow:
             task_repository=task_repository,
             scheduler_service=scheduler_service,
             token_economy_service=token_economy_service,
-            audit_logger=audit_logger
+            audit_logger=audit_logger,
         )
 
         submit_request = SubmitTaskWithTokenRequest(
-            code="print('secure task')",
-            user_id=user_id,
-            timeout=300,
-            cpu=1.0,
-            memory=512
+            code="print('secure task')", user_id=user_id, timeout=300, cpu=1.0, memory=512
         )
 
         submit_response = submit_use_case.execute(submit_request)
@@ -724,7 +677,7 @@ class TestSecurityEnhancedWorkflow:
             token_economy_service=token_economy_service,
             merit_rank_engine=merit_rank_engine,
             contribution_proof_service=contribution_proof_service,
-            audit_logger=audit_logger
+            audit_logger=audit_logger,
         )
 
         complete_request = CompleteTaskWithTokenRequest(
@@ -732,7 +685,7 @@ class TestSecurityEnhancedWorkflow:
             result="secure task completed",
             quality_score=0.95,
             execution_time_seconds=20.0,
-            peak_memory_mb=400.0
+            peak_memory_mb=400.0,
         )
 
         complete_response = complete_use_case.execute(complete_request)
@@ -744,7 +697,7 @@ class TestSecurityEnhancedWorkflow:
             "node_address": node_address,
             "reward_info": complete_response.reward_info,
             "contribution_proof_id": complete_response.contribution_proof_id,
-            "reputation": merit_rank_engine.get_reputation(node_address)
+            "reputation": merit_rank_engine.get_reputation(node_address),
         }
 
         encrypted_record = encryption.encrypt_to_string(secure_record)

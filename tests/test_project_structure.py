@@ -16,6 +16,7 @@ REQUIRED_PATHS = [
     ("config/settings.py", "file"),
 ]
 
+
 @pytest.mark.parametrize("path,path_type", REQUIRED_PATHS)
 def test_required_path_exists(path, path_type):
     full_path = os.path.join(os.path.dirname(__file__), "..", path)

@@ -31,10 +31,9 @@ class TestUserWorkflow:
         """测试注册后登录的工作流"""
         register_use_case = RegisterUseCase(self.user_repo)
 
-        register_response = register_use_case.execute(RegisterRequest(
-            username="testuser",
-            folder_location="project"
-        ))
+        register_response = register_use_case.execute(
+            RegisterRequest(username="testuser", folder_location="project")
+        )
 
         assert register_response.success is True
         assert register_response.user.username == "testuser"
@@ -70,13 +69,11 @@ class TestTaskWorkflow:
 
         use_case = SubmitTaskUseCase(self.task_repo, self.scheduler)
 
-        response = use_case.execute(SubmitTaskRequest(
-            code="print('hello')",
-            timeout=300,
-            cpu=1.0,
-            memory=512,
-            user_id="user_001"
-        ))
+        response = use_case.execute(
+            SubmitTaskRequest(
+                code="print('hello')", timeout=300, cpu=1.0, memory=512, user_id="user_001"
+            )
+        )
 
         assert response.success is True
         assert response.task_id == "task_123"
@@ -91,9 +88,7 @@ class TestTaskWorkflow:
 
         use_case = SubmitTaskUseCase(self.task_repo, self.scheduler)
 
-        response = use_case.execute(SubmitTaskRequest(
-            code="print('hello')"
-        ))
+        response = use_case.execute(SubmitTaskRequest(code="print('hello')"))
 
         assert response.success is False
         assert "失败" in response.message
@@ -115,10 +110,9 @@ class TestFullWorkflow:
         """测试完整的用户任务工作流"""
         # 1. 注册用户
         register_use_case = RegisterUseCase(self.user_repo)
-        register_response = register_use_case.execute(RegisterRequest(
-            username="developer",
-            folder_location="project"
-        ))
+        register_response = register_use_case.execute(
+            RegisterRequest(username="developer", folder_location="project")
+        )
         assert register_response.success is True
         user_id = register_response.user.user_id
 
@@ -131,13 +125,11 @@ class TestFullWorkflow:
         self.scheduler.submit_task.return_value = (True, {"task_id": "task_dev_001"})
 
         submit_use_case = SubmitTaskUseCase(self.task_repo, self.scheduler)
-        submit_response = submit_use_case.execute(SubmitTaskRequest(
-            code="print('Hello Developer')",
-            timeout=300,
-            cpu=2.0,
-            memory=1024,
-            user_id=user_id
-        ))
+        submit_response = submit_use_case.execute(
+            SubmitTaskRequest(
+                code="print('Hello Developer')", timeout=300, cpu=2.0, memory=1024, user_id=user_id
+            )
+        )
 
         assert submit_response.success is True
 

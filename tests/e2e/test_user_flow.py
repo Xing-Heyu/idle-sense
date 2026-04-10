@@ -39,14 +39,10 @@ class TestUserRegistrationFlow:
             "code": "result = sum(range(10))\n__result__ = result",
             "timeout": 60,
             "resources": {"cpu": 1.0, "memory": 512},
-            "user_id": user_id
+            "user_id": user_id,
         }
 
-        response = requests.post(
-            f"{scheduler_url}/submit",
-            json=task_data,
-            timeout=10
-        )
+        response = requests.post(f"{scheduler_url}/submit", json=task_data, timeout=10)
 
         assert response.status_code == 200
         result = response.json()
@@ -58,10 +54,7 @@ class TestUserRegistrationFlow:
         start_time = time.time()
 
         while time.time() - start_time < max_wait:
-            response = requests.get(
-                f"{scheduler_url}/status/{task_id}",
-                timeout=5
-            )
+            response = requests.get(f"{scheduler_url}/status/{task_id}", timeout=5)
 
             if response.status_code == 200:
                 status = response.json()
@@ -125,14 +118,10 @@ class TestUserAuthentication:
         user_data = {
             "username": f"newuser_{int(time.time())}",
             "password": "testpassword123",
-            "email": f"test_{int(time.time())}@example.com"
+            "email": f"test_{int(time.time())}@example.com",
         }
 
-        response = requests.post(
-            f"{scheduler_url}/api/users/register",
-            json=user_data,
-            timeout=10
-        )
+        response = requests.post(f"{scheduler_url}/api/users/register", json=user_data, timeout=10)
 
         if response.status_code == 404:
             pytest.skip("User registration endpoint not available")
@@ -154,16 +143,9 @@ class TestUserAuthentication:
         except Exception:
             pytest.skip("Scheduler not running")
 
-        login_data = {
-            "username": "testuser",
-            "password": "testpassword"
-        }
+        login_data = {"username": "testuser", "password": "testpassword"}
 
-        response = requests.post(
-            f"{scheduler_url}/api/users/login",
-            json=login_data,
-            timeout=10
-        )
+        response = requests.post(f"{scheduler_url}/api/users/login", json=login_data, timeout=10)
 
         if response.status_code == 404:
             pytest.skip("User login endpoint not available")
@@ -203,14 +185,10 @@ __result__ = result
 """,
             "timeout": 30,
             "resources": {"cpu": 0.5, "memory": 256},
-            "user_id": user_id
+            "user_id": user_id,
         }
 
-        response = requests.post(
-            f"{scheduler_url}/submit",
-            json=task_data,
-            timeout=10
-        )
+        response = requests.post(f"{scheduler_url}/submit", json=task_data, timeout=10)
 
         assert response.status_code == 200
         result = response.json()
@@ -240,14 +218,10 @@ __result__ = result
                 "code": f"result = {i} * 10\n__result__ = result",
                 "timeout": 30,
                 "resources": {"cpu": 0.5, "memory": 256},
-                "user_id": user_id
+                "user_id": user_id,
             }
 
-            response = requests.post(
-                f"{scheduler_url}/submit",
-                json=task_data,
-                timeout=10
-            )
+            response = requests.post(f"{scheduler_url}/submit", json=task_data, timeout=10)
 
             assert response.status_code == 200
             result = response.json()

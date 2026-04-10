@@ -22,6 +22,7 @@ V = TypeVar("V")
 @dataclass
 class ShufflePartition:
     """Represents a partition in a shuffle operation."""
+
     partition_id: int
     key: Any
     values: list[Any] = field(default_factory=list)
@@ -48,6 +49,7 @@ class ShufflePartition:
 @dataclass
 class ShuffleResult:
     """Result of a shuffle operation."""
+
     shuffle_id: str
     stage_id: str
     task_id: str
@@ -78,7 +80,7 @@ class ShuffleManager(Generic[K, V]):
         num_partitions: int = 4,
         hash_func: Callable[[K], int] = None,
         serializer: Callable[[Any], bytes] = None,
-        deserializer: Callable[[bytes], Any] = None
+        deserializer: Callable[[bytes], Any] = None,
     ):
         self.num_partitions = num_partitions
         self.hash_func = hash_func or self._default_hash
@@ -101,11 +103,13 @@ class ShuffleManager(Generic[K, V]):
     @staticmethod
     def _default_serialize(data: Any) -> bytes:
         import json
+
         return json.dumps(data).encode()
 
     @staticmethod
     def _default_deserialize(data: bytes) -> Any:
         import json
+
         return json.loads(data.decode())
 
     def get_partition_id(self, key: K) -> int:
@@ -114,18 +118,15 @@ class ShuffleManager(Generic[K, V]):
 
     def start_shuffle(self, task_id: str, stage_id: str) -> str:
         """Start a new shuffle operation."""
-        shuffle_id = hashlib.md5(
-            f"{task_id}:{stage_id}:{time.time()}".encode()
-        ).hexdigest()[:16]
+        shuffle_id = hashlib.md5(f"{task_id}:{stage_id}:{time.time()}".encode()).hexdigest()[:16]
 
         result = ShuffleResult(
             shuffle_id=shuffle_id,
             stage_id=stage_id,
             task_id=task_id,
             partitions={
-                i: ShufflePartition(partition_id=i, key=None)
-                for i in range(self.num_partitions)
-            }
+                i: ShufflePartition(partition_id=i, key=None) for i in range(self.num_partitions)
+            },
         )
 
         self._shuffle_results[shuffle_id] = result
@@ -189,10 +190,9 @@ class ShuffleManager(Generic[K, V]):
         """Get shuffle statistics."""
         return {
             **self._stats,
-            "active_shuffles": len([
-                s for s in self._shuffle_results.values()
-                if s.status == "pending"
-            ]),
+            "active_shuffles": len(
+                [s for s in self._shuffle_results.values() if s.status == "pending"]
+            ),
         }
 
 
@@ -236,10 +236,7 @@ class ShuffleExecutor:
             await asyncio.sleep(0.1)
 
     async def execute_shuffle(
-        self,
-        shuffle_id: str,
-        source_node: str,
-        target_nodes: list[str]
+        self, shuffle_id: str, source_node: str, target_nodes: list[str]
     ) -> bool:
         """Execute a shuffle operation from source to target nodes."""
         result = self.manager.get_shuffle_result(shuffle_id)
@@ -259,7 +256,6 @@ class ShuffleExecutor:
 
         self.manager.complete_shuffle(shuffle_id)
         return True
-
 
     async def receive_shuffle_data(self, shuffle_id: str, partition_id: int, data: bytes) -> bool:
         """Receive shuffle data from another node."""

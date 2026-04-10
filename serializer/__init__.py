@@ -62,7 +62,7 @@ class Serializer(ABC):
             data=data,
             content_type=self.content_type,
             size_bytes=len(data),
-            metadata={"serializer": self.__class__.__name__}
+            metadata={"serializer": self.__class__.__name__},
         )
 
 
@@ -122,7 +122,7 @@ class JSONSerializer(Serializer):
                     default=self._default,
                     indent=self.indent,
                     sort_keys=self.sort_keys,
-                    ensure_ascii=False
+                    ensure_ascii=False,
                 )
             return json_str.encode("utf-8")
         except Exception as e:
@@ -172,6 +172,7 @@ class MessagePackSerializer(Serializer):
         if self._msgpack is None:
             try:
                 import msgpack
+
                 self._msgpack = msgpack
             except ImportError as e:
                 raise ImportError("MessagePack support requires msgpack package") from e
@@ -274,13 +275,13 @@ class BinarySerializer(Serializer):
         if type_byte == self.TYPE_STR:
             length = struct.unpack_from(">I", data, offset)[0]
             offset += 4
-            value = data[offset:offset + length].decode("utf-8")
+            value = data[offset : offset + length].decode("utf-8")
             return value, offset + length
 
         if type_byte == self.TYPE_BYTES:
             length = struct.unpack_from(">I", data, offset)[0]
             offset += 4
-            value = data[offset:offset + length]
+            value = data[offset : offset + length]
             return value, offset + length
 
         if type_byte == self.TYPE_LIST:
@@ -337,11 +338,7 @@ class SerializerRegistry:
         if name in self._serializers:
             self._default = name
 
-    def serialize(
-        self,
-        obj: Any,
-        serializer_name: str | None = None
-    ) -> SerializationResult:
+    def serialize(self, obj: Any, serializer_name: str | None = None) -> SerializationResult:
         name = serializer_name or self._default
         serializer = self._serializers.get(name)
 
@@ -350,11 +347,7 @@ class SerializerRegistry:
 
         return serializer.serialize_with_metadata(obj)
 
-    def deserialize(
-        self,
-        data: bytes,
-        serializer_name: str | None = None
-    ) -> Any:
+    def deserialize(self, data: bytes, serializer_name: str | None = None) -> Any:
         name = serializer_name or self._default
         serializer = self._serializers.get(name)
 

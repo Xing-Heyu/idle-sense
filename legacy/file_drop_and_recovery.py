@@ -37,7 +37,7 @@ class FileDropManager:
                 "path": file_path,
                 "size": uploaded_file.size,
                 "type": uploaded_file.type,
-                "uploaded_at": time.time()
+                "uploaded_at": time.time(),
             }
 
             return file_path
@@ -50,16 +50,21 @@ class FileDropManager:
         try:
             file_ext = Path(file_path).suffix.lower()
 
-            if file_ext == '.json':
-                with open(file_path, encoding='utf-8') as f:
+            if file_ext == ".json":
+                with open(file_path, encoding="utf-8") as f:
                     return json.load(f)
-            elif file_ext in ['.txt', '.csv', '.log'] or file_ext in ['.py', '.js', '.html', '.css']:
-                with open(file_path, encoding='utf-8') as f:
+            elif file_ext in [".txt", ".csv", ".log"] or file_ext in [
+                ".py",
+                ".js",
+                ".html",
+                ".css",
+            ]:
+                with open(file_path, encoding="utf-8") as f:
                     return f.read()
             else:
                 # 对于二进制文件，返回base64编码
-                with open(file_path, 'rb') as f:
-                    return base64.b64encode(f.read()).decode('utf-8')
+                with open(file_path, "rb") as f:
+                    return base64.b64encode(f.read()).decode("utf-8")
         except Exception as e:
             st.error(f"读取文件失败: {e}")
             return None
@@ -68,13 +73,15 @@ class FileDropManager:
         """清理临时文件"""
         try:
             import shutil
+
             shutil.rmtree(self.temp_dir, ignore_errors=True)
         except Exception as e:
             print(f"清理临时文件失败: {e}")
 
-def create_file_drop_area(title: str = "拖放文件到这里",
-                        accepted_types: list[str] = None,
-                        help_text: str = None) -> Optional[Any]:
+
+def create_file_drop_area(
+    title: str = "拖放文件到这里", accepted_types: list[str] = None, help_text: str = None
+) -> Optional[Any]:
     """创建文件拖放区域"""
     if accepted_types is None:
         accepted_types = ["json", "txt", "csv", "py", "js", "html", "css"]
@@ -86,11 +93,7 @@ def create_file_drop_area(title: str = "拖放文件到这里",
     st.info(help_text)
 
     # 创建文件上传器
-    uploaded_file = st.file_uploader(
-        "选择文件或拖放到这里",
-        type=accepted_types,
-        help=help_text
-    )
+    uploaded_file = st.file_uploader("选择文件或拖放到这里", type=accepted_types, help=help_text)
 
     if uploaded_file is not None:
         # 显示文件信息
@@ -104,7 +107,7 @@ def create_file_drop_area(title: str = "拖放文件到这里",
             st.metric("文件类型", uploaded_file.type)
 
         # 保存文件
-        if 'file_drop_manager' not in st.session_state:
+        if "file_drop_manager" not in st.session_state:
             st.session_state.file_drop_manager = FileDropManager()
 
         file_path = st.session_state.file_drop_manager.save_uploaded_file(uploaded_file)
@@ -125,25 +128,27 @@ def create_file_drop_area(title: str = "拖放文件到这里",
                 "path": file_path,
                 "content": content,
                 "size": uploaded_file.size,
-                "type": uploaded_file.type
+                "type": uploaded_file.type,
             }
 
     return None
+
 
 def _get_language_from_filename(filename: str) -> str:
     """根据文件名获取代码语言"""
     ext = Path(filename).suffix.lower()
     language_map = {
-        '.py': 'python',
-        '.js': 'javascript',
-        '.html': 'html',
-        '.css': 'css',
-        '.json': 'json',
-        '.csv': 'csv',
-        '.txt': 'text',
-        '.log': 'text'
+        ".py": "python",
+        ".js": "javascript",
+        ".html": "html",
+        ".css": "css",
+        ".json": "json",
+        ".csv": "csv",
+        ".txt": "text",
+        ".log": "text",
     }
-    return language_map.get(ext, 'text')
+    return language_map.get(ext, "text")
+
 
 def create_data_extraction_interface(file_data: dict[str, Any]) -> Optional[Any]:
     """创建数据提取界面"""
@@ -153,21 +158,22 @@ def create_data_extraction_interface(file_data: dict[str, Any]) -> Optional[Any]
     st.markdown("### 📊 数据提取")
 
     # 根据文件类型提供不同的提取选项
-    file_ext = Path(file_data['name']).suffix.lower()
+    file_ext = Path(file_data["name"]).suffix.lower()
 
-    if file_ext == '.json':
+    if file_ext == ".json":
         return _extract_from_json(file_data)
-    elif file_ext in ['.txt', '.csv']:
+    elif file_ext in [".txt", ".csv"]:
         return _extract_from_text(file_data)
-    elif file_ext == '.py':
+    elif file_ext == ".py":
         return _extract_from_code(file_data)
     else:
         st.warning("不支持的文件类型进行数据提取")
         return None
 
+
 def _extract_from_json(file_data: dict[str, Any]) -> Any:
     """从JSON文件中提取数据"""
-    content = file_data['content']
+    content = file_data["content"]
 
     if isinstance(content, dict):
         st.info("检测到JSON对象")
@@ -183,32 +189,35 @@ def _extract_from_json(file_data: dict[str, Any]) -> Any:
         st.warning("无法识别的JSON结构")
         return None
 
+
 def _extract_from_text(file_data: dict[str, Any]) -> Any:
     """从文本文件中提取数据"""
-    content = file_data['content']
+    content = file_data["content"]
 
     extraction_method = st.radio(
-        "选择提取方法",
-        ["按行分割", "按逗号分割", "按空格分割", "正则表达式"]
+        "选择提取方法", ["按行分割", "按逗号分割", "按空格分割", "正则表达式"]
     )
 
     if extraction_method == "按行分割":
-        return [line.strip() for line in content.split('\n') if line.strip()]
+        return [line.strip() for line in content.split("\n") if line.strip()]
     elif extraction_method == "按逗号分割":
-        return [item.strip() for item in content.split(',')]
+        return [item.strip() for item in content.split(",")]
     elif extraction_method == "按空格分割":
         return content.split()
     elif extraction_method == "正则表达式":
         pattern = st.text_input("输入正则表达式")
         if pattern:
             import re
+
             return re.findall(pattern, content)
 
     return None
 
+
 def _extract_from_code(file_data: dict[str, Any]) -> str:
     """从代码文件中提取代码"""
-    return file_data['content']
+    return file_data["content"]
+
 
 def create_file_drop_task_interface() -> Optional[tuple[str, Any]]:
     """创建文件拖放任务界面"""
@@ -218,7 +227,7 @@ def create_file_drop_task_interface() -> Optional[tuple[str, Any]]:
     file_data = create_file_drop_area(
         title="拖放文件到这里",
         accepted_types=["json", "txt", "csv", "py"],
-        help_text="支持JSON、文本、CSV和Python文件。拖放文件后可以提取数据并创建任务。"
+        help_text="支持JSON、文本、CSV和Python文件。拖放文件后可以提取数据并创建任务。",
     )
 
     if file_data:

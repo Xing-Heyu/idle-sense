@@ -10,16 +10,21 @@ import time
 # psutil 作为可选依赖，用于获取CPU/内存使用率
 try:
     import psutil
+
     PSUTIL_AVAILABLE = True
 except ImportError:
     PSUTIL_AVAILABLE = False
 
+
 class WindowsIdleDetector:
     """Windows idle detector with reliable lock screen detection"""
 
-    def __init__(self, idle_threshold_sec: int = 300,
-                 cpu_threshold: float = 15.0,
-                 memory_threshold: float = 70.0):
+    def __init__(
+        self,
+        idle_threshold_sec: int = 300,
+        cpu_threshold: float = 15.0,
+        memory_threshold: float = 70.0,
+    ):
         self.idle_threshold_sec = idle_threshold_sec
         self.cpu_threshold = cpu_threshold
         self.memory_threshold = memory_threshold
@@ -29,8 +34,7 @@ class WindowsIdleDetector:
 
         # 设置 GetLastInputInfo 结构
         class LASTINPUTINFO(ctypes.Structure):
-            _fields_ = [('cbSize', ctypes.c_uint),
-                       ('dwTime', ctypes.c_uint)]
+            _fields_ = [("cbSize", ctypes.c_uint), ("dwTime", ctypes.c_uint)]
 
         self.last_input_info = LASTINPUTINFO()
         self.last_input_info.cbSize = ctypes.sizeof(LASTINPUTINFO)
@@ -44,7 +48,7 @@ class WindowsIdleDetector:
     def _get_tick_count(self) -> int:
         """Get system tick count in milliseconds"""
         # 优先使用 GetTickCount64（Windows Vista+）
-        if hasattr(ctypes.windll.kernel32, 'GetTickCount64'):
+        if hasattr(ctypes.windll.kernel32, "GetTickCount64"):
             return ctypes.windll.kernel32.GetTickCount64()
         else:
             # 备用：GetTickCount（所有Windows版本）
@@ -132,17 +136,17 @@ class WindowsIdleDetector:
         is_charging_val = self.is_charging()
 
         return {
-            'timestamp': time.time(),
-            'user_idle_time_sec': round(idle_time_sec, 1),
-            'cpu_percent': round(cpu_percent, 1),
-            'memory_percent': round(memory_percent, 1),
-            'is_screen_locked': is_locked,
-            'is_charging': is_charging_val,
-            'is_user_idle': idle_time_sec >= self.idle_threshold_sec,
-            'is_cpu_idle': cpu_percent <= self.cpu_threshold,
-            'is_memory_idle': memory_percent <= self.memory_threshold,
-            'has_psutil': PSUTIL_AVAILABLE,
-            'has_tick64': hasattr(self.user32, 'GetTickCount64'),
+            "timestamp": time.time(),
+            "user_idle_time_sec": round(idle_time_sec, 1),
+            "cpu_percent": round(cpu_percent, 1),
+            "memory_percent": round(memory_percent, 1),
+            "is_screen_locked": is_locked,
+            "is_charging": is_charging_val,
+            "is_user_idle": idle_time_sec >= self.idle_threshold_sec,
+            "is_cpu_idle": cpu_percent <= self.cpu_threshold,
+            "is_memory_idle": memory_percent <= self.memory_threshold,
+            "has_psutil": PSUTIL_AVAILABLE,
+            "has_tick64": hasattr(self.user32, "GetTickCount64"),
         }
 
     def is_idle(self) -> bool:
@@ -153,31 +157,28 @@ class WindowsIdleDetector:
         status = self.get_system_status()
 
         # 如果屏幕锁定，直接返回非空闲（保守）
-        if status['is_screen_locked']:
+        if status["is_screen_locked"]:
             return False
 
-        return (status['is_user_idle'] and
-                status['is_cpu_idle'] and
-                status['is_memory_idle'])
+        return status["is_user_idle"] and status["is_cpu_idle"] and status["is_memory_idle"]
+
 
 # 模块级函数，保持与 core.py 的兼容性
-def is_idle(idle_threshold_sec: int = 300,
-           cpu_threshold: float = 15.0,
-           memory_threshold: float = 70.0) -> bool:
+def is_idle(
+    idle_threshold_sec: int = 300, cpu_threshold: float = 15.0, memory_threshold: float = 70.0
+) -> bool:
     """Check if system is idle - 模块公共接口"""
-    detector = WindowsIdleDetector(idle_threshold_sec,
-                                   cpu_threshold,
-                                   memory_threshold)
+    detector = WindowsIdleDetector(idle_threshold_sec, cpu_threshold, memory_threshold)
     return detector.is_idle()
 
-def get_system_status(idle_threshold_sec: int = 300,
-                     cpu_threshold: float = 15.0,
-                     memory_threshold: float = 70.0) -> dict:
+
+def get_system_status(
+    idle_threshold_sec: int = 300, cpu_threshold: float = 15.0, memory_threshold: float = 70.0
+) -> dict:
     """Get system status - 模块公共接口"""
-    detector = WindowsIdleDetector(idle_threshold_sec,
-                                   cpu_threshold,
-                                   memory_threshold)
+    detector = WindowsIdleDetector(idle_threshold_sec, cpu_threshold, memory_threshold)
     return detector.get_system_status()
+
 
 # 借鉴自开源项目的诊断工具
 def check_windows_api() -> dict[str, bool]:
@@ -185,10 +186,10 @@ def check_windows_api() -> dict[str, bool]:
     user32 = ctypes.windll.user32
 
     return {
-        'GetLastInputInfo': hasattr(user32, 'GetLastInputInfo'),
-        'GetTickCount': hasattr(user32, 'GetTickCount'),
-        'GetTickCount64': hasattr(user32, 'GetTickCount64'),
-        'OpenInputDesktop': hasattr(user32, 'OpenInputDesktop'),
-        'CloseDesktop': hasattr(user32, 'CloseDesktop'),
-        'psutil_available': PSUTIL_AVAILABLE,
+        "GetLastInputInfo": hasattr(user32, "GetLastInputInfo"),
+        "GetTickCount": hasattr(user32, "GetTickCount"),
+        "GetTickCount64": hasattr(user32, "GetTickCount64"),
+        "OpenInputDesktop": hasattr(user32, "OpenInputDesktop"),
+        "CloseDesktop": hasattr(user32, "CloseDesktop"),
+        "psutil_available": PSUTIL_AVAILABLE,
     }

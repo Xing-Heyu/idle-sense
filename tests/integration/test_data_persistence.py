@@ -136,6 +136,7 @@ class TestTokenRestartConsistency:
         await repo.close()
 
         import asyncio
+
         await asyncio.sleep(0.5)
 
         repo2 = SQLiteTokenRepository(db_path=db_path)
@@ -175,7 +176,9 @@ class TestTokenRestartConsistency:
 class TestConcurrentWrites:
     """并发写入安全性测试"""
 
-    def _concurrent_add_tasks(self, storage: PersistentTaskStorage, count: int, prefix: str) -> list[int]:
+    def _concurrent_add_tasks(
+        self, storage: PersistentTaskStorage, count: int, prefix: str
+    ) -> list[int]:
         """线程函数：并发添加任务"""
         ids = []
         for i in range(count):
@@ -220,14 +223,14 @@ class TestConcurrentWrites:
         expected_total = num_threads * tasks_per_thread
         actual_count = len(all_task_ids)
 
-        assert actual_count == expected_total, (
-            f"并发写入丢失任务: 期望 {expected_total}, 实际 {actual_count}"
-        )
+        assert (
+            actual_count == expected_total
+        ), f"并发写入丢失任务: 期望 {expected_total}, 实际 {actual_count}"
 
         unique_ids = set(all_task_ids)
-        assert len(unique_ids) == expected_total, (
-            f"存在重复 task_id: 唯一 {len(unique_ids)}, 总计 {expected_total}"
-        )
+        assert (
+            len(unique_ids) == expected_total
+        ), f"存在重复 task_id: 唯一 {len(unique_ids)}, 总计 {expected_total}"
 
         missing = 0
         for tid in all_task_ids:
@@ -250,7 +253,7 @@ class TestConcurrentWrites:
 
         async def _run_token_concurrency():
             users = [f"user_{i}" for i in range(8)]
-            
+
             init_repo = SQLiteTokenRepository(db_path=token_db)
             for u in users:
                 await init_repo.get_or_create_account(u)
@@ -270,7 +273,12 @@ class TestConcurrentWrites:
                             from_u = users[i % len(users)]
                             to_u = users[(i + 1) % len(users)]
                             loop.run_until_complete(
-                                thread_repo.transfer(from_u, to_u, 10.0, description=f"concurrent_tx_t{thread_id}_{i}")
+                                thread_repo.transfer(
+                                    from_u,
+                                    to_u,
+                                    10.0,
+                                    description=f"concurrent_tx_t{thread_id}_{i}",
+                                )
                             )
                     finally:
                         loop.run_until_complete(thread_repo.close())
@@ -292,9 +300,9 @@ class TestConcurrentWrites:
                 total_balance += bal
 
             initial_total = len(users) * 1000.0
-            assert abs(total_balance - initial_total) < 0.01, (
-                f"并发转账导致余额不一致: 初始 {initial_total}, 当前 {total_balance}"
-            )
+            assert (
+                abs(total_balance - initial_total) < 0.01
+            ), f"并发转账导致余额不一致: 初始 {initial_total}, 当前 {total_balance}"
 
             assert len(errors) == 0, f"并发写入出现异常: {errors}"
 
@@ -352,11 +360,10 @@ class TestCorruptedDbRecovery:
                 except Exception:
                     pass
 
-        assert not crashed or error_msg is not None, (
-            "数据库损坏导致未捕获的崩溃"
-        )
+        assert not crashed or error_msg is not None, "数据库损坏导致未捕获的崩溃"
 
         import gc
+
         gc.collect()
         time.sleep(1)
         try:
@@ -388,6 +395,7 @@ class TestCorruptedDbRecovery:
             await repo.close()
 
             import asyncio
+
             await asyncio.sleep(0.5)
 
             with open(token_db, "wb") as f:
@@ -402,9 +410,9 @@ class TestCorruptedDbRecovery:
                 token_crashed = True
                 token_error = str(e)
 
-            assert not token_crashed or isinstance(token_error, str), (
-                "代币数据库损坏导致未捕获的致命错误"
-            )
+            assert not token_crashed or isinstance(
+                token_error, str
+            ), "代币数据库损坏导致未捕获的致命错误"
 
         asyncio.run(_corrupt_token_test())
 

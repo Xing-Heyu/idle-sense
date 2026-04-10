@@ -57,7 +57,7 @@ class TestSTUNIntegration:
             method=0x0001,
             attributes=[
                 STUNAttribute.software("TestClient"),
-            ]
+            ],
         )
 
         data = original.to_bytes()
@@ -74,9 +74,7 @@ class TestSTUNIntegration:
         assert attr.type == 0x0001
 
         msg = STUNMessage(
-            message_class=STUNMessageClass.SUCCESS_RESPONSE,
-            method=0x0001,
-            attributes=[attr]
+            message_class=STUNMessageClass.SUCCESS_RESPONSE, method=0x0001, attributes=[attr]
         )
 
         parsed = STUNMessage.from_bytes(msg.to_bytes())
@@ -89,9 +87,7 @@ class TestSTUNIntegration:
     def test_stun_attribute_xor_mapped_address(self):
         """Test XOR-MAPPED-ADDRESS attribute."""
         transaction_id = b"123456789012"
-        attr = STUNAttribute.xor_mapped_address(
-            "10.0.0.1", 5000, transaction_id
-        )
+        attr = STUNAttribute.xor_mapped_address("10.0.0.1", 5000, transaction_id)
 
         assert attr.type == 0x0020
 
@@ -99,7 +95,7 @@ class TestSTUNIntegration:
             message_class=STUNMessageClass.SUCCESS_RESPONSE,
             method=0x0001,
             transaction_id=transaction_id,
-            attributes=[attr]
+            attributes=[attr],
         )
 
         parsed = STUNMessage.from_bytes(msg.to_bytes())
@@ -216,10 +212,7 @@ class TestNATTraversalIntegration:
     @pytest.mark.asyncio
     async def test_turn_client_lifecycle(self):
         """Test TURN client lifecycle."""
-        client = TURNClient(
-            server_host="127.0.0.1",
-            server_port=3480
-        )
+        client = TURNClient(server_host="127.0.0.1", server_port=3480)
 
         stats = client.get_stats()
 
@@ -244,7 +237,7 @@ class TestNATTypeDetection:
         """Test NAT detection with mocked responses."""
         client = STUNClient()
 
-        with patch.object(client, '_send_binding_request') as mock_send:
+        with patch.object(client, "_send_binding_request") as mock_send:
             mock_response = Mock()
             mock_response.get_mapped_address.return_value = ("192.168.1.1", 12345)
             mock_send.return_value = mock_response
@@ -291,10 +284,7 @@ class TestUDPCommunication:
         await loop.sock_sendto(client_sock, test_data, server_addr)
 
         try:
-            data, addr = await asyncio.wait_for(
-                loop.sock_recvfrom(server_sock, 1024),
-                timeout=2.0
-            )
+            data, addr = await asyncio.wait_for(loop.sock_recvfrom(server_sock, 1024), timeout=2.0)
             assert data == test_data
         except asyncio.TimeoutError:
             pass
@@ -328,19 +318,13 @@ class TestHolePunching:
         await loop.sock_sendto(client2, b"PING from client2", addr1)
 
         try:
-            data1, _ = await asyncio.wait_for(
-                loop.sock_recvfrom(client1, 1024),
-                timeout=2.0
-            )
+            data1, _ = await asyncio.wait_for(loop.sock_recvfrom(client1, 1024), timeout=2.0)
             assert b"client2" in data1
         except asyncio.TimeoutError:
             pass
 
         try:
-            data2, _ = await asyncio.wait_for(
-                loop.sock_recvfrom(client2, 1024),
-                timeout=2.0
-            )
+            data2, _ = await asyncio.wait_for(loop.sock_recvfrom(client2, 1024), timeout=2.0)
             assert b"client1" in data2
         except asyncio.TimeoutError:
             pass

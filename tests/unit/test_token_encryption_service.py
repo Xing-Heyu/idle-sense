@@ -31,7 +31,7 @@ class TestEncryptedData(unittest.TestCase):
             ciphertext=b"ciphertext_data",
             nonce=b"nonce_12bytes",
             salt=b"salt_16bytes_",
-            hmac=b"hmac_32bytes_signature_data"
+            hmac=b"hmac_32bytes_signature_data",
         )
 
         self.assertEqual(encrypted.ciphertext, b"ciphertext_data")
@@ -40,12 +40,7 @@ class TestEncryptedData(unittest.TestCase):
         self.assertEqual(encrypted.hmac, b"hmac_32bytes_signature_data")
 
     def test_encrypted_data_default_version(self):
-        encrypted = EncryptedData(
-            ciphertext=b"data",
-            nonce=b"nonce",
-            salt=b"salt",
-            hmac=b"hmac"
-        )
+        encrypted = EncryptedData(ciphertext=b"data", nonce=b"nonce", salt=b"salt", hmac=b"hmac")
 
         self.assertEqual(encrypted.version, "1.0")
 
@@ -55,7 +50,7 @@ class TestEncryptedData(unittest.TestCase):
             nonce=b"nonce123456",
             salt=b"salt123456789012",
             hmac=b"hmac12345678901234567890123456",
-            version="1.0"
+            version="1.0",
         )
 
         data = encrypted.to_dict()
@@ -71,7 +66,7 @@ class TestEncryptedData(unittest.TestCase):
             ciphertext=b"test_ciphertext",
             nonce=b"test_nonce_12",
             salt=b"test_salt_16_by",
-            hmac=b"test_hmac_32_bytes_signature"
+            hmac=b"test_hmac_32_bytes_signature",
         )
 
         data = original.to_dict()
@@ -88,7 +83,7 @@ class TestEncryptedData(unittest.TestCase):
             nonce=b"nonce_12_b",
             salt=b"salt_16_bytes!",
             hmac=b"hmac_signature_32_bytes_here!!",
-            version="2.0"
+            version="2.0",
         )
 
         data = original.to_dict()
@@ -131,10 +126,7 @@ class TestAES256GCMEncryption(unittest.TestCase):
             "boolean": True,
             "null": None,
             "array": [1, 2, 3, 4, 5],
-            "nested": {
-                "key1": "value1",
-                "key2": {"nested_key": "nested_value"}
-            }
+            "nested": {"key1": "value1", "key2": {"nested_key": "nested_value"}},
         }
 
         encrypted = self.encryption.encrypt(data)
@@ -369,10 +361,7 @@ class TestKeyManagement(unittest.TestCase):
             new_encryption = TokenEncryption()
             new_encryption._load_keys_from_file(temp_path)
 
-            self.assertEqual(
-                new_encryption._encryption_key,
-                encryption._encryption_key
-            )
+            self.assertEqual(new_encryption._encryption_key, encryption._encryption_key)
         finally:
             if os.path.exists(temp_path):
                 os.unlink(temp_path)
@@ -424,9 +413,7 @@ class TestEdgeCases(unittest.TestCase):
         self.encryption = TokenEncryption(main_password="test_password")
 
     def test_large_data_encryption(self):
-        large_data = {
-            "data": "x" * 1000000
-        }
+        large_data = {"data": "x" * 1000000}
 
         encrypted = self.encryption.encrypt(large_data)
         decrypted = self.encryption.decrypt(encrypted)
@@ -438,7 +425,7 @@ class TestEdgeCases(unittest.TestCase):
             "chinese": "你好世界",
             "emoji": "🎉🔐",
             "arabic": "مرحبا",
-            "russian": "Привет"
+            "russian": "Привет",
         }
 
         encrypted = self.encryption.encrypt(unicode_data)

@@ -47,7 +47,7 @@ class TestDAGExecutionE2E:
                 stage_id="map",
                 code_template="result = item * 2",
                 data=[1, 2, 3, 4, 5],
-                partition_count=2
+                partition_count=2,
             )
             .build()
         )
@@ -311,7 +311,7 @@ class TestIntegratedWorkflow:
                     stage_id="map",
                     code_template="result = process(item)",
                     data=list(range(10)),
-                    partition_count=2
+                    partition_count=2,
                 )
                 .build()
             )

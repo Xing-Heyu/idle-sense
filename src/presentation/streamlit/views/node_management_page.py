@@ -33,14 +33,16 @@ def render(user_id: Optional[str] = None):
                 status_emoji = {"在线": "🟢", "离线": "🔴", "忙碌": "🟡"}.get(status, "⚪")
 
                 capacity = node_info.get("capacity", {})
-                nodes_data.append({
-                    "节点ID": node_id[:12] + "..." if len(node_id) > 12 else node_id,
-                    "状态": f"{status_emoji} {status}",
-                    "CPU核心": capacity.get("cpu", "N/A"),
-                    "内存(MB)": capacity.get("memory", "N/A"),
-                    "当前任务": node_info.get("current_task", "无") or "无",
-                    "所有者": node_info.get("owner", "未知")
-                })
+                nodes_data.append(
+                    {
+                        "节点ID": node_id[:12] + "..." if len(node_id) > 12 else node_id,
+                        "状态": f"{status_emoji} {status}",
+                        "CPU核心": capacity.get("cpu", "N/A"),
+                        "内存(MB)": capacity.get("memory", "N/A"),
+                        "当前任务": node_info.get("current_task", "无") or "无",
+                        "所有者": node_info.get("owner", "未知"),
+                    }
+                )
 
             if nodes_data:
                 nodes_df = pd.DataFrame(nodes_data)
@@ -52,7 +54,9 @@ def render(user_id: Optional[str] = None):
 
             st.subheader("节点详情")
             node_options = {node.get("node_id", "unknown"): node for node in nodes_list}
-            selected_node = st.selectbox("选择节点查看详情", list(node_options.keys()), format_func=lambda x: x[:12] + "...")
+            selected_node = st.selectbox(
+                "选择节点查看详情", list(node_options.keys()), format_func=lambda x: x[:12] + "..."
+            )
 
             if selected_node and selected_node in node_options:
                 node_info = node_options[selected_node]
@@ -100,7 +104,7 @@ def render(user_id: Optional[str] = None):
                     cpu_limit=node_cpu,
                     memory_limit=node_memory,
                     storage_limit=10240,
-                    user_id=user_id
+                    user_id=user_id,
                 )
 
                 if success:

@@ -4,7 +4,6 @@
 测试 User, Task, Node, Folder 实体的功能
 """
 
-
 import pytest
 
 from src.core.entities import Folder, FolderType, Node, NodeStatus, Task, TaskStatus, User
@@ -92,6 +91,7 @@ class TestTask:
         task = Task(code="test")
         task.start("node_001")
         import time
+
         time.sleep(0.01)
         task.complete("done")
 
@@ -136,22 +136,14 @@ class TestFolder:
 
     def test_create_folder(self):
         """测试创建文件夹"""
-        folder = Folder(
-            folder_type=FolderType.USER_DATA,
-            path="/tmp/test",
-            user_id="user_001"
-        )
+        folder = Folder(folder_type=FolderType.USER_DATA, path="/tmp/test", user_id="user_001")
         assert folder.folder_type == FolderType.USER_DATA
         assert folder.path == "/tmp/test"
         assert folder.user_id == "user_001"
 
     def test_folder_properties(self):
         """测试文件夹属性"""
-        folder = Folder(
-            folder_type=FolderType.USER_DATA,
-            path="/tmp/test",
-            user_id="user_001"
-        )
+        folder = Folder(folder_type=FolderType.USER_DATA, path="/tmp/test", user_id="user_001")
         assert folder.name == "test"
 
 

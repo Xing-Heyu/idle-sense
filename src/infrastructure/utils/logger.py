@@ -57,10 +57,7 @@ class TextFormatter(logging.Formatter):
     DEFAULT_DATE_FORMAT = "%Y-%m-%d %H:%M:%S"
 
     def __init__(
-        self,
-        fmt: Optional[str] = None,
-        datefmt: Optional[str] = None,
-        include_extra: bool = True
+        self, fmt: Optional[str] = None, datefmt: Optional[str] = None, include_extra: bool = True
     ):
         super().__init__(fmt or self.DEFAULT_FORMAT, datefmt or self.DEFAULT_DATE_FORMAT)
         self.include_extra = include_extra
@@ -93,7 +90,7 @@ class StructuredLogger:
         json_output: bool = True,
         output_file: Optional[Union[str, Path]] = None,
         console_output: bool = True,
-        ensure_ascii: bool = False
+        ensure_ascii: bool = False,
     ):
         self._name = name
         self._logger = logging.getLogger(name)
@@ -125,11 +122,7 @@ class StructuredLogger:
         output_path = Path(output_file)
         output_path.parent.mkdir(parents=True, exist_ok=True)
 
-        file_handler = logging.FileHandler(
-            output_path,
-            mode="a",
-            encoding="utf-8"
-        )
+        file_handler = logging.FileHandler(output_path, mode="a", encoding="utf-8")
         file_handler.setLevel(level)
 
         if self._json_output:
@@ -139,13 +132,7 @@ class StructuredLogger:
 
         self._logger.addHandler(file_handler)
 
-    def _log(
-        self,
-        level: int,
-        message: str,
-        exc_info: bool = False,
-        **kwargs: Any
-    ) -> None:
+    def _log(self, level: int, message: str, exc_info: bool = False, **kwargs: Any) -> None:
         extra = {"extra_fields": kwargs} if kwargs else {}
 
         with self._lock:
@@ -160,12 +147,7 @@ class StructuredLogger:
     def warning(self, message: str, **kwargs: Any) -> None:
         self._log(logging.WARNING, message, **kwargs)
 
-    def error(
-        self,
-        message: str,
-        exc_info: bool = False,
-        **kwargs: Any
-    ) -> None:
+    def error(self, message: str, exc_info: bool = False, **kwargs: Any) -> None:
         self._log(logging.ERROR, message, exc_info=exc_info, **kwargs)
 
     def critical(self, message: str, exc_info: bool = False, **kwargs: Any) -> None:
@@ -204,7 +186,7 @@ def configure_logging(
     json_output: bool = True,
     console_output: bool = True,
     output_file: Optional[Union[str, Path]] = None,
-    ensure_ascii: bool = False
+    ensure_ascii: bool = False,
 ) -> None:
     global _default_config
     _default_config = {
@@ -222,7 +204,7 @@ def get_logger(
     json_output: Optional[bool] = None,
     output_file: Optional[Union[str, Path]] = None,
     console_output: Optional[bool] = None,
-    ensure_ascii: Optional[bool] = None
+    ensure_ascii: Optional[bool] = None,
 ) -> StructuredLogger:
     with _loggers_lock:
         if name in _loggers:
@@ -230,10 +212,18 @@ def get_logger(
 
         config = {
             "level": level if level is not None else _default_config["level"],
-            "json_output": json_output if json_output is not None else _default_config["json_output"],
-            "console_output": console_output if console_output is not None else _default_config["console_output"],
-            "output_file": output_file if output_file is not None else _default_config["output_file"],
-            "ensure_ascii": ensure_ascii if ensure_ascii is not None else _default_config["ensure_ascii"],
+            "json_output": (
+                json_output if json_output is not None else _default_config["json_output"]
+            ),
+            "console_output": (
+                console_output if console_output is not None else _default_config["console_output"]
+            ),
+            "output_file": (
+                output_file if output_file is not None else _default_config["output_file"]
+            ),
+            "ensure_ascii": (
+                ensure_ascii if ensure_ascii is not None else _default_config["ensure_ascii"]
+            ),
         }
 
         logger = StructuredLogger(name=name, **config)

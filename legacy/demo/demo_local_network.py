@@ -15,14 +15,17 @@ import requests
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
+
 def print_header(title):
     print("\n" + "=" * 60)
     print(f"  {title}")
     print("=" * 60)
 
+
 def print_step(step, description):
     print(f"\n[{step}] {description}")
     print("-" * 40)
+
 
 def get_local_ip():
     """获取本地IP地址"""
@@ -34,6 +37,7 @@ def get_local_ip():
         return ip
     except OSError:
         return "127.0.0.1"
+
 
 def setup_scheduler():
     """设置调度中心"""
@@ -71,6 +75,7 @@ def setup_scheduler():
 
     return scheduler_ip
 
+
 def setup_nodes(scheduler_ip):
     """设置计算节点"""
     print_step("2", "设置计算节点")
@@ -86,22 +91,26 @@ def setup_nodes(scheduler_ip):
     # 在本机启动一个演示节点
     start_local = input("  在本机启动演示节点？(y/n) [y]: ").strip().lower()
 
-    if start_local in ['y', 'yes', '']:
+    if start_local in ["y", "yes", ""]:
         print("  启动本地演示节点...")
         node_proc = subprocess.Popen(
             [
-                sys.executable, "node/simple_client.py",
-                "--scheduler", f"http://{scheduler_ip}:8000",
-                "--node-name", f"演示节点-{socket.gethostname()}"
+                sys.executable,
+                "node/simple_client.py",
+                "--scheduler",
+                f"http://{scheduler_ip}:8000",
+                "--node-name",
+                f"演示节点-{socket.gethostname()}",
             ],
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
-            text=True
+            text=True,
         )
         print(f"  ✅ 本地节点已启动 (PID: {node_proc.pid})")
         return node_proc
 
     return None
+
 
 def submit_tasks(scheduler_ip):
     """提交分布式任务"""
@@ -126,7 +135,7 @@ for _ in range(samples):
 pi_estimate = 4.0 * inside / samples
 print(f"π ≈ {pi_estimate}")
 __result__ = pi_estimate
-"""
+""",
         },
         {
             "name": "数据统计",
@@ -145,8 +154,8 @@ print(f"均值: {mean:.2f}")
 print(f"标准差: {std_dev:.2f}")
 
 __result__ = {"mean": mean, "std_dev": std_dev}
-"""
-        }
+""",
+        },
     ]
 
     submitted = []
@@ -156,14 +165,10 @@ __result__ = {"mean": mean, "std_dev": std_dev}
             payload = {
                 "code": task["code"],
                 "timeout": 60,
-                "resources": {"cpu": 1.0, "memory": 256}
+                "resources": {"cpu": 1.0, "memory": 256},
             }
 
-            response = requests.post(
-                f"http://{scheduler_ip}:8000/submit",
-                json=payload,
-                timeout=10
-            )
+            response = requests.post(f"http://{scheduler_ip}:8000/submit", json=payload, timeout=10)
 
             if response.status_code == 200:
                 task_id = response.json().get("task_id")
@@ -176,6 +181,7 @@ __result__ = {"mean": mean, "std_dev": std_dev}
             print(f"  ❌ {task['name']}: 错误 - {e}")
 
     return submitted
+
 
 def monitor_execution(scheduler_ip, tasks):
     """监控任务执行"""
@@ -195,14 +201,13 @@ def monitor_execution(scheduler_ip, tasks):
     try:
         while completed < len(tasks) and (time.time() - start_time) < max_wait:
             # 更新显示
-            os.system('cls' if os.name == 'nt' else 'clear')
+            os.system("cls" if os.name == "nt" else "clear")
             print_header("任务执行监控")
 
             for task in tasks:
                 try:
                     response = requests.get(
-                        f"http://{scheduler_ip}:8000/status/{task['id']}",
-                        timeout=3
+                        f"http://{scheduler_ip}:8000/status/{task['id']}", timeout=3
                     )
 
                     if response.status_code == 200:
@@ -218,12 +223,9 @@ def monitor_execution(scheduler_ip, tasks):
                     pass
 
                 # 显示状态
-                icon = {
-                    "submitted": "🟡",
-                    "running": "🔵",
-                    "completed": "✅",
-                    "failed": "❌"
-                }.get(task.get("status", "submitted"), "⚪")
+                icon = {"submitted": "🟡", "running": "🔵", "completed": "✅", "failed": "❌"}.get(
+                    task.get("status", "submitted"), "⚪"
+                )
 
                 print(f"  {icon} {task['name']:15} {task.get('status', 'submitted'):12}")
 
@@ -240,6 +242,7 @@ def monitor_execution(scheduler_ip, tasks):
         print("\n\n监控被中断")
 
     print(f"\n  完成: {completed}/{len(tasks)} 个任务")
+
 
 def show_results(scheduler_ip):
     """显示结果"""
@@ -274,6 +277,7 @@ def show_results(scheduler_ip):
 
     except Exception as e:
         print(f"  获取状态时出错: {e}")
+
 
 def run_demo():
     """运行演示"""
@@ -327,6 +331,7 @@ def run_demo():
     except Exception as e:
         print(f"\n演示出错: {e}")
         import traceback
+
         traceback.print_exc()
         return False
     finally:
@@ -338,6 +343,7 @@ def run_demo():
                 node_proc.wait(timeout=3)
             except subprocess.TimeoutExpired:
                 node_proc.kill()
+
 
 def main():
     success = run_demo()
@@ -357,6 +363,7 @@ def main():
         print("  3. 查看日志文件")
 
     sys.exit(0 if success else 1)
+
 
 if __name__ == "__main__":
     main()

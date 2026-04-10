@@ -5,7 +5,7 @@ import requests
 # 测试节点状态
 print("测试调度中心连接...")
 try:
-    response = requests.get('http://localhost:8000/', timeout=5)
+    response = requests.get("http://localhost:8000/", timeout=5)
     print(f"调度中心状态: {response.status_code}")
     print(f"版本信息: {response.json()}")
 except Exception as e:
@@ -14,7 +14,7 @@ except Exception as e:
 # 测试节点列表
 print("\n测试节点列表...")
 try:
-    response = requests.get('http://localhost:8000/api/nodes', timeout=5)
+    response = requests.get("http://localhost:8000/api/nodes", timeout=5)
     print(f"节点列表状态: {response.status_code}")
     if response.status_code == 200:
         nodes_data = response.json()
@@ -27,7 +27,7 @@ except Exception as e:
 # 测试系统统计
 print("\n测试系统统计...")
 try:
-    response = requests.get('http://localhost:8000/stats', timeout=5)
+    response = requests.get("http://localhost:8000/stats", timeout=5)
     print(f"系统统计状态: {response.status_code}")
     if response.status_code == 200:
         stats_data = response.json()

@@ -3,6 +3,7 @@ examples/math_computation.py
 数学计算示例 - 展示科学计算能力
 """
 
+
 def monte_carlo_pi(samples=1000000):
     """蒙特卡洛方法计算π"""
     import math
@@ -19,7 +20,7 @@ def monte_carlo_pi(samples=1000000):
         x = random.random()
         y = random.random()
 
-        if x*x + y*y <= 1.0:
+        if x * x + y * y <= 1.0:
             inside_circle += 1
 
     pi_estimate = 4.0 * inside_circle / samples
@@ -34,6 +35,7 @@ def monte_carlo_pi(samples=1000000):
     print(f"速度: {samples/elapsed:,.0f} 样本/秒")
 
     return pi_estimate
+
 
 def numerical_integration():
     """数值积分"""
@@ -69,6 +71,7 @@ def numerical_integration():
     print(f"误差: {abs(integral - exact_value):.10f}")
 
     return integral
+
 
 def linear_algebra_operations():
     """线性代数运算"""
@@ -113,12 +116,13 @@ def linear_algebra_operations():
     mul_check = sum(D[0])
 
     return {
-        'matrix_size': size,
-        'addition_time': add_time,
-        'multiplication_time': mul_time,
-        'sum_first_row': sum_check,
-        'mul_first_row': mul_check
+        "matrix_size": size,
+        "addition_time": add_time,
+        "multiplication_time": mul_time,
+        "sum_first_row": sum_check,
+        "mul_first_row": mul_check,
     }
+
 
 def solve_differential_equation():
     """求解微分方程"""
@@ -162,12 +166,13 @@ def solve_differential_equation():
     print(f"相对误差: {error/exact_final*100:.2f}%")
 
     return {
-        'equation': 'dy/dx = -y',
-        'initial_condition': 'y(0) = 1',
-        'numerical_solution': y_final,
-        'exact_solution': exact_final,
-        'error': error
+        "equation": "dy/dx = -y",
+        "initial_condition": "y(0) = 1",
+        "numerical_solution": y_final,
+        "exact_solution": exact_final,
+        "error": error,
     }
+
 
 def run_math_computation_demo():
     """运行数学计算演示"""
@@ -177,10 +182,10 @@ def run_math_computation_demo():
 
     results = {}
 
-    results['monte_carlo_pi'] = monte_carlo_pi(500000)
-    results['integration'] = numerical_integration()
-    results['linear_algebra'] = linear_algebra_operations()
-    results['differential_eq'] = solve_differential_equation()
+    results["monte_carlo_pi"] = monte_carlo_pi(500000)
+    results["integration"] = numerical_integration()
+    results["linear_algebra"] = linear_algebra_operations()
+    results["differential_eq"] = solve_differential_equation()
 
     print("\n" + "=" * 60)
     print("数学计算演示完成!")
@@ -188,6 +193,8 @@ def run_math_computation_demo():
 
     return results
 
+
 if __name__ == "__main__":
     import math
+
     run_math_computation_demo()

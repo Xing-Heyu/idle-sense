@@ -8,6 +8,7 @@ Tests security features of all sandbox implementations:
 - WASMSandbox
 - FirecrackerSandbox
 """
+
 import os
 import sys
 import unittest
@@ -31,6 +32,7 @@ def _docker_available():
     """Check if Docker is available."""
     try:
         import docker
+
         client = docker.from_env()
         client.ping()
         return True
@@ -49,6 +51,7 @@ def _wasm_available():
 def _memory_limit_supported():
     """Check if memory limit is supported on this platform."""
     import platform
+
     return platform.system() != "Windows"
 
 
@@ -241,13 +244,16 @@ class TestSecureSandbox(unittest.TestCase):
 
     def test_auto_select(self):
         sandbox = SecureSandbox.auto_select()
-        self.assertIn(sandbox.level, [
-            SandboxLevel.BASIC,
-            SandboxLevel.CONTAINER,
-            SandboxLevel.GVISOR,
-            SandboxLevel.MICROVM,
-            SandboxLevel.WASM,
-        ])
+        self.assertIn(
+            sandbox.level,
+            [
+                SandboxLevel.BASIC,
+                SandboxLevel.CONTAINER,
+                SandboxLevel.GVISOR,
+                SandboxLevel.MICROVM,
+                SandboxLevel.WASM,
+            ],
+        )
 
     def test_invalid_level(self):
         with self.assertRaises(ValueError):
@@ -272,7 +278,6 @@ class TestResourceMonitor(unittest.TestCase):
     def test_memory_tracking(self):
         monitor = ResourceMonitor()
         monitor.start()
-
 
         usage = monitor.stop()
 

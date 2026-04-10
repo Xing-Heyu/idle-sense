@@ -72,7 +72,7 @@ def get_container():
         "  from src.di import container\n"
         "  # or: from src.di.container import container",
         DeprecationWarning,
-        stacklevel=2
+        stacklevel=2,
     )
     return _container
 

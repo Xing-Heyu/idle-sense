@@ -36,5 +36,5 @@ __all__ = [
     "FolderPermission",
     "FolderFactory",
     "FOLDER_TYPE_DESCRIPTIONS",
-    "FOLDER_TYPE_NAMES"
+    "FOLDER_TYPE_NAMES",
 ]

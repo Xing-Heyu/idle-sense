@@ -39,7 +39,7 @@ class RateLimitStats:
             "denied_requests": self.denied_requests,
             "throttled_requests": self.throttled_requests,
             "denial_rate": round(self.denial_rate, 4),
-            "current_rate": round(self.current_rate, 4)
+            "current_rate": round(self.current_rate, 4),
         }
 
 
@@ -58,12 +58,7 @@ class RateLimiterBackend(ABC):
 
 
 class TokenBucketBackend(RateLimiterBackend):
-    def __init__(
-        self,
-        rate: float,
-        burst_size: int,
-        refill_interval: float = 1.0
-    ):
+    def __init__(self, rate: float, burst_size: int, refill_interval: float = 1.0):
         self.rate = rate
         self.burst_size = burst_size
         self.refill_interval = refill_interval
@@ -76,7 +71,7 @@ class TokenBucketBackend(RateLimiterBackend):
             self._buckets[key] = {
                 "tokens": float(self.burst_size),
                 "last_refill": time.time(),
-                "stats": RateLimitStats()
+                "stats": RateLimitStats(),
             }
         return self._buckets[key]
 
@@ -179,11 +174,7 @@ class LeakyBucketBackend(RateLimiterBackend):
 
     def _get_bucket(self, key: str) -> dict[str, Any]:
         if key not in self._buckets:
-            self._buckets[key] = {
-                "water": 0,
-                "last_leak": time.time(),
-                "stats": RateLimitStats()
-            }
+            self._buckets[key] = {"water": 0, "last_leak": time.time(), "stats": RateLimitStats()}
         return self._buckets[key]
 
     def _leak(self, bucket: dict[str, Any]):
@@ -240,11 +231,7 @@ class FixedWindowBackend(RateLimiterBackend):
             window_start = self._get_window_start()
 
             if key not in self._windows or self._windows[key]["start"] != window_start:
-                self._windows[key] = {
-                    "start": window_start,
-                    "count": 0,
-                    "stats": RateLimitStats()
-                }
+                self._windows[key] = {"start": window_start, "count": 0, "stats": RateLimitStats()}
 
             window = self._windows[key]
             stats = window["stats"]
@@ -271,11 +258,7 @@ class FixedWindowBackend(RateLimiterBackend):
 
 
 class RateLimiter:
-    def __init__(
-        self,
-        backend: RateLimiterBackend | None = None,
-        default_key: str = "default"
-    ):
+    def __init__(self, backend: RateLimiterBackend | None = None, default_key: str = "default"):
         self.backend = backend or TokenBucketBackend(rate=10.0, burst_size=20)
         self.default_key = default_key
 
@@ -290,7 +273,7 @@ class RateLimiter:
         key: str | None = None,
         permits: int = 1,
         timeout: float = 10.0,
-        retry_interval: float = 0.1
+        retry_interval: float = 0.1,
     ) -> LimitResult:
         start_time = time.time()
 
@@ -307,12 +290,7 @@ class RateLimiter:
             time.sleep(min(retry_interval, timeout - elapsed))
 
     @contextmanager
-    def limit(
-        self,
-        key: str | None = None,
-        permits: int = 1,
-        timeout: float = 10.0
-    ):
+    def limit(self, key: str | None = None, permits: int = 1, timeout: float = 10.0):
         result = self.acquire_or_wait(key, permits, timeout)
 
         if result != LimitResult.ALLOWED:
@@ -330,11 +308,7 @@ class RateLimiter:
         self.backend.reset(key or self.default_key)
 
 
-def rate_limit(
-    rate: float = 10.0,
-    burst_size: int = 20,
-    key_func: Callable | None = None
-):
+def rate_limit(rate: float = 10.0, burst_size: int = 20, key_func: Callable | None = None):
     limiter = RateLimiter(backend=TokenBucketBackend(rate=rate, burst_size=burst_size))
 
     def decorator(func: Callable) -> Callable:
@@ -354,28 +328,14 @@ class MultiRateLimiter:
         self._limiters: dict[str, RateLimiter] = {}
         self._lock = threading.RLock()
 
-    def register(
-        self,
-        name: str,
-        backend: RateLimiterBackend
-    ):
+    def register(self, name: str, backend: RateLimiterBackend):
         with self._lock:
             self._limiters[name] = RateLimiter(backend=backend)
 
-    def register_token_bucket(
-        self,
-        name: str,
-        rate: float,
-        burst_size: int
-    ):
+    def register_token_bucket(self, name: str, rate: float, burst_size: int):
         self.register(name, TokenBucketBackend(rate=rate, burst_size=burst_size))
 
-    def register_sliding_window(
-        self,
-        name: str,
-        max_requests: int,
-        window_seconds: float = 60.0
-    ):
+    def register_sliding_window(self, name: str, max_requests: int, window_seconds: float = 60.0):
         self.register(name, SlidingWindowBackend(max_requests, window_seconds))
 
     def get(self, name: str) -> RateLimiter | None:

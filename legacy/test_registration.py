@@ -32,7 +32,7 @@ def test_registration_flow():
     print("正在调用create_folders.py脚本...")
 
     # 创建临时文件用于存储结果
-    with tempfile.NamedTemporaryFile(mode='w', suffix='.json', delete=False) as temp_file:
+    with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False) as temp_file:
         temp_output_path = temp_file.name
 
     try:
@@ -41,10 +41,14 @@ def test_registration_flow():
         cmd = [
             sys.executable,
             script_path,
-            "--user-id", test_user_id,
-            "--username", test_username,
-            "--folder-location", test_folder_location,
-            "--output", temp_output_path
+            "--user-id",
+            test_user_id,
+            "--username",
+            test_username,
+            "--folder-location",
+            test_folder_location,
+            "--output",
+            temp_output_path,
         ]
 
         print(f"执行命令: {' '.join(cmd)}")
@@ -73,7 +77,7 @@ def test_registration_flow():
 
         # 读取结果文件
         if os.path.exists(temp_output_path):
-            with open(temp_output_path, encoding='utf-8') as f:
+            with open(temp_output_path, encoding="utf-8") as f:
                 result_data = json.load(f)
 
             print("\n结果文件内容:")
@@ -115,7 +119,7 @@ def test_registration_flow():
                         print(f"✅ 系统信息文件已创建: {system_file}")
 
                         # 读取并显示系统信息文件内容
-                        with open(system_file, encoding='utf-8') as f:
+                        with open(system_file, encoding="utf-8") as f:
                             system_info = json.load(f)
                         print("系统信息文件内容:")
                         print(json.dumps(system_info, ensure_ascii=False, indent=2))
@@ -146,6 +150,7 @@ def test_registration_flow():
             pass
 
     print("\n测试完成")
+
 
 if __name__ == "__main__":
     test_registration_flow()

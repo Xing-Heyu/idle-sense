@@ -29,18 +29,21 @@ class MessageType(Enum):
 @dataclass
 class ProgressUpdate:
     """Progress update message."""
+
     task_id: str
     message_type: MessageType
     timestamp: float = field(default_factory=time.time)
     data: dict[str, Any] = field(default_factory=dict)
 
     def to_json(self) -> str:
-        return json.dumps({
-            "task_id": self.task_id,
-            "message_type": self.message_type.value,
-            "timestamp": self.timestamp,
-            "data": self.data,
-        })
+        return json.dumps(
+            {
+                "task_id": self.task_id,
+                "message_type": self.message_type.value,
+                "timestamp": self.timestamp,
+                "data": self.data,
+            }
+        )
 
     @classmethod
     def from_json(cls, data: str) -> "ProgressUpdate":
@@ -56,6 +59,7 @@ class ProgressUpdate:
 @dataclass
 class TaskProgress:
     """Task progress information."""
+
     task_id: str
     status: str
     progress: float
@@ -81,6 +85,7 @@ class TaskProgress:
 @dataclass
 class StageProgress:
     """Stage progress information."""
+
     stage_id: str
     task_id: str
     status: str
@@ -126,19 +131,16 @@ class ProgressTracker:
             started_at=time.time(),
         )
         self._task_progress[task_id] = progress
-        self._notify(ProgressUpdate(
-            task_id=task_id,
-            message_type=MessageType.TASK_STATUS,
-            data=progress.to_dict(),
-        ))
+        self._notify(
+            ProgressUpdate(
+                task_id=task_id,
+                message_type=MessageType.TASK_STATUS,
+                data=progress.to_dict(),
+            )
+        )
         return progress
 
-    def register_stage(
-        self,
-        task_id: str,
-        stage_id: str,
-        total_chunks: int
-    ) -> StageProgress:
+    def register_stage(self, task_id: str, stage_id: str, total_chunks: int) -> StageProgress:
         """Register a new stage for tracking."""
         progress = StageProgress(
             stage_id=stage_id,
@@ -151,11 +153,13 @@ class ProgressTracker:
             started_at=time.time(),
         )
         self._stage_progress[f"{task_id}:{stage_id}"] = progress
-        self._notify(ProgressUpdate(
-            task_id=task_id,
-            message_type=MessageType.STAGE_PROGRESS,
-            data=progress.to_dict(),
-        ))
+        self._notify(
+            ProgressUpdate(
+                task_id=task_id,
+                message_type=MessageType.STAGE_PROGRESS,
+                data=progress.to_dict(),
+            )
+        )
         return progress
 
     def update_task_status(self, task_id: str, status: str, progress: float = None):
@@ -168,11 +172,13 @@ class ProgressTracker:
         if progress is not None:
             task.progress = progress
 
-        self._notify(ProgressUpdate(
-            task_id=task_id,
-            message_type=MessageType.TASK_STATUS,
-            data=task.to_dict(),
-        ))
+        self._notify(
+            ProgressUpdate(
+                task_id=task_id,
+                message_type=MessageType.TASK_STATUS,
+                data=task.to_dict(),
+            )
+        )
 
     def update_stage_progress(
         self,
@@ -180,7 +186,7 @@ class ProgressTracker:
         stage_id: str,
         completed_chunks: int = None,
         failed_chunks: int = None,
-        status: str = None
+        status: str = None,
     ):
         """Update stage progress."""
         key = f"{task_id}:{stage_id}"
@@ -198,11 +204,13 @@ class ProgressTracker:
         if stage.total_chunks > 0:
             stage.progress = stage.completed_chunks / stage.total_chunks
 
-        self._notify(ProgressUpdate(
-            task_id=task_id,
-            message_type=MessageType.STAGE_PROGRESS,
-            data=stage.to_dict(),
-        ))
+        self._notify(
+            ProgressUpdate(
+                task_id=task_id,
+                message_type=MessageType.STAGE_PROGRESS,
+                data=stage.to_dict(),
+            )
+        )
 
     def complete_chunk(self, task_id: str, stage_id: str, chunk_id: str, result: Any = None):
         """Mark a chunk as completed."""
@@ -218,16 +226,18 @@ class ProgressTracker:
         if stage.total_chunks > 0:
             stage.progress = stage.completed_chunks / stage.total_chunks
 
-        self._notify(ProgressUpdate(
-            task_id=task_id,
-            message_type=MessageType.CHUNK_COMPLETE,
-            data={
-                "chunk_id": chunk_id,
-                "stage_id": stage_id,
-                "result": result,
-                "stage_progress": stage.to_dict(),
-            },
-        ))
+        self._notify(
+            ProgressUpdate(
+                task_id=task_id,
+                message_type=MessageType.CHUNK_COMPLETE,
+                data={
+                    "chunk_id": chunk_id,
+                    "stage_id": stage_id,
+                    "result": result,
+                    "stage_progress": stage.to_dict(),
+                },
+            )
+        )
 
         self._update_task_from_stages(task_id)
 
@@ -240,16 +250,18 @@ class ProgressTracker:
         stage = self._stage_progress[key]
         stage.failed_chunks += 1
 
-        self._notify(ProgressUpdate(
-            task_id=task_id,
-            message_type=MessageType.TASK_ERROR,
-            data={
-                "chunk_id": chunk_id,
-                "stage_id": stage_id,
-                "error": error,
-                "stage_progress": stage.to_dict(),
-            },
-        ))
+        self._notify(
+            ProgressUpdate(
+                task_id=task_id,
+                message_type=MessageType.TASK_ERROR,
+                data={
+                    "chunk_id": chunk_id,
+                    "stage_id": stage_id,
+                    "error": error,
+                    "stage_progress": stage.to_dict(),
+                },
+            )
+        )
 
     def complete_task(self, task_id: str, result: Any = None):
         """Mark a task as completed."""
@@ -260,15 +272,17 @@ class ProgressTracker:
         task.status = "completed"
         task.progress = 1.0
 
-        self._notify(ProgressUpdate(
-            task_id=task_id,
-            message_type=MessageType.TASK_RESULT,
-            data={
-                "status": "completed",
-                "result": result,
-                "task_progress": task.to_dict(),
-            },
-        ))
+        self._notify(
+            ProgressUpdate(
+                task_id=task_id,
+                message_type=MessageType.TASK_RESULT,
+                data={
+                    "status": "completed",
+                    "result": result,
+                    "task_progress": task.to_dict(),
+                },
+            )
+        )
 
     def _update_task_from_stages(self, task_id: str):
         """Update task progress from stage progress."""
@@ -281,14 +295,10 @@ class ProgressTracker:
         if not stage_keys:
             return
 
-        total_progress = sum(
-            self._stage_progress[k].progress
-            for k in stage_keys
-        )
+        total_progress = sum(self._stage_progress[k].progress for k in stage_keys)
         task.progress = total_progress / len(stage_keys)
         task.completed_stages = sum(
-            1 for k in stage_keys
-            if self._stage_progress[k].status == "completed"
+            1 for k in stage_keys if self._stage_progress[k].status == "completed"
         )
 
     def subscribe(self, task_id: str, callback: Callable):
@@ -409,16 +419,21 @@ class WebSocketProgressServer:
             if action == "subscribe":
                 task_id = data.get("task_id")
                 if task_id:
-                    self.tracker.subscribe(task_id, lambda update: self._send_update(writer, update))
+                    self.tracker.subscribe(
+                        task_id, lambda update: self._send_update(writer, update)
+                    )
             elif action == "get_progress":
                 task_id = data.get("task_id")
                 if task_id:
                     progress = self.tracker.get_task_progress(task_id)
                     if progress:
-                        await self._send_response(writer, {
-                            "action": "progress",
-                            "data": progress.to_dict(),
-                        })
+                        await self._send_response(
+                            writer,
+                            {
+                                "action": "progress",
+                                "data": progress.to_dict(),
+                            },
+                        )
         except Exception as e:
             print(f"[Progress WS] Message handling error: {e}")
 

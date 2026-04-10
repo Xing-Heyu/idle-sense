@@ -30,6 +30,7 @@ T = TypeVar("T")
 @dataclass
 class APIResult:
     """API调用结果"""
+
     success: bool
     data: Optional[dict[str, Any]] = None
     error: Optional[str] = None
@@ -47,10 +48,7 @@ class APIResult:
 
 
 def safe_api_call(
-    func: Callable[..., requests.Response],
-    *args,
-    default: Any = None,
-    **kwargs
+    func: Callable[..., requests.Response], *args, default: Any = None, **kwargs
 ) -> tuple[bool, Any]:
     """
     统一的API调用包装器
@@ -74,7 +72,7 @@ def safe_api_call(
     try:
         response = func(*args, **kwargs)
 
-        if hasattr(response, 'status_code'):
+        if hasattr(response, "status_code"):
             if response.status_code == 200:
                 try:
                     return True, response.json()
@@ -88,7 +86,11 @@ def safe_api_call(
                         error_msg = error_data["error"]
                 except (ValueError, KeyError):
                     pass
-                return False, {"error": error_msg, "text": response.text, "status_code": response.status_code}
+                return False, {
+                    "error": error_msg,
+                    "text": response.text,
+                    "status_code": response.status_code,
+                }
         else:
             return True, response
 
@@ -102,11 +104,7 @@ def safe_api_call(
         return False, {"error": f"未知错误: {str(e)}", "details": str(e)}
 
 
-def safe_api_call_v2(
-    func: Callable[..., requests.Response],
-    *args,
-    **kwargs
-) -> APIResult:
+def safe_api_call_v2(func: Callable[..., requests.Response], *args, **kwargs) -> APIResult:
     """
     统一的API调用包装器（新版本，返回APIResult对象）
 
@@ -128,7 +126,7 @@ def safe_api_call_v2(
     try:
         response = func(*args, **kwargs)
 
-        if hasattr(response, 'status_code'):
+        if hasattr(response, "status_code"):
             if response.status_code == 200:
                 try:
                     return APIResult.ok(response.json(), response.status_code)
@@ -160,7 +158,7 @@ def retry_on_failure(
     max_retries: int = 3,
     delay: float = 1.0,
     backoff: float = 2.0,
-    exceptions: tuple = (requests.exceptions.RequestException,)
+    exceptions: tuple = (requests.exceptions.RequestException,),
 ):
     """
     失败重试装饰器
@@ -181,6 +179,7 @@ def retry_on_failure(
         ...     response.raise_for_status()
         ...     return response.json()
     """
+
     def decorator(func: Callable[..., T]) -> Callable[..., T]:
         @functools.wraps(func)
         def wrapper(*args, **kwargs) -> T:
@@ -201,6 +200,7 @@ def retry_on_failure(
             raise last_exception from None
 
         return wrapper
+
     return decorator
 
 
@@ -217,12 +217,15 @@ def with_timeout(timeout: int = 10):
     Note:
         此装饰器需要配合支持 timeout 参数的函数使用
     """
+
     def decorator(func: Callable[..., T]) -> Callable[..., T]:
         @functools.wraps(func)
         def wrapper(*args, **kwargs) -> T:
-            kwargs.setdefault('timeout', timeout)
+            kwargs.setdefault("timeout", timeout)
             return func(*args, **kwargs)
+
         return wrapper
+
     return decorator
 
 
@@ -242,11 +245,7 @@ class APIClient:
     """
 
     def __init__(
-        self,
-        base_url: str = "",
-        timeout: int = 10,
-        max_retries: int = 3,
-        retry_delay: float = 1.0
+        self, base_url: str = "", timeout: int = 10, max_retries: int = 3, retry_delay: float = 1.0
     ):
         """
         初始化API客户端
@@ -271,39 +270,23 @@ class APIClient:
 
     def get(self, endpoint: str, **kwargs) -> tuple[bool, Any]:
         """GET请求"""
-        kwargs.setdefault('timeout', self.timeout)
-        return safe_api_call(
-            self._session.get,
-            self._build_url(endpoint),
-            **kwargs
-        )
+        kwargs.setdefault("timeout", self.timeout)
+        return safe_api_call(self._session.get, self._build_url(endpoint), **kwargs)
 
     def post(self, endpoint: str, **kwargs) -> tuple[bool, Any]:
         """POST请求"""
-        kwargs.setdefault('timeout', self.timeout)
-        return safe_api_call(
-            self._session.post,
-            self._build_url(endpoint),
-            **kwargs
-        )
+        kwargs.setdefault("timeout", self.timeout)
+        return safe_api_call(self._session.post, self._build_url(endpoint), **kwargs)
 
     def put(self, endpoint: str, **kwargs) -> tuple[bool, Any]:
         """PUT请求"""
-        kwargs.setdefault('timeout', self.timeout)
-        return safe_api_call(
-            self._session.put,
-            self._build_url(endpoint),
-            **kwargs
-        )
+        kwargs.setdefault("timeout", self.timeout)
+        return safe_api_call(self._session.put, self._build_url(endpoint), **kwargs)
 
     def delete(self, endpoint: str, **kwargs) -> tuple[bool, Any]:
         """DELETE请求"""
-        kwargs.setdefault('timeout', self.timeout)
-        return safe_api_call(
-            self._session.delete,
-            self._build_url(endpoint),
-            **kwargs
-        )
+        kwargs.setdefault("timeout", self.timeout)
+        return safe_api_call(self._session.delete, self._build_url(endpoint), **kwargs)
 
     def close(self):
         """关闭会话"""

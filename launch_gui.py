@@ -40,42 +40,28 @@ class IdleSenseLauncher:
         main_frame.pack(fill=tk.BOTH, expand=True)
 
         title_label = ttk.Label(
-            main_frame,
-            text="🚀 Idle-Sense 分布式算力共享平台",
-            style="Title.TLabel"
+            main_frame, text="🚀 Idle-Sense 分布式算力共享平台", style="Title.TLabel"
         )
         title_label.pack(pady=(0, 10))
 
         subtitle = ttk.Label(
-            main_frame,
-            text="一键启动，共享闲置算力",
-            font=("Microsoft YaHei", 10)
+            main_frame, text="一键启动，共享闲置算力", font=("Microsoft YaHei", 10)
         )
         subtitle.pack(pady=(0, 20))
 
-        self.status_label = ttk.Label(
-            main_frame,
-            text="● 检测环境中...",
-            style="Status.TLabel"
-        )
+        self.status_label = ttk.Label(main_frame, text="● 检测环境中...", style="Status.TLabel")
         self.status_label.pack(pady=(0, 20))
 
         btn_frame = ttk.Frame(main_frame)
         btn_frame.pack(fill=tk.X, pady=10)
 
         self.scheduler_btn = ttk.Button(
-            btn_frame,
-            text="🖥️ 启动调度器",
-            style="Big.TButton",
-            command=self.toggle_scheduler
+            btn_frame, text="🖥️ 启动调度器", style="Big.TButton", command=self.toggle_scheduler
         )
         self.scheduler_btn.pack(side=tk.LEFT, padx=5, expand=True, fill=tk.X)
 
         self.node_btn = ttk.Button(
-            btn_frame,
-            text="💻 启动节点",
-            style="Big.TButton",
-            command=self.start_node
+            btn_frame, text="💻 启动节点", style="Big.TButton", command=self.start_node
         )
         self.node_btn.pack(side=tk.LEFT, padx=5, expand=True, fill=tk.X)
 
@@ -83,49 +69,29 @@ class IdleSenseLauncher:
         btn_frame2.pack(fill=tk.X, pady=10)
 
         ttk.Button(
-            btn_frame2,
-            text="🌐 打开 Web 界面",
-            style="Big.TButton",
-            command=self.open_web
+            btn_frame2, text="🌐 打开 Web 界面", style="Big.TButton", command=self.open_web
         ).pack(side=tk.LEFT, padx=5, expand=True, fill=tk.X)
 
         ttk.Button(
-            btn_frame2,
-            text="📊 查看状态",
-            style="Big.TButton",
-            command=self.show_status
+            btn_frame2, text="📊 查看状态", style="Big.TButton", command=self.show_status
         ).pack(side=tk.LEFT, padx=5, expand=True, fill=tk.X)
 
         log_frame = ttk.LabelFrame(main_frame, text="运行日志", padding=10)
         log_frame.pack(fill=tk.BOTH, expand=True, pady=10)
 
-        self.log_text = scrolledtext.ScrolledText(
-            log_frame,
-            height=10,
-            font=("Consolas", 9)
-        )
+        self.log_text = scrolledtext.ScrolledText(log_frame, height=10, font=("Consolas", 9))
         self.log_text.pack(fill=tk.BOTH, expand=True)
 
         bottom_frame = ttk.Frame(main_frame)
         bottom_frame.pack(fill=tk.X, pady=10)
 
-        ttk.Button(
-            bottom_frame,
-            text="安装依赖",
-            command=self.install_deps
-        ).pack(side=tk.LEFT, padx=5)
+        ttk.Button(bottom_frame, text="安装依赖", command=self.install_deps).pack(
+            side=tk.LEFT, padx=5
+        )
 
-        ttk.Button(
-            bottom_frame,
-            text="使用帮助",
-            command=self.show_help
-        ).pack(side=tk.LEFT, padx=5)
+        ttk.Button(bottom_frame, text="使用帮助", command=self.show_help).pack(side=tk.LEFT, padx=5)
 
-        ttk.Button(
-            bottom_frame,
-            text="退出",
-            command=self.on_closing
-        ).pack(side=tk.RIGHT, padx=5)
+        ttk.Button(bottom_frame, text="退出", command=self.on_closing).pack(side=tk.RIGHT, padx=5)
 
     def _check_environment(self):
         python_ok = sys.version_info >= (3, 9)
@@ -139,8 +105,7 @@ class IdleSenseLauncher:
         else:
             self.status_label.config(text="● 需要 Python 3.9+")
             messagebox.showwarning(
-                "环境警告",
-                "需要 Python 3.9 或更高版本\n当前版本: " + sys.version.split()[0]
+                "环境警告", "需要 Python 3.9 或更高版本\n当前版本: " + sys.version.split()[0]
             )
 
     def log(self, message):
@@ -167,7 +132,7 @@ class IdleSenseLauncher:
                 stdout=subprocess.PIPE,
                 stderr=subprocess.STDOUT,
                 text=True,
-                bufsize=1
+                bufsize=1,
             )
 
             self.scheduler_btn.config(text="⏹️ 停止调度器")
@@ -175,9 +140,7 @@ class IdleSenseLauncher:
             self.log("API 文档: http://localhost:8000/docs")
 
             threading.Thread(
-                target=self._read_output,
-                args=(self.scheduler_process,),
-                daemon=True
+                target=self._read_output, args=(self.scheduler_process,), daemon=True
             ).start()
 
         except Exception as e:
@@ -186,7 +149,7 @@ class IdleSenseLauncher:
 
     def _read_output(self, process):
         try:
-            for line in iter(process.stdout.readline, ''):
+            for line in iter(process.stdout.readline, ""):
                 if line:
                     self.log(line.strip())
         except Exception as e:
@@ -204,15 +167,13 @@ class IdleSenseLauncher:
                 stdout=subprocess.PIPE,
                 stderr=subprocess.STDOUT,
                 text=True,
-                bufsize=1
+                bufsize=1,
             )
 
             self.log("节点客户端已启动")
 
             threading.Thread(
-                target=self._read_output,
-                args=(self.node_process,),
-                daemon=True
+                target=self._read_output, args=(self.node_process,), daemon=True
             ).start()
 
         except Exception as e:
@@ -229,6 +190,7 @@ class IdleSenseLauncher:
     def show_status(self):
         try:
             import requests
+
             response = requests.get("http://localhost:8000/stats", timeout=2)
             if response.status_code == 200:
                 stats = response.json()
@@ -263,7 +225,9 @@ class IdleSenseLauncher:
             python_exe = str(venv_python) if venv_python.exists() else sys.executable
 
             subprocess.run([python_exe, "-m", "pip", "install", "--upgrade", "pip"], check=True)
-            subprocess.run([python_exe, "-m", "pip", "install", "-r", "requirements.txt"], check=True)
+            subprocess.run(
+                [python_exe, "-m", "pip", "install", "-r", "requirements.txt"], check=True
+            )
             subprocess.run([python_exe, "-m", "pip", "install", "wasmtime"], check=True)
 
             self.log("依赖安装完成！")

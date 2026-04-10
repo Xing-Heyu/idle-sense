@@ -1,4 +1,5 @@
 """End-to-end tests for the complete system."""
+
 import time
 
 import pytest
@@ -30,14 +31,10 @@ class TestEndToEndTaskExecution:
         task_data = {
             "code": "result = sum(range(100))\n__result__ = result",
             "timeout": 60,
-            "resources": {"cpu": 1.0, "memory": 512}
+            "resources": {"cpu": 1.0, "memory": 512},
         }
 
-        response = requests.post(
-            f"{scheduler_url}/submit",
-            json=task_data,
-            timeout=10
-        )
+        response = requests.post(f"{scheduler_url}/submit", json=task_data, timeout=10)
 
         assert response.status_code == 200
         result = response.json()
@@ -49,10 +46,7 @@ class TestEndToEndTaskExecution:
         start_time = time.time()
 
         while time.time() - start_time < max_wait:
-            response = requests.get(
-                f"{scheduler_url}/status/{task_id}",
-                timeout=5
-            )
+            response = requests.get(f"{scheduler_url}/status/{task_id}", timeout=5)
 
             if response.status_code == 200:
                 status = response.json()
@@ -87,14 +81,10 @@ class TestEndToEndTaskExecution:
         node_data = {
             "node_id": f"test-node-{int(time.time())}",
             "capacity": {"cpu": 4.0, "memory": 8192},
-            "tags": {"test": True}
+            "tags": {"test": True},
         }
 
-        response = requests.post(
-            f"{scheduler_url}/api/nodes/register",
-            json=node_data,
-            timeout=10
-        )
+        response = requests.post(f"{scheduler_url}/api/nodes/register", json=node_data, timeout=10)
 
         assert response.status_code == 200
 
@@ -122,19 +112,14 @@ class TestEndToEndDistributedTask:
 
         data = list(range(100))
 
-        task = (DistributedTaskBuilder("test-mr-001", "Test MapReduce")
+        task = (
+            DistributedTaskBuilder("test-mr-001", "Test MapReduce")
             .add_map_stage(
-                "map-stage",
-                "result = [x * 2 for x in data]",
-                data=data,
-                partition_count=4
+                "map-stage", "result = [x * 2 for x in data]", data=data, partition_count=4
             )
-            .add_reduce_stage(
-                "reduce-stage",
-                "result = sum(results)",
-                dependencies=["map-stage"]
-            )
-            .build())
+            .add_reduce_stage("reduce-stage", "result = sum(results)", dependencies=["map-stage"])
+            .build()
+        )
 
         assert len(task.stages) == 2
         assert len(task.stages[0].chunks) == 4
@@ -156,9 +141,9 @@ class TestEndToEndDistributedTask:
             data=data,
             code_templates={
                 "Search": "result = [x for x in data if x % 100 == 0]",
-                "Merge": "result = list(set([item for sublist in results for item in sublist]))"
+                "Merge": "result = list(set([item for sublist in results for item in sublist]))",
             },
-            partition_count=4
+            partition_count=4,
         )
 
         assert task.task_id == "search-001"
@@ -182,7 +167,7 @@ class TestEndToEndSecurity:
             "import os\nos.system('echo hacked')",
             "open('/etc/passwd', 'r')",
             "__import__('subprocess').run(['ls'])",
-            "eval('__import__(\"os\").system(\"ls\")')",
+            'eval(\'__import__("os").system("ls")\')',
         ]
 
         for code in dangerous_codes:
@@ -227,10 +212,7 @@ class TestEndToEndWebSocket:
         except ImportError:
             pytest.skip("websocket_comm not available")
 
-        client = NodeWebSocketClient(
-            scheduler_url="ws://localhost:8000",
-            node_id="test-ws-node"
-        )
+        client = NodeWebSocketClient(scheduler_url="ws://localhost:8000", node_id="test-ws-node")
 
         connected = await client.connect()
 
@@ -238,11 +220,7 @@ class TestEndToEndWebSocket:
             pytest.skip("Could not connect to scheduler WebSocket")
 
         try:
-            sent = await client.send_heartbeat(
-                is_idle=True,
-                cpu_usage=10.0,
-                memory_usage=30.0
-            )
+            sent = await client.send_heartbeat(is_idle=True, cpu_usage=10.0, memory_usage=30.0)
             assert sent is True
 
             message = await client.receive_message()
@@ -296,10 +274,7 @@ class TestEndToEndStorage:
         task = await storage.get_task(task.task_id)
         assert task.status == TaskStatus.RUNNING
 
-        await storage.update_task(task.task_id, {
-            "status": TaskStatus.COMPLETED,
-            "result": "1"
-        })
+        await storage.update_task(task.task_id, {"status": TaskStatus.COMPLETED, "result": "1"})
         task = await storage.get_task(task.task_id)
         assert task.status == TaskStatus.COMPLETED
         assert task.result == "1"

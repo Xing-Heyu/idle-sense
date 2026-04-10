@@ -27,6 +27,7 @@ from .security import CodeValidator
 
 class IsolationLevel(Enum):
     """隔离级别"""
+
     BASIC = "basic"
     CONTAINER = "container"
     GVISOR = "gvisor"
@@ -37,6 +38,7 @@ class IsolationLevel(Enum):
 @dataclass
 class SandboxConfig:
     """沙箱配置"""
+
     timeout: int = 300
     memory_limit: int = 512
     cpu_limit: float = 1.0
@@ -58,6 +60,7 @@ class SandboxConfig:
 @dataclass
 class ExecutionResult:
     """执行结果"""
+
     success: bool
     output: str = ""
     error: Optional[str] = None
@@ -95,19 +98,43 @@ class BaseSandbox(ABC):
     def _prepare_safe_globals(self) -> dict[str, Any]:
         """准备安全的全局命名空间"""
         safe_builtins = {
-            'abs': abs, 'max': max, 'min': min, 'sum': sum, 'len': len,
-            'range': range, 'enumerate': enumerate, 'zip': zip,
-            'sorted': sorted, 'reversed': reversed, 'filter': filter,
-            'map': map, 'any': any, 'all': all, 'bool': bool,
-            'int': int, 'float': float, 'str': str, 'list': list,
-            'dict': dict, 'tuple': tuple, 'set': set,
-            'print': print, 'isinstance': isinstance, 'type': type,
-            'hasattr': hasattr, 'getattr': getattr, 'setattr': setattr,
-            'repr': repr, 'hash': hash, 'id': id,
-            'True': True, 'False': False, 'None': None,
+            "abs": abs,
+            "max": max,
+            "min": min,
+            "sum": sum,
+            "len": len,
+            "range": range,
+            "enumerate": enumerate,
+            "zip": zip,
+            "sorted": sorted,
+            "reversed": reversed,
+            "filter": filter,
+            "map": map,
+            "any": any,
+            "all": all,
+            "bool": bool,
+            "int": int,
+            "float": float,
+            "str": str,
+            "list": list,
+            "dict": dict,
+            "tuple": tuple,
+            "set": set,
+            "print": print,
+            "isinstance": isinstance,
+            "type": type,
+            "hasattr": hasattr,
+            "getattr": getattr,
+            "setattr": setattr,
+            "repr": repr,
+            "hash": hash,
+            "id": id,
+            "True": True,
+            "False": False,
+            "None": None,
         }
 
-        safe_globals = {'__builtins__': safe_builtins}
+        safe_globals = {"__builtins__": safe_builtins}
 
         for module_name in self.validator.policy.allowed_modules:
             with contextlib.suppress(ImportError):
@@ -132,20 +159,20 @@ class BasicSandbox(BaseSandbox):
         start_time = time.time()
 
         safety_result = self.validate_code(code)
-        if not safety_result['safe']:
+        if not safety_result["safe"]:
             return ExecutionResult(
-                success=False,
-                error=safety_result['error'],
-                execution_time=time.time() - start_time
+                success=False, error=safety_result["error"], execution_time=time.time() - start_time
             )
 
-        with tempfile.NamedTemporaryFile(mode='w', suffix='.py', delete=False, encoding='utf-8') as f:
+        with tempfile.NamedTemporaryFile(
+            mode="w", suffix=".py", delete=False, encoding="utf-8"
+        ) as f:
             f.write(code)
             temp_file = f.name
 
         try:
             env = os.environ.copy()
-            env.pop('PYTHONPATH', None)
+            env.pop("PYTHONPATH", None)
             env.update(self.config.env_vars)
 
             result = subprocess.run(
@@ -163,27 +190,25 @@ class BasicSandbox(BaseSandbox):
                     success=True,
                     output=result.stdout.strip() or "执行完成（无输出）",
                     execution_time=execution_time,
-                    exit_code=0
+                    exit_code=0,
                 )
             else:
                 return ExecutionResult(
                     success=False,
                     error=result.stderr.strip() or f"Exit code {result.returncode}",
                     execution_time=execution_time,
-                    exit_code=result.returncode
+                    exit_code=result.returncode,
                 )
 
         except subprocess.TimeoutExpired:
             return ExecutionResult(
                 success=False,
                 error=f"执行超时（{self.config.timeout}秒）",
-                execution_time=self.config.timeout
+                execution_time=self.config.timeout,
             )
         except Exception as e:
             return ExecutionResult(
-                success=False,
-                error=f"执行异常: {str(e)}",
-                execution_time=time.time() - start_time
+                success=False, error=f"执行异常: {str(e)}", execution_time=time.time() - start_time
             )
         finally:
             with contextlib.suppress(BaseException):
@@ -206,11 +231,7 @@ class DockerSandbox(BaseSandbox):
 
     def _check_docker(self) -> bool:
         try:
-            result = subprocess.run(
-                ['docker', 'info'],
-                capture_output=True,
-                timeout=5
-            )
+            result = subprocess.run(["docker", "info"], capture_output=True, timeout=5)
             return result.returncode == 0
         except (FileNotFoundError, subprocess.TimeoutExpired, OSError):
             return False
@@ -222,18 +243,18 @@ class DockerSandbox(BaseSandbox):
             return ExecutionResult(
                 success=False,
                 error="Docker不可用，请确保Docker已安装并运行",
-                execution_time=time.time() - start_time
+                execution_time=time.time() - start_time,
             )
 
         safety_result = self.validate_code(code)
-        if not safety_result['safe']:
+        if not safety_result["safe"]:
             return ExecutionResult(
-                success=False,
-                error=safety_result['error'],
-                execution_time=time.time() - start_time
+                success=False, error=safety_result["error"], execution_time=time.time() - start_time
             )
 
-        with tempfile.NamedTemporaryFile(mode='w', suffix='.py', delete=False, encoding='utf-8') as f:
+        with tempfile.NamedTemporaryFile(
+            mode="w", suffix=".py", delete=False, encoding="utf-8"
+        ) as f:
             f.write(code)
             temp_file = f.name
 
@@ -241,23 +262,27 @@ class DockerSandbox(BaseSandbox):
             container_name = f"idle_sense_{os.getpid()}_{int(time.time())}"
 
             docker_cmd = [
-                'docker', 'run', '--rm',
-                '--name', container_name,
-                '--memory', f'{self.config.memory_limit}m',
-                '--cpus', str(self.config.cpu_limit),
-                '-v', f'{temp_file}:/app/code.py:ro',
+                "docker",
+                "run",
+                "--rm",
+                "--name",
+                container_name,
+                "--memory",
+                f"{self.config.memory_limit}m",
+                "--cpus",
+                str(self.config.cpu_limit),
+                "-v",
+                f"{temp_file}:/app/code.py:ro",
                 self.image,
-                'python', '/app/code.py'
+                "python",
+                "/app/code.py",
             ]
 
             if not self.config.network_enabled:
-                docker_cmd.insert(4, '--network=none')
+                docker_cmd.insert(4, "--network=none")
 
             result = subprocess.run(
-                docker_cmd,
-                capture_output=True,
-                text=True,
-                timeout=self.config.timeout + 30
+                docker_cmd, capture_output=True, text=True, timeout=self.config.timeout + 30
             )
 
             execution_time = time.time() - start_time
@@ -267,27 +292,25 @@ class DockerSandbox(BaseSandbox):
                     success=True,
                     output=result.stdout.strip() or "执行完成（无输出）",
                     execution_time=execution_time,
-                    exit_code=0
+                    exit_code=0,
                 )
             else:
                 return ExecutionResult(
                     success=False,
                     error=result.stderr.strip() or f"Container exit code {result.returncode}",
                     execution_time=execution_time,
-                    exit_code=result.returncode
+                    exit_code=result.returncode,
                 )
 
         except subprocess.TimeoutExpired:
             return ExecutionResult(
                 success=False,
                 error=f"执行超时（{self.config.timeout}秒）",
-                execution_time=self.config.timeout
+                execution_time=self.config.timeout,
             )
         except Exception as e:
             return ExecutionResult(
-                success=False,
-                error=f"执行异常: {str(e)}",
-                execution_time=time.time() - start_time
+                success=False, error=f"执行异常: {str(e)}", execution_time=time.time() - start_time
             )
         finally:
             with contextlib.suppress(BaseException):
@@ -309,35 +332,28 @@ class GVisorSandbox(DockerSandbox):
 
     def _check_gvisor(self) -> bool:
         try:
-            result = subprocess.run(
-                ['docker', 'info'],
-                capture_output=True,
-                text=True,
-                timeout=5
-            )
-            return 'runsc' in result.stdout
+            result = subprocess.run(["docker", "info"], capture_output=True, text=True, timeout=5)
+            return "runsc" in result.stdout
         except (FileNotFoundError, subprocess.TimeoutExpired, OSError):
             return False
 
     def execute(self, code: str) -> ExecutionResult:
         if not self._gvisor_available:
             return ExecutionResult(
-                success=False,
-                error="gVisor不可用，请确保已安装runsc运行时",
-                execution_time=0
+                success=False, error="gVisor不可用，请确保已安装runsc运行时", execution_time=0
             )
 
         start_time = time.time()
 
         safety_result = self.validate_code(code)
-        if not safety_result['safe']:
+        if not safety_result["safe"]:
             return ExecutionResult(
-                success=False,
-                error=safety_result['error'],
-                execution_time=time.time() - start_time
+                success=False, error=safety_result["error"], execution_time=time.time() - start_time
             )
 
-        with tempfile.NamedTemporaryFile(mode='w', suffix='.py', delete=False, encoding='utf-8') as f:
+        with tempfile.NamedTemporaryFile(
+            mode="w", suffix=".py", delete=False, encoding="utf-8"
+        ) as f:
             f.write(code)
             temp_file = f.name
 
@@ -345,24 +361,28 @@ class GVisorSandbox(DockerSandbox):
             container_name = f"idle_sense_gvisor_{os.getpid()}_{int(time.time())}"
 
             docker_cmd = [
-                'docker', 'run', '--rm',
-                '--runtime=runsc',
-                '--name', container_name,
-                '--memory', f'{self.config.memory_limit}m',
-                '--cpus', str(self.config.cpu_limit),
-                '-v', f'{temp_file}:/app/code.py:ro',
+                "docker",
+                "run",
+                "--rm",
+                "--runtime=runsc",
+                "--name",
+                container_name,
+                "--memory",
+                f"{self.config.memory_limit}m",
+                "--cpus",
+                str(self.config.cpu_limit),
+                "-v",
+                f"{temp_file}:/app/code.py:ro",
                 self.image,
-                'python', '/app/code.py'
+                "python",
+                "/app/code.py",
             ]
 
             if not self.config.network_enabled:
-                docker_cmd.insert(4, '--network=none')
+                docker_cmd.insert(4, "--network=none")
 
             result = subprocess.run(
-                docker_cmd,
-                capture_output=True,
-                text=True,
-                timeout=self.config.timeout + 30
+                docker_cmd, capture_output=True, text=True, timeout=self.config.timeout + 30
             )
 
             execution_time = time.time() - start_time
@@ -372,27 +392,25 @@ class GVisorSandbox(DockerSandbox):
                     success=True,
                     output=result.stdout.strip() or "执行完成（无输出）",
                     execution_time=execution_time,
-                    exit_code=0
+                    exit_code=0,
                 )
             else:
                 return ExecutionResult(
                     success=False,
                     error=result.stderr.strip() or f"Container exit code {result.returncode}",
                     execution_time=execution_time,
-                    exit_code=result.returncode
+                    exit_code=result.returncode,
                 )
 
         except subprocess.TimeoutExpired:
             return ExecutionResult(
                 success=False,
                 error=f"执行超时（{self.config.timeout}秒）",
-                execution_time=self.config.timeout
+                execution_time=self.config.timeout,
             )
         except Exception as e:
             return ExecutionResult(
-                success=False,
-                error=f"执行异常: {str(e)}",
-                execution_time=time.time() - start_time
+                success=False, error=f"执行异常: {str(e)}", execution_time=time.time() - start_time
             )
         finally:
             with contextlib.suppress(BaseException):
@@ -407,9 +425,12 @@ class FirecrackerSandbox(BaseSandbox):
     适用于高风险代码执行
     """
 
-    def __init__(self, config: Optional[SandboxConfig] = None,
-                 kernel_path: str = "/var/lib/firecracker/vmlinux",
-                 rootfs_path: str = "/var/lib/firecracker/rootfs.ext4"):
+    def __init__(
+        self,
+        config: Optional[SandboxConfig] = None,
+        kernel_path: str = "/var/lib/firecracker/vmlinux",
+        rootfs_path: str = "/var/lib/firecracker/rootfs.ext4",
+    ):
         super().__init__(config)
         self.config.isolation_level = IsolationLevel.MICROVM
         self.kernel_path = kernel_path
@@ -418,11 +439,7 @@ class FirecrackerSandbox(BaseSandbox):
 
     def _check_firecracker(self) -> bool:
         try:
-            result = subprocess.run(
-                ['firecracker', '--version'],
-                capture_output=True,
-                timeout=5
-            )
+            result = subprocess.run(["firecracker", "--version"], capture_output=True, timeout=5)
             return result.returncode == 0
         except (FileNotFoundError, subprocess.TimeoutExpired, OSError):
             return False
@@ -431,28 +448,32 @@ class FirecrackerSandbox(BaseSandbox):
         return {
             "boot-source": {
                 "kernel_image_path": self.kernel_path,
-                "boot_args": "console=ttyS0 reboot=k panic=1 pci=off init=/sbin/init"
+                "boot_args": "console=ttyS0 reboot=k panic=1 pci=off init=/sbin/init",
             },
             "drives": [
                 {
                     "drive_id": "rootfs",
                     "path_on_host": self.rootfs_path,
                     "is_root_device": True,
-                    "is_read_only": False
+                    "is_read_only": False,
                 }
             ],
             "machine-config": {
                 "vcpu_count": 1,
                 "mem_size_mib": self.config.memory_limit,
-                "ht_enabled": False
+                "ht_enabled": False,
             },
-            "network-interfaces": [] if not self.config.network_enabled else [
-                {
-                    "iface_id": "eth0",
-                    "guest_mac": "AA:FC:00:00:00:01",
-                    "host_dev_name": f"tap{vm_id}"
-                }
-            ]
+            "network-interfaces": (
+                []
+                if not self.config.network_enabled
+                else [
+                    {
+                        "iface_id": "eth0",
+                        "guest_mac": "AA:FC:00:00:00:01",
+                        "host_dev_name": f"tap{vm_id}",
+                    }
+                ]
+            ),
         }
 
     def execute(self, code: str) -> ExecutionResult:
@@ -462,29 +483,27 @@ class FirecrackerSandbox(BaseSandbox):
             return ExecutionResult(
                 success=False,
                 error="Firecracker不可用，请确保已安装Firecracker并配置kernel/rootfs",
-                execution_time=time.time() - start_time
+                execution_time=time.time() - start_time,
             )
 
         safety_result = self.validate_code(code)
-        if not safety_result['safe']:
+        if not safety_result["safe"]:
             return ExecutionResult(
-                success=False,
-                error=safety_result['error'],
-                execution_time=time.time() - start_time
+                success=False, error=safety_result["error"], execution_time=time.time() - start_time
             )
 
         if not os.path.exists(self.kernel_path):
             return ExecutionResult(
                 success=False,
                 error=f"Kernel镜像不存在: {self.kernel_path}",
-                execution_time=time.time() - start_time
+                execution_time=time.time() - start_time,
             )
 
         if not os.path.exists(self.rootfs_path):
             return ExecutionResult(
                 success=False,
                 error=f"RootFS镜像不存在: {self.rootfs_path}",
-                execution_time=time.time() - start_time
+                execution_time=time.time() - start_time,
             )
 
         vm_id = None
@@ -498,39 +517,56 @@ class FirecrackerSandbox(BaseSandbox):
             socket_path = f"/tmp/firecracker_{vm_id}.sock"
             code_file = f"/tmp/code_{vm_id}.py"
 
-            with open(code_file, 'w', encoding='utf-8') as f:
+            with open(code_file, "w", encoding="utf-8") as f:
                 f.write(code)
 
             vm_config = self._create_vm_config(socket_path, vm_id)
 
             config_file = f"/tmp/firecracker_config_{vm_id}.json"
-            with open(config_file, 'w', encoding='utf-8') as f:
+            with open(config_file, "w", encoding="utf-8") as f:
                 import json
+
                 json.dump(vm_config, f)
 
             fc_process = subprocess.Popen(
-                ['firecracker', '--api-sock', socket_path],
+                ["firecracker", "--api-sock", socket_path],
                 stdin=subprocess.PIPE,
                 stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE
+                stderr=subprocess.PIPE,
             )
 
             time.sleep(0.5)
 
             with contextlib.suppress(Exception):
                 subprocess.run(
-                    ['curl', '--unix-socket', socket_path,
-                     '-X', 'PUT', 'http://localhost/machine-config',
-                     '-H', 'Content-Type: application/json',
-                     '-d', json.dumps(vm_config['machine-config'])],
+                    [
+                        "curl",
+                        "--unix-socket",
+                        socket_path,
+                        "-X",
+                        "PUT",
+                        "http://localhost/machine-config",
+                        "-H",
+                        "Content-Type: application/json",
+                        "-d",
+                        json.dumps(vm_config["machine-config"]),
+                    ],
                     capture_output=True,
-                    timeout=5
+                    timeout=5,
                 )
 
             fc_process.wait(timeout=self.config.timeout)
 
-            output = fc_process.stdout.read().decode('utf-8', errors='replace') if fc_process.stdout else ""
-            error = fc_process.stderr.read().decode('utf-8', errors='replace') if fc_process.stderr else ""
+            output = (
+                fc_process.stdout.read().decode("utf-8", errors="replace")
+                if fc_process.stdout
+                else ""
+            )
+            error = (
+                fc_process.stderr.read().decode("utf-8", errors="replace")
+                if fc_process.stderr
+                else ""
+            )
 
             execution_time = time.time() - start_time
 
@@ -539,27 +575,25 @@ class FirecrackerSandbox(BaseSandbox):
                     success=True,
                     output=output.strip() or "执行完成（无输出）",
                     execution_time=execution_time,
-                    exit_code=0
+                    exit_code=0,
                 )
             else:
                 return ExecutionResult(
                     success=False,
                     error=error.strip() or f"VM exit code {fc_process.returncode}",
                     execution_time=execution_time,
-                    exit_code=fc_process.returncode
+                    exit_code=fc_process.returncode,
                 )
 
         except subprocess.TimeoutExpired:
             return ExecutionResult(
                 success=False,
                 error=f"执行超时（{self.config.timeout}秒）",
-                execution_time=self.config.timeout
+                execution_time=self.config.timeout,
             )
         except Exception as e:
             return ExecutionResult(
-                success=False,
-                error=f"执行异常: {str(e)}",
-                execution_time=time.time() - start_time
+                success=False, error=f"执行异常: {str(e)}", execution_time=time.time() - start_time
             )
         finally:
             if fc_process:
@@ -581,8 +615,7 @@ class WASMSandbox(BaseSandbox):
     提供轻量级的安全执行环境
     """
 
-    def __init__(self, config: Optional[SandboxConfig] = None,
-                 runtime: str = "wasmer"):
+    def __init__(self, config: Optional[SandboxConfig] = None, runtime: str = "wasmer"):
         super().__init__(config)
         self.config.isolation_level = IsolationLevel.WASM
         self.runtime = runtime
@@ -595,22 +628,20 @@ class WASMSandbox(BaseSandbox):
         if self.runtime == "wasmer":
             try:
                 import wasmer  # noqa: F401
+
                 return True
             except ImportError:
                 pass
         elif self.runtime == "wasmtime":
             try:
                 import wasmtime  # noqa: F401
+
                 return True
             except ImportError:
                 pass
 
         try:
-            result = subprocess.run(
-                [self.runtime, '--version'],
-                capture_output=True,
-                timeout=5
-            )
+            result = subprocess.run([self.runtime, "--version"], capture_output=True, timeout=5)
             return result.returncode == 0
         except (FileNotFoundError, subprocess.TimeoutExpired, OSError):
             return False
@@ -619,12 +650,14 @@ class WASMSandbox(BaseSandbox):
         try:
             try:
                 import pyodide  # noqa: F401
+
                 return self._compile_with_pyodide(code)
             except ImportError:
                 pass
 
             try:
                 import rustpython  # noqa: F401
+
                 return self._compile_with_rustpython(code)
             except ImportError:
                 pass
@@ -635,9 +668,10 @@ class WASMSandbox(BaseSandbox):
 
     def _create_wat_wrapper(self, code: str) -> bytes:
         import base64
-        encoded_code = base64.b64encode(code.encode('utf-8')).decode('ascii')
 
-        wat_code = f'''
+        encoded_code = base64.b64encode(code.encode("utf-8")).decode("ascii")
+
+        wat_code = f"""
 (module
   (import "env" "execute_python" (func $execute_python (param i32 i32) (result i32)))
   (memory (export "memory") 1)
@@ -646,13 +680,13 @@ class WASMSandbox(BaseSandbox):
     (drop (call $execute_python (i32.const 0) (i32.const {len(encoded_code)})))
   )
 )
-'''
+"""
         try:
             result = subprocess.run(
-                ['wat2wasm', '-', '-o', '-'],
-                input=wat_code.encode('utf-8'),
+                ["wat2wasm", "-", "-o", "-"],
+                input=wat_code.encode("utf-8"),
                 capture_output=True,
-                timeout=30
+                timeout=30,
             )
             if result.returncode == 0:
                 return result.stdout
@@ -683,12 +717,8 @@ class WASMSandbox(BaseSandbox):
             2. 使用Pyodide的Python-to-WASM编译器
             3. 返回编译后的WASM模块
         """
-        self._logger.debug(
-            f"[WASM编译] Pyodide编译方法被调用 - 代码长度: {len(code)} 字符"
-        )
-        self._logger.warning(
-            "[WASM编译] Pyodide编译功能尚未实现，将使用fallback方法"
-        )
+        self._logger.debug(f"[WASM编译] Pyodide编译方法被调用 - 代码长度: {len(code)} 字符")
+        self._logger.warning("[WASM编译] Pyodide编译功能尚未实现，将使用fallback方法")
         return None
 
     def _compile_with_rustpython(self, code: str) -> Optional[bytes]:
@@ -712,12 +742,8 @@ class WASMSandbox(BaseSandbox):
             2. 使用RustPython的WASM后端
             3. 返回编译后的WASM模块
         """
-        self._logger.debug(
-            f"[WASM编译] RustPython编译方法被调用 - 代码长度: {len(code)} 字符"
-        )
-        self._logger.warning(
-            "[WASM编译] RustPython编译功能尚未实现，将使用fallback方法"
-        )
+        self._logger.debug(f"[WASM编译] RustPython编译方法被调用 - 代码长度: {len(code)} 字符")
+        self._logger.warning("[WASM编译] RustPython编译功能尚未实现，将使用fallback方法")
         return None
 
     def execute(self, code: str) -> ExecutionResult:
@@ -727,15 +753,13 @@ class WASMSandbox(BaseSandbox):
             return ExecutionResult(
                 success=False,
                 error="WASM运行时不可用，请安装wasmer或wasmtime Python包",
-                execution_time=time.time() - start_time
+                execution_time=time.time() - start_time,
             )
 
         safety_result = self.validate_code(code)
-        if not safety_result['safe']:
+        if not safety_result["safe"]:
             return ExecutionResult(
-                success=False,
-                error=safety_result['error'],
-                execution_time=time.time() - start_time
+                success=False, error=safety_result["error"], execution_time=time.time() - start_time
             )
 
         try:
@@ -748,9 +772,7 @@ class WASMSandbox(BaseSandbox):
 
         except Exception as e:
             return ExecutionResult(
-                success=False,
-                error=f"执行异常: {str(e)}",
-                execution_time=time.time() - start_time
+                success=False, error=f"执行异常: {str(e)}", execution_time=time.time() - start_time
             )
 
     def _safe_execute_python(self, python_code: str) -> tuple[bool, str]:
@@ -775,9 +797,7 @@ class WASMSandbox(BaseSandbox):
 
         if not validation_result.is_safe:
             error_msg = f"安全验证失败: {'; '.join(validation_result.errors)}"
-            self._logger.error(
-                f"[安全警告] 代码执行被阻止 - 原因: {error_msg}"
-            )
+            self._logger.error(f"[安全警告] 代码执行被阻止 - 原因: {error_msg}")
             return False, error_msg
 
         if validation_result.warnings:
@@ -786,23 +806,26 @@ class WASMSandbox(BaseSandbox):
             )
 
         import tempfile
-        with tempfile.NamedTemporaryFile(mode='w', suffix='.py', delete=False, encoding='utf-8') as f:
+
+        with tempfile.NamedTemporaryFile(
+            mode="w", suffix=".py", delete=False, encoding="utf-8"
+        ) as f:
             f.write(python_code)
             temp_file = f.name
 
         try:
             env = os.environ.copy()
-            env.pop('PYTHONPATH', None)
-            env.pop('PYTHONHOME', None)
-            env['__PYTHON_SANDBOX'] = '1'
+            env.pop("PYTHONPATH", None)
+            env.pop("PYTHONHOME", None)
+            env["__PYTHON_SANDBOX"] = "1"
 
             result = subprocess.run(
-                [sys.executable, '-S', temp_file],
+                [sys.executable, "-S", temp_file],
                 capture_output=True,
                 text=True,
                 timeout=self.config.timeout,
                 env=env,
-                cwd=tempfile.gettempdir()
+                cwd=tempfile.gettempdir(),
             )
 
             if result.returncode == 0:
@@ -838,7 +861,7 @@ class WASMSandbox(BaseSandbox):
                 return ExecutionResult(
                     success=False,
                     error="无法将Python代码编译为WASM，请使用简单的数学运算或安装pyodide",
-                    execution_time=time.time() - start_time
+                    execution_time=time.time() - start_time,
                 )
 
             store = Store()
@@ -848,11 +871,12 @@ class WASMSandbox(BaseSandbox):
 
             def env_execute_python(offset: int, length: int) -> int:
                 memory = instance.exports.memory
-                data = memory.data_ptr()[offset:offset + length]
+                data = memory.data_ptr()[offset : offset + length]
                 try:
-                    decoded = bytes(data).decode('utf-8')
+                    decoded = bytes(data).decode("utf-8")
                     import base64
-                    python_code = base64.b64decode(decoded).decode('utf-8')
+
+                    python_code = base64.b64decode(decoded).decode("utf-8")
                     success, result = self._safe_execute_python(python_code)
                     output_buffer.append(result)
                     return 0 if success else 1
@@ -861,9 +885,9 @@ class WASMSandbox(BaseSandbox):
                     return 1
 
             import_instance = wasmer.ImportObject()
-            import_instance.register("env", {
-                "execute_python": wasmer.Function(store, env_execute_python)
-            })
+            import_instance.register(
+                "env", {"execute_python": wasmer.Function(store, env_execute_python)}
+            )
 
             instance = Instance(module, import_instance)
             instance.exports._start()
@@ -872,20 +896,20 @@ class WASMSandbox(BaseSandbox):
                 success=True,
                 output="\n".join(output_buffer) or "执行完成（无输出）",
                 execution_time=time.time() - start_time,
-                exit_code=0
+                exit_code=0,
             )
 
         except ImportError:
             return ExecutionResult(
                 success=False,
                 error="wasmer Python包未安装，请运行: pip install wasmer",
-                execution_time=time.time() - start_time
+                execution_time=time.time() - start_time,
             )
         except Exception as e:
             return ExecutionResult(
                 success=False,
                 error=f"Wasmer执行错误: {str(e)}",
-                execution_time=time.time() - start_time
+                execution_time=time.time() - start_time,
             )
 
     def _execute_with_wasmtime(self, code: str, start_time: float) -> ExecutionResult:
@@ -897,7 +921,7 @@ class WASMSandbox(BaseSandbox):
                 return ExecutionResult(
                     success=False,
                     error="无法将Python代码编译为WASM",
-                    execution_time=time.time() - start_time
+                    execution_time=time.time() - start_time,
                 )
 
             engine = wasmtime.Engine()
@@ -908,11 +932,12 @@ class WASMSandbox(BaseSandbox):
 
             def execute_python(caller, offset: int, length: int) -> int:
                 memory = caller.get_export("memory").unwrap_memory()
-                data = memory.data_ptr(store)[offset:offset + length]
+                data = memory.data_ptr(store)[offset : offset + length]
                 try:
-                    decoded = bytes(data).decode('utf-8')
+                    decoded = bytes(data).decode("utf-8")
                     import base64
-                    python_code = base64.b64decode(decoded).decode('utf-8')
+
+                    python_code = base64.b64decode(decoded).decode("utf-8")
                     success, result = self._safe_execute_python(python_code)
                     output_buffer.append(result)
                     return 0 if success else 1
@@ -930,33 +955,35 @@ class WASMSandbox(BaseSandbox):
                 success=True,
                 output="\n".join(output_buffer) or "执行完成（无输出）",
                 execution_time=time.time() - start_time,
-                exit_code=0
+                exit_code=0,
             )
 
         except ImportError:
             return ExecutionResult(
                 success=False,
                 error="wasmtime Python包未安装，请运行: pip install wasmtime",
-                execution_time=time.time() - start_time
+                execution_time=time.time() - start_time,
             )
         except Exception as e:
             return ExecutionResult(
                 success=False,
                 error=f"Wasmtime执行错误: {str(e)}",
-                execution_time=time.time() - start_time
+                execution_time=time.time() - start_time,
             )
 
     def _execute_with_cli(self, code: str, start_time: float) -> ExecutionResult:
-        with tempfile.NamedTemporaryFile(mode='w', suffix='.py', delete=False, encoding='utf-8') as f:
+        with tempfile.NamedTemporaryFile(
+            mode="w", suffix=".py", delete=False, encoding="utf-8"
+        ) as f:
             f.write(code)
             temp_file = f.name
 
         try:
             result = subprocess.run(
-                [self.runtime, 'run', temp_file],
+                [self.runtime, "run", temp_file],
                 capture_output=True,
                 text=True,
-                timeout=self.config.timeout
+                timeout=self.config.timeout,
             )
 
             execution_time = time.time() - start_time
@@ -966,21 +993,21 @@ class WASMSandbox(BaseSandbox):
                     success=True,
                     output=result.stdout.strip() or "执行完成（无输出）",
                     execution_time=execution_time,
-                    exit_code=0
+                    exit_code=0,
                 )
             else:
                 return ExecutionResult(
                     success=False,
                     error=result.stderr.strip() or f"Exit code {result.returncode}",
                     execution_time=execution_time,
-                    exit_code=result.returncode
+                    exit_code=result.returncode,
                 )
 
         except subprocess.TimeoutExpired:
             return ExecutionResult(
                 success=False,
                 error=f"执行超时（{self.config.timeout}秒）",
-                execution_time=self.config.timeout
+                execution_time=self.config.timeout,
             )
         finally:
             with contextlib.suppress(BaseException):

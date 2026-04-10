@@ -11,6 +11,7 @@ from typing import Any, Optional
 _PLATFORM_MODULE_CACHE: Optional[Any] = None
 _PLATFORM_NAME_CACHE: Optional[str] = None
 
+
 def _detect_platform() -> str:
     """
     检测当前操作系统平台。
@@ -19,13 +20,10 @@ def _detect_platform() -> str:
     system = platform.system()
 
     # 简化平台映射
-    platform_map = {
-        'Windows': 'windows',
-        'Darwin': 'macos',
-        'Linux': 'linux'
-    }
+    platform_map = {"Windows": "windows", "Darwin": "macos", "Linux": "linux"}
 
     return platform_map.get(system, system.lower())
+
 
 def _load_platform_module(platform_name: str) -> Any:
     """
@@ -33,14 +31,17 @@ def _load_platform_module(platform_name: str) -> Any:
     借鉴自插件系统的懒加载模式。
     """
     try:
-        if platform_name == 'windows':
+        if platform_name == "windows":
             from . import windows
+
             return windows
-        elif platform_name == 'macos':
+        elif platform_name == "macos":
             from . import macos
+
             return macos
-        elif platform_name == 'linux':
+        elif platform_name == "linux":
             from . import linux
+
             return linux
         else:
             raise ImportError(f"不支持的操作系统: {platform_name}")
@@ -55,6 +56,7 @@ def _load_platform_module(platform_name: str) -> Any:
             f"\n原始错误: {e}"
         )
         raise ImportError(error_msg) from e
+
 
 def _get_platform_module() -> Any:
     """
@@ -76,9 +78,10 @@ def _get_platform_module() -> Any:
 
     return _PLATFORM_MODULE_CACHE
 
-def is_idle(idle_threshold_sec: int = 300,
-           cpu_threshold: float = 15.0,
-           memory_threshold: float = 70.0) -> bool:
+
+def is_idle(
+    idle_threshold_sec: int = 300, cpu_threshold: float = 15.0, memory_threshold: float = 70.0
+) -> bool:
     """
     检查系统是否空闲。
 
@@ -100,9 +103,10 @@ def is_idle(idle_threshold_sec: int = 300,
     platform_module = _get_platform_module()
     return platform_module.is_idle(idle_threshold_sec, cpu_threshold, memory_threshold)
 
-def get_system_status(idle_threshold_sec: int = 300,
-                     cpu_threshold: float = 15.0,
-                     memory_threshold: float = 70.0) -> dict:
+
+def get_system_status(
+    idle_threshold_sec: int = 300, cpu_threshold: float = 15.0, memory_threshold: float = 70.0
+) -> dict:
     """
     获取系统状态详情。
 
@@ -123,6 +127,7 @@ def get_system_status(idle_threshold_sec: int = 300,
     platform_module = _get_platform_module()
     return platform_module.get_system_status(idle_threshold_sec, cpu_threshold, memory_threshold)
 
+
 def get_platform() -> str:
     """
     获取当前平台名称。
@@ -138,6 +143,7 @@ def get_platform() -> str:
     if _PLATFORM_NAME_CACHE is None:
         _PLATFORM_NAME_CACHE = _detect_platform()
     return _PLATFORM_NAME_CACHE
+
 
 def check_platform_module() -> dict[str, Any]:
     """
@@ -155,21 +161,17 @@ def check_platform_module() -> dict[str, Any]:
         >>> if not status['loaded']:
         ...     print(f"错误: {status['error']}")
     """
-    result = {
-        "platform": get_platform(),
-        "loaded": False,
-        "error": None,
-        "module": None
-    }
+    result = {"platform": get_platform(), "loaded": False, "error": None, "module": None}
 
     try:
         module = _get_platform_module()
         result["loaded"] = True
-        result["module"] = module.__name__ if hasattr(module, '__name__') else str(type(module))
+        result["module"] = module.__name__ if hasattr(module, "__name__") else str(type(module))
     except Exception as e:
         result["error"] = str(e)
 
     return result
+
 
 def get_version() -> str:
     """
@@ -180,9 +182,10 @@ def get_version() -> str:
     """
     return "1.0.0"
 
-def get_idle_info(idle_threshold_sec: int = 300,
-                  cpu_threshold: float = 15.0,
-                  memory_threshold: float = 70.0) -> dict:
+
+def get_idle_info(
+    idle_threshold_sec: int = 300, cpu_threshold: float = 15.0, memory_threshold: float = 70.0
+) -> dict:
     """
     获取空闲信息（get_system_status 的别名）。
 
@@ -201,6 +204,7 @@ def get_idle_info(idle_threshold_sec: int = 300,
     """
     return get_system_status(idle_threshold_sec, cpu_threshold, memory_threshold)
 
+
 # 模块初始化时的平台检查
 def _initialize() -> None:
     """
@@ -213,18 +217,19 @@ def _initialize() -> None:
     if _PLATFORM_MODULE_CACHE is None:
         print(f"[idle_sense] 检测到平台: {platform_name}")
 
-        if platform_name not in ['windows', 'macos']:
+        if platform_name not in ["windows", "macos"]:
             print(f"[idle_sense] 警告: {platform_name} 平台支持有限")
+
 
 # 导入时自动初始化
 _initialize()
 
 # 公开的API
 __all__ = [
-    'is_idle',
-    'get_system_status',
-    'get_platform',
-    'check_platform_module',
-    'get_version',
-    'get_idle_info'
+    "is_idle",
+    "get_system_status",
+    "get_platform",
+    "check_platform_module",
+    "get_version",
+    "get_idle_info",
 ]

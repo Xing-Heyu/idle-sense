@@ -36,13 +36,11 @@ class TestNodeFaultRecovery:
         register_data = {
             "node_id": node_id,
             "capacity": {"cpu": 1.0, "memory": 2048},
-            "tags": {"test": "timeout"}
+            "tags": {"test": "timeout"},
         }
 
         response = requests.post(
-            f"{scheduler_url}/api/nodes/register",
-            json=register_data,
-            timeout=10
+            f"{scheduler_url}/api/nodes/register", json=register_data, timeout=10
         )
 
         if response.status_code != 200:
@@ -98,14 +96,10 @@ class TestTaskRetry:
         task_data = {
             "code": "result = 'retry_test'\n__result__ = result",
             "timeout": 30,
-            "resources": {"cpu": 1.0, "memory": 512}
+            "resources": {"cpu": 1.0, "memory": 512},
         }
 
-        response = requests.post(
-            f"{scheduler_url}/submit",
-            json=task_data,
-            timeout=10
-        )
+        response = requests.post(f"{scheduler_url}/submit", json=task_data, timeout=10)
 
         assert response.status_code == 200
         task_id = response.json()["task_id"]
@@ -114,10 +108,7 @@ class TestTaskRetry:
         start_time = time.time()
 
         while time.time() - start_time < max_wait:
-            response = requests.get(
-                f"{scheduler_url}/status/{task_id}",
-                timeout=5
-            )
+            response = requests.get(f"{scheduler_url}/status/{task_id}", timeout=5)
 
             if response.status_code == 200:
                 status = response.json()
@@ -147,22 +138,15 @@ class TestTaskRetry:
         task_data = {
             "code": "result = 1\n__result__ = result",
             "timeout": 30,
-            "resources": {"cpu": 0.5, "memory": 256}
+            "resources": {"cpu": 0.5, "memory": 256},
         }
 
-        response = requests.post(
-            f"{scheduler_url}/submit",
-            json=task_data,
-            timeout=10
-        )
+        response = requests.post(f"{scheduler_url}/submit", json=task_data, timeout=10)
 
         assert response.status_code == 200
         task_id = response.json()["task_id"]
 
-        response = requests.delete(
-            f"{scheduler_url}/api/tasks/{task_id}",
-            timeout=10
-        )
+        response = requests.delete(f"{scheduler_url}/api/tasks/{task_id}", timeout=10)
 
         assert response.status_code in [200, 404]
 
@@ -242,22 +226,15 @@ class TestDataRecovery:
         task_data = {
             "code": "result = 'persist_test'\n__result__ = result",
             "timeout": 60,
-            "resources": {"cpu": 1.0, "memory": 512}
+            "resources": {"cpu": 1.0, "memory": 512},
         }
 
-        response = requests.post(
-            f"{scheduler_url}/submit",
-            json=task_data,
-            timeout=10
-        )
+        response = requests.post(f"{scheduler_url}/submit", json=task_data, timeout=10)
 
         assert response.status_code == 200
         task_id = response.json()["task_id"]
 
-        response = requests.get(
-            f"{scheduler_url}/status/{task_id}",
-            timeout=5
-        )
+        response = requests.get(f"{scheduler_url}/status/{task_id}", timeout=5)
 
         assert response.status_code == 200
         status = response.json()
@@ -309,10 +286,7 @@ class TestNetworkRecovery:
             pytest.skip("Scheduler not running")
 
         try:
-            response = requests.get(
-                f"{scheduler_url}/stats",
-                timeout=0.001
-            )
+            response = requests.get(f"{scheduler_url}/stats", timeout=0.001)
         except requests.exceptions.Timeout:
             pass
         except Exception:

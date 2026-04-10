@@ -63,7 +63,7 @@ class RotatingFileHandler(logging.handlers.RotatingFileHandler):
         maxBytes: int = 10 * 1024 * 1024,
         backupCount: int = 5,
         encoding: str = "utf-8",
-        delay: bool = True
+        delay: bool = True,
     ):
         super().__init__(
             filename,
@@ -71,7 +71,7 @@ class RotatingFileHandler(logging.handlers.RotatingFileHandler):
             maxBytes=maxBytes,
             backupCount=backupCount,
             encoding=encoding,
-            delay=delay
+            delay=delay,
         )
 
 
@@ -82,7 +82,7 @@ def setup_logging(
     json_logging: bool = False,
     max_bytes: int = 10 * 1024 * 1024,
     backup_count: int = 5,
-    context_filter: bool = True
+    context_filter: bool = True,
 ) -> logging.Logger:
     """Setup centralized logging configuration."""
     root_logger = logging.getLogger()
@@ -104,7 +104,7 @@ def setup_logging(
             maxBytes=max_bytes,
             backupCount=backup_count,
             encoding="utf-8",
-            delay=True
+            delay=True,
         )
         file_handler.setLevel(level)
         file_handler.setFormatter(formatter)
@@ -138,7 +138,7 @@ def log_exception(
     exc_info: Optional[dict[str, Any]] = None,
     level: int = logging.ERROR,
     include_traceback: bool = True,
-    context: Optional[dict[str, Any]] = None
+    context: Optional[dict[str, Any]] = None,
 ) -> None:
     """Log an exception with full context."""
     exc_str = str(exception)
@@ -151,12 +151,7 @@ def log_exception(
 
     if include_traceback:
         tb = io.StringIO()
-        traceback.print_exception(
-            type(exception),
-            exception,
-            exception.__traceback__,
-            file=tb
-        )
+        traceback.print_exception(type(exception), exception, exception.__traceback__, file=tb)
         exc_str += f"\nTraceback:\n{tb.getvalue()}"
 
     logger.log(level, f"{message}\n{exc_str}")
@@ -165,12 +160,7 @@ def log_exception(
 class LoggingContext:
     """Context manager for temporary logging configuration."""
 
-    def __init__(
-        self,
-        logger: logging.Logger,
-        level: int = None,
-        handler: logging.Handler = None
-    ):
+    def __init__(self, logger: logging.Logger, level: int = None, handler: logging.Handler = None):
         self.logger = logger
         self.original_level = logger.level
         self.original_handlers = logger.handlers[:]

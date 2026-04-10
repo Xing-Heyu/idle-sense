@@ -62,7 +62,7 @@ class RetryStats:
             "failed_attempts": self.failed_attempts,
             "retried_attempts": self.retried_attempts,
             "total_wait_time": round(self.total_wait_time, 3),
-            "avg_attempts_per_operation": round(self.avg_attempts_per_operation, 3)
+            "avg_attempts_per_operation": round(self.avg_attempts_per_operation, 3),
         }
 
 
@@ -90,7 +90,7 @@ class FixedDelayStrategy(RetryStrategy):
         self,
         max_attempts: int = 3,
         delay_seconds: float = 1.0,
-        retryable_exceptions: list[type] | None = None
+        retryable_exceptions: list[type] | None = None,
     ):
         self.max_attempts = max_attempts
         self.delay_seconds = delay_seconds
@@ -104,8 +104,7 @@ class FixedDelayStrategy(RetryStrategy):
             return RetryResult.GIVE_UP
 
         if not any(
-            isinstance(context.last_error, exc_type)
-            for exc_type in self.retryable_exceptions
+            isinstance(context.last_error, exc_type) for exc_type in self.retryable_exceptions
         ):
             return RetryResult.GIVE_UP
 
@@ -123,7 +122,7 @@ class ExponentialBackoffStrategy(RetryStrategy):
         max_delay: float = 60.0,
         multiplier: float = 2.0,
         jitter: bool = True,
-        retryable_exceptions: list[type] | None = None
+        retryable_exceptions: list[type] | None = None,
     ):
         self.max_attempts = max_attempts
         self.base_delay = base_delay
@@ -140,15 +139,14 @@ class ExponentialBackoffStrategy(RetryStrategy):
             return RetryResult.GIVE_UP
 
         if not any(
-            isinstance(context.last_error, exc_type)
-            for exc_type in self.retryable_exceptions
+            isinstance(context.last_error, exc_type) for exc_type in self.retryable_exceptions
         ):
             return RetryResult.GIVE_UP
 
         return RetryResult.RETRY
 
     def get_wait_time(self, context: RetryContext) -> float:
-        delay = self.base_delay * (self.multiplier ** context.attempt)
+        delay = self.base_delay * (self.multiplier**context.attempt)
         delay = min(delay, self.max_delay)
 
         if self.jitter:
@@ -164,7 +162,7 @@ class LinearBackoffStrategy(RetryStrategy):
         initial_delay: float = 1.0,
         increment: float = 1.0,
         max_delay: float = 60.0,
-        retryable_exceptions: list[type] | None = None
+        retryable_exceptions: list[type] | None = None,
     ):
         self.max_attempts = max_attempts
         self.initial_delay = initial_delay
@@ -180,8 +178,7 @@ class LinearBackoffStrategy(RetryStrategy):
             return RetryResult.GIVE_UP
 
         if not any(
-            isinstance(context.last_error, exc_type)
-            for exc_type in self.retryable_exceptions
+            isinstance(context.last_error, exc_type) for exc_type in self.retryable_exceptions
         ):
             return RetryResult.GIVE_UP
 
@@ -198,7 +195,7 @@ class FibonacciBackoffStrategy(RetryStrategy):
         max_attempts: int = 3,
         base_delay: float = 1.0,
         max_delay: float = 60.0,
-        retryable_exceptions: list[type] | None = None
+        retryable_exceptions: list[type] | None = None,
     ):
         self.max_attempts = max_attempts
         self.base_delay = base_delay
@@ -219,8 +216,7 @@ class FibonacciBackoffStrategy(RetryStrategy):
             return RetryResult.GIVE_UP
 
         if not any(
-            isinstance(context.last_error, exc_type)
-            for exc_type in self.retryable_exceptions
+            isinstance(context.last_error, exc_type) for exc_type in self.retryable_exceptions
         ):
             return RetryResult.GIVE_UP
 
@@ -238,7 +234,7 @@ class AdaptiveStrategy(RetryStrategy):
         initial_delay: float = 1.0,
         max_delay: float = 60.0,
         success_threshold: int = 5,
-        failure_threshold: int = 3
+        failure_threshold: int = 3,
     ):
         self.max_attempts = max_attempts
         self.initial_delay = initial_delay
@@ -270,10 +266,7 @@ class AdaptiveStrategy(RetryStrategy):
             self._consecutive_failures = 0
 
             if self._consecutive_successes >= self.success_threshold:
-                self._current_delay = max(
-                    self.initial_delay,
-                    self._current_delay / 2
-                )
+                self._current_delay = max(self.initial_delay, self._current_delay / 2)
                 self._consecutive_successes = 0
 
     def on_failure(self, context: RetryContext):
@@ -282,10 +275,7 @@ class AdaptiveStrategy(RetryStrategy):
             self._consecutive_successes = 0
 
             if self._consecutive_failures >= self.failure_threshold:
-                self._current_delay = min(
-                    self.max_delay,
-                    self._current_delay * 2
-                )
+                self._current_delay = min(self.max_delay, self._current_delay * 2)
                 self._consecutive_failures = 0
 
 
@@ -295,7 +285,7 @@ class RetryExecutor:
         strategy: RetryStrategy | None = None,
         on_retry: Callable[[RetryContext], None] | None = None,
         on_failure: Callable[[RetryContext], None] | None = None,
-        on_success: Callable[[RetryContext], None] | None = None
+        on_success: Callable[[RetryContext], None] | None = None,
     ):
         self.strategy = strategy or ExponentialBackoffStrategy()
         self.on_retry_callback = on_retry
@@ -304,12 +294,7 @@ class RetryExecutor:
         self._stats = RetryStats()
         self._lock = threading.Lock()
 
-    def execute(
-        self,
-        func: Callable[..., T],
-        *args,
-        **kwargs
-    ) -> T:
+    def execute(self, func: Callable[..., T], *args, **kwargs) -> T:
         context = RetryContext(max_attempts=self._get_max_attempts())
 
         while True:
@@ -373,7 +358,7 @@ class RetryExecutor:
                 time.sleep(wait_time)
 
     def _get_max_attempts(self) -> int:
-        if hasattr(self.strategy, 'max_attempts'):
+        if hasattr(self.strategy, "max_attempts"):
             return self.strategy.max_attempts
         return 3
 
@@ -381,9 +366,7 @@ class RetryExecutor:
         with self._lock:
             total_ops = self._stats.successful_attempts + self._stats.failed_attempts
             if total_ops > 0:
-                self._stats.avg_attempts_per_operation = (
-                    self._stats.total_attempts / total_ops
-                )
+                self._stats.avg_attempts_per_operation = self._stats.total_attempts / total_ops
             return RetryStats(**dict(self._stats.__dict__.items()))
 
 
@@ -392,34 +375,34 @@ def retry(
     base_delay: float = 1.0,
     max_delay: float = 60.0,
     strategy: str = "exponential",
-    retryable_exceptions: list[type] | None = None
+    retryable_exceptions: list[type] | None = None,
 ):
     if strategy == "exponential":
         retry_strategy = ExponentialBackoffStrategy(
             max_attempts=max_attempts,
             base_delay=base_delay,
             max_delay=max_delay,
-            retryable_exceptions=retryable_exceptions
+            retryable_exceptions=retryable_exceptions,
         )
     elif strategy == "linear":
         retry_strategy = LinearBackoffStrategy(
             max_attempts=max_attempts,
             initial_delay=base_delay,
             max_delay=max_delay,
-            retryable_exceptions=retryable_exceptions
+            retryable_exceptions=retryable_exceptions,
         )
     elif strategy == "fixed":
         retry_strategy = FixedDelayStrategy(
             max_attempts=max_attempts,
             delay_seconds=base_delay,
-            retryable_exceptions=retryable_exceptions
+            retryable_exceptions=retryable_exceptions,
         )
     else:
         retry_strategy = FibonacciBackoffStrategy(
             max_attempts=max_attempts,
             base_delay=base_delay,
             max_delay=max_delay,
-            retryable_exceptions=retryable_exceptions
+            retryable_exceptions=retryable_exceptions,
         )
 
     executor = RetryExecutor(strategy=retry_strategy)

@@ -33,6 +33,7 @@ class ConnectionState(Enum):
 @dataclass
 class PooledConnection:
     """A pooled WebSocket connection."""
+
     connection_id: str
     peer_id: str
     peer_address: tuple[str, int]
@@ -88,6 +89,7 @@ class PooledConnection:
 @dataclass
 class PoolConfig:
     """Configuration for connection pool."""
+
     max_connections: int = 100
     max_connections_per_peer: int = 3
     idle_timeout: float = 300.0
@@ -173,9 +175,7 @@ class WebSocketConnectionPool:
         self._message_handlers[message_type] = handler
 
     async def get_connection(
-        self,
-        peer_id: str,
-        peer_address: tuple[str, int]
+        self, peer_id: str, peer_address: tuple[str, int]
     ) -> Optional[PooledConnection]:
         """
         Get or create a connection to a peer.
@@ -219,14 +219,10 @@ class WebSocketConnectionPool:
         return not len(peer_conns) >= self.config.max_connections_per_peer
 
     async def _create_connection(
-        self,
-        peer_id: str,
-        peer_address: tuple[str, int]
+        self, peer_id: str, peer_address: tuple[str, int]
     ) -> Optional[PooledConnection]:
         """Create a new connection."""
-        conn_id = hashlib.md5(
-            f"{peer_id}:{peer_address}:{time.time()}".encode()
-        ).hexdigest()[:16]
+        conn_id = hashlib.md5(f"{peer_id}:{peer_address}:{time.time()}".encode()).hexdigest()[:16]
 
         conn = PooledConnection(
             connection_id=conn_id,
@@ -246,8 +242,7 @@ class WebSocketConnectionPool:
         if self._connect_func:
             try:
                 success = await asyncio.wait_for(
-                    self._connect_func(peer_id, peer_address),
-                    timeout=self.config.connect_timeout
+                    self._connect_func(peer_id, peer_address), timeout=self.config.connect_timeout
                 )
 
                 if success:
@@ -305,12 +300,7 @@ class WebSocketConnectionPool:
         del self._connections[conn_id]
         self._stats["connections_closed"] += 1
 
-    async def send_message(
-        self,
-        conn_id: str,
-        message: bytes,
-        message_type: str = None
-    ) -> bool:
+    async def send_message(self, conn_id: str, message: bytes, message_type: str = None) -> bool:
         """Send a message through a connection."""
         conn = self._connections.get(conn_id)
         if not conn or not conn.is_healthy:
@@ -324,11 +314,7 @@ class WebSocketConnectionPool:
 
         return True
 
-    async def broadcast(
-        self,
-        message: bytes,
-        peer_ids: list[str] = None
-    ) -> int:
+    async def broadcast(self, message: bytes, peer_ids: list[str] = None) -> int:
         """
         Broadcast a message to multiple peers.
 
@@ -365,13 +351,11 @@ class WebSocketConnectionPool:
 
         if self._connect_func:
             try:
-                await asyncio.sleep(
-                    self.config.reconnect_delay * conn.reconnect_attempts
-                )
+                await asyncio.sleep(self.config.reconnect_delay * conn.reconnect_attempts)
 
                 success = await asyncio.wait_for(
                     self._connect_func(conn.peer_id, conn.peer_address),
-                    timeout=self.config.connect_timeout
+                    timeout=self.config.connect_timeout,
                 )
 
                 if success:
@@ -397,7 +381,10 @@ class WebSocketConnectionPool:
             for conn_id, conn in list(self._connections.items()):
                 if conn.state == ConnectionState.ERROR:
                     await self.reconnect(conn_id)
-                elif conn.state == ConnectionState.CONNECTED and conn.idle_time > self.config.idle_timeout:
+                elif (
+                    conn.state == ConnectionState.CONNECTED
+                    and conn.idle_time > self.config.idle_timeout
+                ):
                     await self.release_connection(conn_id)
 
     async def _run_cleanup(self):
@@ -407,7 +394,8 @@ class WebSocketConnectionPool:
 
             async with self._lock:
                 expired = [
-                    conn_id for conn_id, conn in self._connections.items()
+                    conn_id
+                    for conn_id, conn in self._connections.items()
                     if conn.idle_time > self.config.idle_timeout * 2
                 ]
 
@@ -437,10 +425,7 @@ class WebSocketConnectionPool:
 
     def get_peer_stats(self) -> dict[str, int]:
         """Get connection count per peer."""
-        return {
-            peer_id: len(conns)
-            for peer_id, conns in self._peer_connections.items()
-        }
+        return {peer_id: len(conns) for peer_id, conns in self._peer_connections.items()}
 
 
 class ConnectionLoadBalancer:
@@ -453,9 +438,7 @@ class ConnectionLoadBalancer:
         self._round_robin_index = 0
 
     def select_connection(
-        self,
-        peer_id: str,
-        strategy: str = "round_robin"
+        self, peer_id: str, strategy: str = "round_robin"
     ) -> Optional[PooledConnection]:
         """
         Select a connection using the specified strategy.
@@ -474,8 +457,7 @@ class ConnectionLoadBalancer:
         healthy_conns = [
             self.pool._connections[cid]
             for cid in conn_ids
-            if cid in self.pool._connections and
-            self.pool._connections[cid].is_healthy
+            if cid in self.pool._connections and self.pool._connections[cid].is_healthy
         ]
 
         if not healthy_conns:
@@ -490,6 +472,7 @@ class ConnectionLoadBalancer:
 
         elif strategy == "random":
             import random
+
             return random.choice(healthy_conns)
 
         else:

@@ -24,12 +24,14 @@ from src.core.interfaces.services import ISchedulerService
 @dataclass
 class StopNodeRequest:
     """停止节点请求"""
+
     node_id: str
 
 
 @dataclass
 class StopNodeResponse:
     """停止节点响应"""
+
     success: bool
     node_id: str = ""
     message: str = ""
@@ -39,11 +41,7 @@ class StopNodeResponse:
 class StopNodeUseCase:
     """停止节点用例"""
 
-    def __init__(
-        self,
-        node_repository: INodeRepository,
-        scheduler_service: ISchedulerService
-    ):
+    def __init__(self, node_repository: INodeRepository, scheduler_service: ISchedulerService):
         """
         初始化停止节点用例
 
@@ -69,9 +67,7 @@ class StopNodeUseCase:
 
         if not node:
             return StopNodeResponse(
-                success=False,
-                node_id=request.node_id,
-                message=f"节点ID '{request.node_id}' 不存在"
+                success=False, node_id=request.node_id, message=f"节点ID '{request.node_id}' 不存在"
             )
 
         # 停止调度器中的节点
@@ -81,7 +77,7 @@ class StopNodeUseCase:
             return StopNodeResponse(
                 success=False,
                 node_id=request.node_id,
-                message=f"停止调度器节点失败: {scheduler_result[1].get('error', '未知错误')}"
+                message=f"停止调度器节点失败: {scheduler_result[1].get('error', '未知错误')}",
             )
 
         # 更新节点状态
@@ -89,10 +85,7 @@ class StopNodeUseCase:
         self._node_repository.update(node)
 
         return StopNodeResponse(
-            success=True,
-            node_id=node.node_id,
-            node=node,
-            message="节点停止成功"
+            success=True, node_id=node.node_id, node=node, message="节点停止成功"
         )
 
 

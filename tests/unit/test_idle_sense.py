@@ -1,4 +1,5 @@
 """Unit tests for idle_sense core module."""
+
 import os
 import sys
 import unittest
@@ -19,6 +20,7 @@ class TestGetPlatform(unittest.TestCase):
     @patch("platform.system")
     def test_windows_detection(self, mock_system):
         from legacy.idle_sense import core
+
         core._PLATFORM_NAME_CACHE = None
         mock_system.return_value = "Windows"
         result = get_platform()
@@ -27,6 +29,7 @@ class TestGetPlatform(unittest.TestCase):
     @patch("platform.system")
     def test_macos_detection(self, mock_system):
         from legacy.idle_sense import core
+
         core._PLATFORM_NAME_CACHE = None
         mock_system.return_value = "Darwin"
         result = get_platform()
@@ -35,6 +38,7 @@ class TestGetPlatform(unittest.TestCase):
     @patch("platform.system")
     def test_linux_detection(self, mock_system):
         from legacy.idle_sense import core
+
         core._PLATFORM_NAME_CACHE = None
         mock_system.return_value = "Linux"
         result = get_platform()
@@ -66,11 +70,7 @@ class TestIsIdle(unittest.TestCase):
         self.assertIsInstance(result, bool)
 
     def test_with_custom_thresholds(self):
-        result = is_idle(
-            idle_threshold_sec=600,
-            cpu_threshold=20.0,
-            memory_threshold=80.0
-        )
+        result = is_idle(idle_threshold_sec=600, cpu_threshold=20.0, memory_threshold=80.0)
         self.assertIsInstance(result, bool)
 
 
@@ -90,6 +90,7 @@ class TestPlatformModule(unittest.TestCase):
 
     def test_check_platform_module(self):
         from legacy.idle_sense import check_platform_module
+
         result = check_platform_module()
 
         self.assertIn("platform", result)
@@ -98,6 +99,7 @@ class TestPlatformModule(unittest.TestCase):
 
     def test_get_version(self):
         from legacy.idle_sense import get_version
+
         version = get_version()
 
         self.assertIsInstance(version, str)

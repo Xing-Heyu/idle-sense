@@ -23,22 +23,25 @@ class TestSandboxSchedulerIntegration:
         """Create a sandbox instance."""
         try:
             from src.infrastructure.sandbox.sandbox import BasicSandbox, SandboxConfig
+
             return BasicSandbox(SandboxConfig(timeout=60))
         except ImportError:
             from legacy.sandbox import CodeSandbox
+
             return CodeSandbox()
 
     @pytest.fixture
     def scheduler(self):
         """Create a scheduler instance."""
         from src.infrastructure.scheduler.scheduler import NodeInfo, SimpleScheduler
+
         scheduler = SimpleScheduler()
         node = NodeInfo(
             node_id="test-node",
             capacity={"cpu": 4.0, "memory": 8192},
             available_resources={"cpu": 4.0, "memory": 8192},
             is_idle=True,
-            is_available=True
+            is_available=True,
         )
         scheduler.register_node(node)
         scheduler.update_node_heartbeat("test-node", {})
@@ -47,18 +50,26 @@ class TestSandboxSchedulerIntegration:
     def test_sandbox_code_validation(self, sandbox):
         """Test sandbox code validation."""
         safe_code = "result = 1 + 1"
-        result = sandbox.validate_code(safe_code) if hasattr(sandbox, 'validate_code') else sandbox.check_code_safety(safe_code)
+        result = (
+            sandbox.validate_code(safe_code)
+            if hasattr(sandbox, "validate_code")
+            else sandbox.check_code_safety(safe_code)
+        )
         if isinstance(result, dict):
-            assert result.get('safe', result.get('is_safe', False))
+            assert result.get("safe", result.get("is_safe", False))
         else:
             assert result.is_safe
 
     def test_sandbox_dangerous_code_blocked(self, sandbox):
         """Test that dangerous code is blocked."""
         dangerous_code = "import os; os.system('rm -rf /')"
-        result = sandbox.validate_code(dangerous_code) if hasattr(sandbox, 'validate_code') else sandbox.check_code_safety(dangerous_code)
+        result = (
+            sandbox.validate_code(dangerous_code)
+            if hasattr(sandbox, "validate_code")
+            else sandbox.check_code_safety(dangerous_code)
+        )
         if isinstance(result, dict):
-            assert not result.get('safe', result.get('is_safe', True))
+            assert not result.get("safe", result.get("is_safe", True))
         else:
             assert not result.is_safe
 
@@ -66,7 +77,7 @@ class TestSandboxSchedulerIntegration:
         """Test sandbox code execution."""
         code = "print('Hello, World!')"
         result = sandbox.execute(code)
-        if hasattr(result, 'success'):
+        if hasattr(result, "success"):
             assert result.success
             assert "Hello, World!" in result.output
         else:
@@ -75,11 +86,12 @@ class TestSandboxSchedulerIntegration:
     def test_scheduler_task_assignment(self, scheduler):
         """Test scheduler task assignment."""
         from src.infrastructure.scheduler.scheduler import TaskInfo
+
         task = TaskInfo(
             task_id=0,
             code="result = 1 + 1",
             required_resources={"cpu": 1.0, "memory": 512},
-            status="pending"
+            status="pending",
         )
         task_id = scheduler.add_task(task)
         assert task_id is not None
@@ -89,10 +101,11 @@ class TestSandboxSchedulerIntegration:
     def test_scheduler_node_management(self, scheduler):
         """Test scheduler node management."""
         from src.infrastructure.scheduler.scheduler import NodeInfo
+
         node = NodeInfo(
             node_id="new-node",
             capacity={"cpu": 8.0, "memory": 16384},
-            available_resources={"cpu": 8.0, "memory": 16384}
+            available_resources={"cpu": 8.0, "memory": 16384},
         )
         result = scheduler.register_node(node)
         assert result
@@ -143,7 +156,7 @@ class TestStorageIntegration:
         node = NodeInfo(
             node_id="test-node",
             capacity={"cpu": 4.0, "memory": 8192},
-            status=NodeStatus.ONLINE_AVAILABLE
+            status=NodeStatus.ONLINE_AVAILABLE,
         )
         await storage.store_node(node)
 
@@ -179,11 +192,7 @@ class TestTokenEconomyIntegration:
 
         engine = PricingEngine()
         resources = ResourceMetrics(
-            cpu_seconds=100,
-            memory_gb_seconds=0.05,
-            storage_gb=0.1,
-            network_gb=0.01,
-            gpu_seconds=0
+            cpu_seconds=100, memory_gb_seconds=0.05, storage_gb=0.1, network_gb=0.01, gpu_seconds=0
         )
         price = engine.calculate_price(resources, priority=1)
         assert price > 0

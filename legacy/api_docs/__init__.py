@@ -10,11 +10,20 @@ from functools import wraps
 from typing import Any, Callable, Optional
 
 _TYPE_MAP = {
-    "str": str, "int": int, "float": float, "bool": bool,
-    "list": list, "dict": dict, "set": set, "tuple": tuple,
-    "bytes": bytes, "bytearray": bytearray,
-    "None": type(None), "NoneType": type(None),
+    "str": str,
+    "int": int,
+    "float": float,
+    "bool": bool,
+    "list": list,
+    "dict": dict,
+    "set": set,
+    "tuple": tuple,
+    "bytes": bytes,
+    "bytearray": bytearray,
+    "None": type(None),
+    "NoneType": type(None),
 }
+
 
 def _safe_resolve_type(type_str: str):
     resolved = _TYPE_MAP.get(type_str)
@@ -23,6 +32,7 @@ def _safe_resolve_type(type_str: str):
     if "." in type_str:
         parts = type_str.rsplit(".", 1)
         import importlib
+
         try:
             mod = importlib.import_module(parts[0])
             return getattr(mod, parts[1], str)
@@ -144,7 +154,7 @@ class TypeMapper:
                 args = getattr(python_type, "__args__", (str,))
                 return {
                     "type": "array",
-                    "items": cls.map_type(args[0]) if args else {"type": "string"}
+                    "items": cls.map_type(args[0]) if args else {"type": "string"},
                 }
 
             if origin is dict or origin is dict:
@@ -158,11 +168,7 @@ class TypeMapper:
 
     @classmethod
     def model_to_schema(cls, model_class: type) -> dict[str, Any]:
-        schema = {
-            "type": "object",
-            "properties": {},
-            "required": []
-        }
+        schema = {"type": "object", "properties": {}, "required": []}
 
         if hasattr(model_class, "__dataclass_fields__"):
             for field_name, field_info in model_class.__dataclass_fields__.items():
@@ -224,33 +230,26 @@ class DocumentationGenerator:
                     "in": p.location,
                     "required": p.required,
                     "description": p.description,
-                    "schema": p.schema or self.type_mapper.map_type(
+                    "schema": p.schema
+                    or self.type_mapper.map_type(
                         _safe_resolve_type(p.param_type) if isinstance(p.param_type, str) else str
-                    )
+                    ),
                 }
                 for p in endpoint.parameters
             ],
             "responses": {
                 str(code): {
                     "description": resp.description,
-                    "content": {
-                        resp.content_type: {
-                            "schema": resp.schema
-                        }
-                    }
+                    "content": {resp.content_type: {"schema": resp.schema}},
                 }
                 for code, resp in endpoint.responses.items()
-            }
+            },
         }
 
         if endpoint.request_body:
             path_item["requestBody"] = {
                 "required": True,
-                "content": {
-                    "application/json": {
-                        "schema": endpoint.request_body
-                    }
-                }
+                "content": {"application/json": {"schema": endpoint.request_body}},
             }
 
         return path_item
@@ -262,22 +261,20 @@ class DocumentationGenerator:
             if endpoint.path not in paths:
                 paths[endpoint.path] = {}
 
-            paths[endpoint.path][endpoint.method.value.lower()] = self._endpoint_to_openapi(endpoint)
+            paths[endpoint.path][endpoint.method.value.lower()] = self._endpoint_to_openapi(
+                endpoint
+            )
 
         return {
             "openapi": "3.0.3",
             "info": {
                 "title": self.schema.title,
                 "version": self.schema.version,
-                "description": self.schema.description
+                "description": self.schema.description,
             },
-            "servers": [
-                {"url": self.schema.base_url}
-            ] if self.schema.base_url else [],
+            "servers": [{"url": self.schema.base_url}] if self.schema.base_url else [],
             "paths": paths,
-            "components": {
-                "schemas": self.schema.components
-            }
+            "components": {"schemas": self.schema.components},
         }
 
     def generate_swagger_html(self, openapi_json: str | None = None) -> str:
@@ -330,6 +327,7 @@ class DocumentationGenerator:
     def to_yaml(self) -> str:
         try:
             import yaml
+
             return yaml.dump(self.generate_openapi(), default_flow_style=False)
         except ImportError:
             return self.to_json()
@@ -340,18 +338,10 @@ class MarkdownGenerator:
         self.doc = doc_generator
 
     def generate(self) -> str:
-        lines = [
-            f"# {self.doc.schema.title}",
-            f"\n**Version:** {self.doc.schema.version}",
-            ""
-        ]
+        lines = [f"# {self.doc.schema.title}", f"\n**Version:** {self.doc.schema.version}", ""]
 
         if self.doc.schema.description:
-            lines.extend([
-                "## Overview",
-                self.doc.schema.description,
-                ""
-            ])
+            lines.extend(["## Overview", self.doc.schema.description, ""])
 
         endpoints_by_tag = {}
         for endpoint in self.doc.schema.endpoints:
@@ -361,17 +351,11 @@ class MarkdownGenerator:
             endpoints_by_tag[tag].append(endpoint)
 
         for tag, endpoints in endpoints_by_tag.items():
-            lines.extend([
-                f"## {tag.title()}",
-                ""
-            ])
+            lines.extend([f"## {tag.title()}", ""])
 
             for endpoint in endpoints:
                 method_badge = f"`{endpoint.method.value}`"
-                lines.extend([
-                    f"### {method_badge} {endpoint.path}",
-                    ""
-                ])
+                lines.extend([f"### {method_badge} {endpoint.path}", ""])
 
                 if endpoint.summary:
                     lines.extend([f"**Summary:** {endpoint.summary}", ""])
@@ -380,12 +364,14 @@ class MarkdownGenerator:
                     lines.extend([endpoint.description, ""])
 
                 if endpoint.parameters:
-                    lines.extend([
-                        "**Parameters:**",
-                        "",
-                        "| Name | Location | Type | Required | Description |",
-                        "|------|----------|------|----------|-------------|"
-                    ])
+                    lines.extend(
+                        [
+                            "**Parameters:**",
+                            "",
+                            "| Name | Location | Type | Required | Description |",
+                            "|------|----------|------|----------|-------------|",
+                        ]
+                    )
                     for p in endpoint.parameters:
                         lines.append(
                             f"| {p.name} | {p.location} | {p.param_type} | "
@@ -394,18 +380,17 @@ class MarkdownGenerator:
                     lines.append("")
 
                 if endpoint.request_body:
-                    lines.extend([
-                        "**Request Body:**",
-                        "```json",
-                        json.dumps(endpoint.request_body, indent=2),
-                        "```",
-                        ""
-                    ])
+                    lines.extend(
+                        [
+                            "**Request Body:**",
+                            "```json",
+                            json.dumps(endpoint.request_body, indent=2),
+                            "```",
+                            "",
+                        ]
+                    )
 
-                lines.extend([
-                    "**Responses:**",
-                    ""
-                ])
+                lines.extend(["**Responses:**", ""])
                 for code, resp in sorted(endpoint.responses.items()):
                     lines.append(f"- **{code}:** {resp.description}")
 

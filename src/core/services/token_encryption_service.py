@@ -20,6 +20,7 @@ try:
     from cryptography.hazmat.primitives import hashes
     from cryptography.hazmat.primitives.ciphers.aead import AESGCM
     from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
+
     CRYPTOGRAPHY_AVAILABLE = True
 except ImportError:
     CRYPTOGRAPHY_AVAILABLE = False
@@ -27,22 +28,26 @@ except ImportError:
 
 class EncryptionError(Exception):
     """加密错误"""
+
     pass
 
 
 class DecryptionError(Exception):
     """解密错误"""
+
     pass
 
 
 class IntegrityError(Exception):
     """数据完整性错误"""
+
     pass
 
 
 @dataclass
 class EncryptedData:
     """加密数据结构"""
+
     ciphertext: bytes
     nonce: bytes
     salt: bytes
@@ -56,7 +61,7 @@ class EncryptedData:
             "nonce": base64.b64encode(self.nonce).decode(),
             "salt": base64.b64encode(self.salt).decode(),
             "hmac": base64.b64encode(self.hmac).decode(),
-            "version": self.version
+            "version": self.version,
         }
 
     @classmethod
@@ -67,7 +72,7 @@ class EncryptedData:
             nonce=base64.b64decode(data["nonce"]),
             salt=base64.b64decode(data["salt"]),
             hmac=base64.b64decode(data["hmac"]),
-            version=data.get("version", "1.0")
+            version=data.get("version", "1.0"),
         )
 
 
@@ -85,12 +90,10 @@ class TokenEncryption:
         self,
         main_password: Optional[str] = None,
         key_file: Optional[str] = None,
-        salt_file: Optional[str] = None
+        salt_file: Optional[str] = None,
     ):
         if not CRYPTOGRAPHY_AVAILABLE:
-            raise ImportError(
-                "cryptography 库未安装，请运行: pip install cryptography"
-            )
+            raise ImportError("cryptography 库未安装，请运行: pip install cryptography")
 
         self._main_password = main_password
         self._key_file = key_file
@@ -123,12 +126,12 @@ class TokenEncryption:
             algorithm=hashes.SHA256(),
             length=self.KEY_SIZE + self.HMAC_KEY_SIZE,
             salt=salt,
-            iterations=self.PBKDF2_ITERATIONS
+            iterations=self.PBKDF2_ITERATIONS,
         )
 
         key_material = kdf.derive(password.encode())
-        self._encryption_key = key_material[:self.KEY_SIZE]
-        self._hmac_key = key_material[self.KEY_SIZE:]
+        self._encryption_key = key_material[: self.KEY_SIZE]
+        self._hmac_key = key_material[self.KEY_SIZE :]
         self._last_salt = salt
 
     def save_keys_to_file(self, file_path: str, protect_with_password: bool = True) -> None:
@@ -145,7 +148,9 @@ class TokenEncryption:
         key_data = {
             "encryption_key": base64.b64encode(self._encryption_key).decode(),
             "hmac_key": base64.b64encode(self._hmac_key).decode(),
-            "salt": base64.b64encode(self._last_salt).decode() if hasattr(self, '_last_salt') else None
+            "salt": (
+                base64.b64encode(self._last_salt).decode() if hasattr(self, "_last_salt") else None
+            ),
         }
 
         key_json = json.dumps(key_data)
@@ -156,7 +161,7 @@ class TokenEncryption:
             key_json = json.dumps(encrypted.to_dict())
 
         os.makedirs(os.path.dirname(file_path), exist_ok=True)
-        with open(file_path, 'w') as f:
+        with open(file_path, "w") as f:
             f.write(key_json)
 
     def _load_keys_from_file(self, file_path: str, password: Optional[str] = None) -> None:
@@ -190,11 +195,7 @@ class TokenEncryption:
         if self._hmac_key is None:
             raise EncryptionError("HMAC密钥未设置")
 
-        return hmac.new(
-            self._hmac_key,
-            data,
-            hashlib.sha256
-        ).digest()
+        return hmac.new(self._hmac_key, data, hashlib.sha256).digest()
 
     def _verify_hmac(self, data: bytes, hmac_value: bytes) -> bool:
         """验证HMAC"""
@@ -222,12 +223,7 @@ class TokenEncryption:
 
         hmac_value = self._compute_hmac(ciphertext + nonce + salt)
 
-        return EncryptedData(
-            ciphertext=ciphertext,
-            nonce=nonce,
-            salt=salt,
-            hmac=hmac_value
-        )
+        return EncryptedData(ciphertext=ciphertext, nonce=nonce, salt=salt, hmac=hmac_value)
 
     def _decrypt_raw(self, encrypted_data: EncryptedData) -> bytes:
         """
@@ -244,16 +240,14 @@ class TokenEncryption:
 
         if not self._verify_hmac(
             encrypted_data.ciphertext + encrypted_data.nonce + encrypted_data.salt,
-            encrypted_data.hmac
+            encrypted_data.hmac,
         ):
             raise IntegrityError("数据完整性验证失败")
 
         try:
             aesgcm = AESGCM(self._encryption_key)
             plaintext = aesgcm.decrypt(
-                encrypted_data.nonce,
-                encrypted_data.ciphertext,
-                associated_data=encrypted_data.salt
+                encrypted_data.nonce, encrypted_data.ciphertext, associated_data=encrypted_data.salt
             )
             return plaintext
         except Exception as e:
@@ -297,9 +291,7 @@ class TokenEncryption:
         return self.decrypt(encrypted_data)
 
     def rotate_keys(
-        self,
-        new_password: Optional[str] = None,
-        new_key_file: Optional[str] = None
+        self, new_password: Optional[str] = None, new_key_file: Optional[str] = None
     ) -> None:
         """
         轮换密钥
@@ -318,13 +310,13 @@ class TokenEncryption:
     def clear_keys(self) -> None:
         """清除内存中的密钥（安全覆写）"""
         if self._encryption_key:
-            self._encryption_key = b'\x00' * len(self._encryption_key)
+            self._encryption_key = b"\x00" * len(self._encryption_key)
         if self._hmac_key:
-            self._hmac_key = b'\x00' * len(self._hmac_key)
+            self._hmac_key = b"\x00" * len(self._hmac_key)
         self._encryption_key = None
         self._hmac_key = None
         if self._main_password:
-            self._main_password = '\x00' * len(self._main_password)
+            self._main_password = "\x00" * len(self._main_password)
         self._main_password = None
 
 
@@ -333,5 +325,5 @@ __all__ = [
     "EncryptedData",
     "EncryptionError",
     "DecryptionError",
-    "IntegrityError"
+    "IntegrityError",
 ]

@@ -89,9 +89,7 @@ class TestTaskErrors(unittest.TestCase):
 
     def test_task_execution_error(self):
         error = TaskExecutionError(
-            task_id="task_123",
-            reason="Division by zero",
-            output="Error: division by zero"
+            task_id="task_123", reason="Division by zero", output="Error: division by zero"
         )
 
         self.assertEqual(error.task_id, "task_123")
@@ -109,7 +107,7 @@ class TestTaskErrors(unittest.TestCase):
         error = TaskResourceError(
             task_id="task_123",
             required={"cpu": 4.0, "memory": 8192},
-            available={"cpu": 2.0, "memory": 4096}
+            available={"cpu": 2.0, "memory": 4096},
         )
 
         self.assertEqual(error.required, {"cpu": 4.0, "memory": 8192})
@@ -141,7 +139,7 @@ class TestNodeErrors(unittest.TestCase):
         error = NodeCapacityError(
             node_id="node_456",
             capacity={"cpu": 8.0, "memory": 16384},
-            current_usage={"cpu": 7.5, "memory": 15000}
+            current_usage={"cpu": 7.5, "memory": 15000},
         )
 
         self.assertEqual(error.capacity, {"cpu": 8.0, "memory": 16384})
@@ -165,8 +163,7 @@ class TestStorageErrors(unittest.TestCase):
 
     def test_storage_backend_error(self):
         error = StorageBackendError(
-            backend="unknown",
-            available_backends=["memory", "redis", "sqlite"]
+            backend="unknown", available_backends=["memory", "redis", "sqlite"]
         )
 
         self.assertEqual(error.backend, "unknown")
@@ -190,8 +187,7 @@ class TestSecurityErrors(unittest.TestCase):
 
     def test_sandbox_level_error(self):
         error = SandboxLevelError(
-            level="invalid",
-            available_levels=["basic", "container", "gvisor"]
+            level="invalid", available_levels=["basic", "container", "gvisor"]
         )
 
         self.assertEqual(error.level, "invalid")
@@ -204,11 +200,7 @@ class TestSecurityErrors(unittest.TestCase):
         self.assertEqual(error.reason, "Invalid password")
 
     def test_authorization_error(self):
-        error = AuthorizationError(
-            user_id="user_123",
-            resource="admin_panel",
-            action="write"
-        )
+        error = AuthorizationError(user_id="user_123", resource="admin_panel", action="write")
 
         self.assertEqual(error.user_id, "user_123")
         self.assertEqual(error.resource, "admin_panel")
@@ -219,11 +211,7 @@ class TestNetworkErrors(unittest.TestCase):
     """Test network-related exceptions."""
 
     def test_connection_error(self):
-        error = ConnectionError(
-            host="localhost",
-            port=8000,
-            reason="Connection refused"
-        )
+        error = ConnectionError(host="localhost", port=8000, reason="Connection refused")
 
         self.assertEqual(error.host, "localhost")
         self.assertEqual(error.port, 8000)
@@ -236,10 +224,7 @@ class TestNetworkErrors(unittest.TestCase):
         self.assertEqual(error.reason, "Timeout")
 
     def test_nat_traversal_error(self):
-        error = NATTraversalError(
-            nat_type="symmetric",
-            reason="Hole punching failed"
-        )
+        error = NATTraversalError(nat_type="symmetric", reason="Hole punching failed")
 
         self.assertEqual(error.nat_type, "symmetric")
         self.assertEqual(error.reason, "Hole punching failed")
@@ -249,11 +234,7 @@ class TestEconomyErrors(unittest.TestCase):
     """Test economy-related exceptions."""
 
     def test_insufficient_balance_error(self):
-        error = InsufficientBalanceError(
-            address="addr_123",
-            required=100.0,
-            available=50.0
-        )
+        error = InsufficientBalanceError(address="addr_123", required=100.0, available=50.0)
 
         self.assertEqual(error.address, "addr_123")
         self.assertEqual(error.required, 100.0)
@@ -261,9 +242,7 @@ class TestEconomyErrors(unittest.TestCase):
 
     def test_staking_error(self):
         error = StakingError(
-            address="addr_123",
-            operation="unstake",
-            reason="Lock period not expired"
+            address="addr_123", operation="unstake", reason="Lock period not expired"
         )
 
         self.assertEqual(error.address, "addr_123")
@@ -298,18 +277,14 @@ class TestSerializationErrors(unittest.TestCase):
 
     def test_serialization_error(self):
         error = SerializationError(
-            data_type="CustomObject",
-            reason="Object is not JSON serializable"
+            data_type="CustomObject", reason="Object is not JSON serializable"
         )
 
         self.assertEqual(error.data_type, "CustomObject")
         self.assertEqual(error.reason, "Object is not JSON serializable")
 
     def test_deserialization_error(self):
-        error = DeserializationError(
-            data='{"invalid": json}',
-            reason="Invalid JSON format"
-        )
+        error = DeserializationError(data='{"invalid": json}', reason="Invalid JSON format")
 
         self.assertEqual(error.reason, "Invalid JSON format")
 
@@ -352,9 +327,7 @@ class TestCustomMessages(unittest.TestCase):
 
     def test_custom_message_in_details(self):
         error = StorageConnectionError(
-            "redis",
-            "Connection refused",
-            message="Failed to connect to Redis server"
+            "redis", "Connection refused", message="Failed to connect to Redis server"
         )
         self.assertIn("Redis", str(error))
 

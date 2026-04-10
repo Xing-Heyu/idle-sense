@@ -24,6 +24,7 @@ from src.core.interfaces.services import ISchedulerService
 @dataclass
 class GetNodeStatusRequest:
     """获取节点状态请求"""
+
     online_only: bool = False
     node_id: Optional[str] = None
 
@@ -31,6 +32,7 @@ class GetNodeStatusRequest:
 @dataclass
 class GetNodeStatusResponse:
     """获取节点状态响应"""
+
     success: bool
     nodes: list[Node] = None
     message: str = ""
@@ -40,11 +42,7 @@ class GetNodeStatusResponse:
 class GetNodeStatusUseCase:
     """获取节点状态用例"""
 
-    def __init__(
-        self,
-        node_repository: INodeRepository,
-        scheduler_service: ISchedulerService
-    ):
+    def __init__(self, node_repository: INodeRepository, scheduler_service: ISchedulerService):
         """
         初始化获取节点状态用例
 
@@ -70,8 +68,7 @@ class GetNodeStatusUseCase:
             node = self._node_repository.get_by_id(request.node_id)
             if not node:
                 return GetNodeStatusResponse(
-                    success=False,
-                    message=f"节点ID '{request.node_id}' 不存在"
+                    success=False, message=f"节点ID '{request.node_id}' 不存在"
                 )
 
             # 从调度器获取最新状态
@@ -85,16 +82,10 @@ class GetNodeStatusUseCase:
                         updated_node = NodeFactory.create_from_dict(node_data)
                         self._node_repository.update(updated_node)
                         return GetNodeStatusResponse(
-                            success=True,
-                            nodes=[updated_node],
-                            message="获取节点状态成功"
+                            success=True, nodes=[updated_node], message="获取节点状态成功"
                         )
 
-            return GetNodeStatusResponse(
-                success=True,
-                nodes=[node],
-                message="获取节点状态成功"
-            )
+            return GetNodeStatusResponse(success=True, nodes=[node], message="获取节点状态成功")
 
         # 从调度器获取所有节点
         scheduler_result = self._scheduler_service.get_nodes(online_only=request.online_only)
@@ -102,7 +93,7 @@ class GetNodeStatusUseCase:
         if not scheduler_result[0]:
             return GetNodeStatusResponse(
                 success=False,
-                message=f"从调度器获取节点失败: {scheduler_result[1].get('error', '未知错误')}"
+                message=f"从调度器获取节点失败: {scheduler_result[1].get('error', '未知错误')}",
             )
 
         nodes_data = scheduler_result[1].get("nodes", [])
@@ -126,14 +117,11 @@ class GetNodeStatusUseCase:
             "total": len(nodes),
             "online": sum(1 for n in nodes if n.is_online),
             "idle": sum(1 for n in nodes if n.is_idle),
-            "busy": sum(1 for n in nodes if n.status.value == "busy")
+            "busy": sum(1 for n in nodes if n.status.value == "busy"),
         }
 
         return GetNodeStatusResponse(
-            success=True,
-            nodes=nodes,
-            stats=stats,
-            message="获取节点状态成功"
+            success=True, nodes=nodes, stats=stats, message="获取节点状态成功"
         )
 
 

@@ -16,8 +16,14 @@ from typing import Any, Optional
 
 class ResourceConfig:
     """资源配置类型 - 开源版本无限制"""
-    def __init__(self, cpu_cores: float = 0, memory_mb: int = 0,
-                 timeout_sec: int = 0, allow_network: bool = False):
+
+    def __init__(
+        self,
+        cpu_cores: float = 0,
+        memory_mb: int = 0,
+        timeout_sec: int = 0,
+        allow_network: bool = False,
+    ):
         self.cpu_cores = cpu_cores  # 0表示无限制
         self.memory_mb = memory_mb  # 0表示无限制
         self.timeout_sec = timeout_sec  # 0表示无限制
@@ -25,18 +31,24 @@ class ResourceConfig:
 
     def to_dict(self) -> dict[str, Any]:
         return {
-            'cpu_cores': "无限制",
-            'memory_mb': "无限制",
-            'timeout_sec': "无限制",
-            'allow_network': self.allow_network
+            "cpu_cores": "无限制",
+            "memory_mb": "无限制",
+            "timeout_sec": "无限制",
+            "allow_network": self.allow_network,
         }
 
 
 class ModuleA_Prepare:
     """模块A：环境准备器"""
 
-    def __init__(self, task_id: str, user_code: str, resource_config: ResourceConfig,
-                 user_id: str = None, node_base_dir: str = "node_data"):
+    def __init__(
+        self,
+        task_id: str,
+        user_code: str,
+        resource_config: ResourceConfig,
+        user_id: str = None,
+        node_base_dir: str = "node_data",
+    ):
         self.task_id = task_id
         self.user_code = user_code
         self.resource_config = resource_config
@@ -252,12 +264,12 @@ if __name__ == "__main__":
 
         # 1. 创建 user_script.py
         user_script_path = self.work_dir / "user_script.py"
-        with open(user_script_path, 'w', encoding='utf-8') as f:
+        with open(user_script_path, "w", encoding="utf-8") as f:
             f.write(self.user_code)
 
         # 2. 创建 runner.py
         runner_script_path = self.work_dir / "runner.py"
-        with open(runner_script_path, 'w', encoding='utf-8') as f:
+        with open(runner_script_path, "w", encoding="utf-8") as f:
             f.write(self._create_runner_script())
 
         # 3. 创建 config.json
@@ -265,14 +277,14 @@ if __name__ == "__main__":
 
         # 添加文件夹路径信息
         if self.user_id:
-            config_data['user_folder_path'] = f"user_data (您的数据文件-主要工作区)/{self.user_id}"
-            config_data['temp_folder_path'] = f"temp_data (临时文件-自动清理)/{self.user_id}"
+            config_data["user_folder_path"] = f"user_data (您的数据文件-主要工作区)/{self.user_id}"
+            config_data["temp_folder_path"] = f"temp_data (临时文件-自动清理)/{self.user_id}"
         else:
-            config_data['user_folder_path'] = ""
-            config_data['temp_folder_path'] = ""
+            config_data["user_folder_path"] = ""
+            config_data["temp_folder_path"] = ""
 
         config_path = self.work_dir / "config.json"
-        with open(config_path, 'w', encoding='utf-8') as f:
+        with open(config_path, "w", encoding="utf-8") as f:
             json.dump(config_data, f, indent=2)
 
         print(f"[模块A] 环境准备完成: {self.work_dir.absolute()}")
@@ -303,44 +315,44 @@ class ModuleB_Execute:
                 capture_output=True,
                 text=True,
                 timeout=self.resource_config.timeout_sec + 5,  # 额外5秒缓冲
-                cwd=self.work_dir_path
+                cwd=self.work_dir_path,
             )
 
             execution_time = time.time() - start_time
 
             # 分析资源违规
-            resource_violation = 'none'
+            resource_violation = "none"
             if result.returncode == 124:
-                resource_violation = 'timeout'
-            elif 'MemoryError' in result.stderr:
-                resource_violation = 'memory'
+                resource_violation = "timeout"
+            elif "MemoryError" in result.stderr:
+                resource_violation = "memory"
 
             return {
-                'exit_code': result.returncode,
-                'stdout': result.stdout,
-                'stderr': result.stderr,
-                'duration_sec': execution_time,
-                'resource_violation': resource_violation
+                "exit_code": result.returncode,
+                "stdout": result.stdout,
+                "stderr": result.stderr,
+                "duration_sec": execution_time,
+                "resource_violation": resource_violation,
             }
 
         except subprocess.TimeoutExpired:
             execution_time = time.time() - start_time
             return {
-                'exit_code': 124,
-                'stdout': '',
-                'stderr': f'执行超时 ({self.resource_config.timeout_sec}秒)',
-                'duration_sec': execution_time,
-                'resource_violation': 'timeout'
+                "exit_code": 124,
+                "stdout": "",
+                "stderr": f"执行超时 ({self.resource_config.timeout_sec}秒)",
+                "duration_sec": execution_time,
+                "resource_violation": "timeout",
             }
 
         except Exception as e:
             execution_time = time.time() - start_time
             return {
-                'exit_code': 1,
-                'stdout': '',
-                'stderr': f'执行器异常: {str(e)}',
-                'duration_sec': execution_time,
-                'resource_violation': 'none'
+                "exit_code": 1,
+                "stdout": "",
+                "stderr": f"执行器异常: {str(e)}",
+                "duration_sec": execution_time,
+                "resource_violation": "none",
             }
 
         finally:
@@ -351,8 +363,12 @@ class ModuleB_Execute:
 class ModuleC_Cleanup:
     """模块C：取证与清理器"""
 
-    def __init__(self, work_dir_path: str, execution_result: dict[str, Any],
-                 archive_before_cleanup: bool = False):
+    def __init__(
+        self,
+        work_dir_path: str,
+        execution_result: dict[str, Any],
+        archive_before_cleanup: bool = False,
+    ):
         self.work_dir_path = work_dir_path
         self.execution_result = execution_result
         self.archive_before_cleanup = archive_before_cleanup
@@ -368,7 +384,7 @@ class ModuleC_Cleanup:
 
             # 1. 保存执行结果
             result_file = work_dir / "result.json"
-            with open(result_file, 'w', encoding='utf-8') as f:
+            with open(result_file, "w", encoding="utf-8") as f:
                 json.dump(self.execution_result, f, indent=2, ensure_ascii=False)
 
             # 2. 可选：打包归档
@@ -376,8 +392,9 @@ class ModuleC_Cleanup:
                 archive_path = work_dir.parent / f"{work_dir.name}_artifacts.zip"
                 try:
                     import zipfile
-                    with zipfile.ZipFile(archive_path, 'w', zipfile.ZIP_DEFLATED) as zipf:
-                        for file_path in work_dir.rglob('*'):
+
+                    with zipfile.ZipFile(archive_path, "w", zipfile.ZIP_DEFLATED) as zipf:
+                        for file_path in work_dir.rglob("*"):
                             if file_path.is_file():
                                 zipf.write(file_path, file_path.relative_to(work_dir.parent))
                     print(f"[模块C] 已创建归档: {archive_path}")
@@ -402,9 +419,13 @@ class SafeBoxIsolation:
         self.base_dir = Path("task_operate")
         self.base_dir.mkdir(exist_ok=True)
 
-    def execute_task(self, task_id: str, user_code: str,
-                    resource_config: Optional[ResourceConfig] = None,
-                    user_id: str = None) -> dict[str, Any]:
+    def execute_task(
+        self,
+        task_id: str,
+        user_code: str,
+        resource_config: Optional[ResourceConfig] = None,
+        user_id: str = None,
+    ) -> dict[str, Any]:
         """执行任务的完整流程"""
 
         if resource_config is None:
@@ -422,15 +443,17 @@ class SafeBoxIsolation:
             execution_result = module_b.run()
 
             # 3. 模块C：取证与清理器
-            module_c = ModuleC_Cleanup(work_dir_path, execution_result, archive_before_cleanup=False)
+            module_c = ModuleC_Cleanup(
+                work_dir_path, execution_result, archive_before_cleanup=False
+            )
             cleanup_success = module_c.run()
 
             # 构建最终结果
             final_result = {
-                'task_id': task_id,
-                'success': execution_result['exit_code'] == 0,
-                'execution_result': execution_result,
-                'cleanup_success': cleanup_success
+                "task_id": task_id,
+                "success": execution_result["exit_code"] == 0,
+                "execution_result": execution_result,
+                "cleanup_success": cleanup_success,
             }
 
             print(f"[SafeBox] 任务执行完成: {task_id}")
@@ -439,17 +462,17 @@ class SafeBoxIsolation:
         except Exception as e:
             print(f"[SafeBox] 任务执行异常: {e}")
             return {
-                'task_id': task_id,
-                'success': False,
-                'error': str(e),
-                'cleanup_success': False,
-                'execution_result': {
-                    'exit_code': 1,
-                    'stdout': '',
-                    'stderr': str(e),
-                    'duration_sec': 0,
-                    'resource_violation': 'none'
-                }
+                "task_id": task_id,
+                "success": False,
+                "error": str(e),
+                "cleanup_success": False,
+                "execution_result": {
+                    "exit_code": 1,
+                    "stdout": "",
+                    "stderr": str(e),
+                    "duration_sec": 0,
+                    "resource_violation": "none",
+                },
             }
 
 
@@ -476,11 +499,10 @@ print(f"安全计算完成，结果: {result:.4f}")
 """
 
     print("\n测试1: 安全代码执行")
-    result = safebox.execute_task("test_safe_001", safe_code,
-                                ResourceConfig(timeout_sec=10))
+    result = safebox.execute_task("test_safe_001", safe_code, ResourceConfig(timeout_sec=10))
     print(f"结果: {result['success']}")
-    if result['success']:
-        exec_result = result['execution_result']
+    if result["success"]:
+        exec_result = result["execution_result"]
         print(f"退出码: {exec_result['exit_code']}")
         print(f"执行时间: {exec_result['duration_sec']:.2f}秒")
         print(f"输出: {exec_result['stdout'][:100]}...")
@@ -493,11 +515,10 @@ print("这行代码不应该执行")
 """
 
     print("\n测试2: 危险代码拦截")
-    result = safebox.execute_task("test_danger_001", dangerous_code,
-                                ResourceConfig(timeout_sec=5))
+    result = safebox.execute_task("test_danger_001", dangerous_code, ResourceConfig(timeout_sec=5))
     print(f"结果: {result['success']}")
-    if not result['success']:
-        exec_result = result['execution_result']
+    if not result["success"]:
+        exec_result = result["execution_result"]
         print(f"退出码: {exec_result['exit_code']}")
         print(f"错误: {exec_result['stderr']}")
 
@@ -514,10 +535,9 @@ for i in range(1000000):
 """
 
     print("\n测试3: 超时控制")
-    result = safebox.execute_task("test_timeout_001", timeout_code,
-                                ResourceConfig(timeout_sec=3))
+    result = safebox.execute_task("test_timeout_001", timeout_code, ResourceConfig(timeout_sec=3))
     print(f"结果: {result['success']}")
-    exec_result = result['execution_result']
+    exec_result = result["execution_result"]
     print(f"资源违规: {exec_result['resource_violation']}")
     print(f"执行时间: {exec_result['duration_sec']:.2f}秒")
 

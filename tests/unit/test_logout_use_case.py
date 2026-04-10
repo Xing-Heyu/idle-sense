@@ -26,7 +26,7 @@ class TestLogoutUseCase:
             user_id="user123",
             username="testuser",
             created_at=datetime.now(),
-            folder_location="project"
+            folder_location="project",
         )
         self.user_repository.get_by_id.return_value = user
 
@@ -60,17 +60,10 @@ class TestLogoutUseCase:
     def test_logout_with_session_id(self):
         """测试带会话ID的登出"""
         # Arrange
-        user = User(
-            user_id="user456",
-            username="sessionuser",
-            created_at=datetime.now()
-        )
+        user = User(user_id="user456", username="sessionuser", created_at=datetime.now())
         self.user_repository.get_by_id.return_value = user
 
-        request = LogoutRequest(
-            user_id="user456",
-            session_id="session_abc_123"
-        )
+        request = LogoutRequest(user_id="user456", session_id="session_abc_123")
 
         # Act
         response = self.use_case.execute(request)

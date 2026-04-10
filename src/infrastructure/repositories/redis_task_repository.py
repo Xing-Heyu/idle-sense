@@ -26,7 +26,7 @@ class RedisTaskRepository(ITaskRepository):
         self,
         redis_url: str = "redis://localhost:6379/0",
         key_prefix: str = "idle_sense:task:",
-        ttl: int = 86400
+        ttl: int = 86400,
     ):
         self.redis_url = redis_url
         self.key_prefix = key_prefix
@@ -37,6 +37,7 @@ class RedisTaskRepository(ITaskRepository):
         if self._client is None:
             try:
                 import redis.asyncio as redis
+
                 self._client = redis.from_url(self.redis_url)
             except ImportError as e:
                 raise ImportError(
@@ -46,23 +47,25 @@ class RedisTaskRepository(ITaskRepository):
         return self._client
 
     def _task_to_dict(self, task: Task) -> str:
-        return json.dumps({
-            "task_id": task.task_id,
-            "code": task.code,
-            "status": task.status.value,
-            "created_at": task.created_at.isoformat() if task.created_at else None,
-            "user_id": task.user_id,
-            "timeout": task.timeout,
-            "cpu_request": task.cpu_request,
-            "memory_request": task.memory_request,
-            "task_type": task.task_type.value,
-            "assigned_node": task.assigned_node,
-            "started_at": task.started_at.isoformat() if task.started_at else None,
-            "completed_at": task.completed_at.isoformat() if task.completed_at else None,
-            "result": task.result,
-            "error": task.error,
-            "resources": task.resources
-        })
+        return json.dumps(
+            {
+                "task_id": task.task_id,
+                "code": task.code,
+                "status": task.status.value,
+                "created_at": task.created_at.isoformat() if task.created_at else None,
+                "user_id": task.user_id,
+                "timeout": task.timeout,
+                "cpu_request": task.cpu_request,
+                "memory_request": task.memory_request,
+                "task_type": task.task_type.value,
+                "assigned_node": task.assigned_node,
+                "started_at": task.started_at.isoformat() if task.started_at else None,
+                "completed_at": task.completed_at.isoformat() if task.completed_at else None,
+                "result": task.result,
+                "error": task.error,
+                "resources": task.resources,
+            }
+        )
 
     def _dict_to_task(self, data: str) -> Task:
         obj = json.loads(data)
@@ -70,7 +73,11 @@ class RedisTaskRepository(ITaskRepository):
             task_id=obj["task_id"],
             code=obj["code"],
             status=TaskStatus(obj["status"]),
-            created_at=datetime.fromisoformat(obj["created_at"]) if obj.get("created_at") else datetime.now(),
+            created_at=(
+                datetime.fromisoformat(obj["created_at"])
+                if obj.get("created_at")
+                else datetime.now()
+            ),
             user_id=obj.get("user_id"),
             timeout=obj.get("timeout", 300),
             cpu_request=obj.get("cpu_request", 1.0),
@@ -78,10 +85,12 @@ class RedisTaskRepository(ITaskRepository):
             task_type=TaskType(obj["task_type"]) if obj.get("task_type") else TaskType.SINGLE_NODE,
             assigned_node=obj.get("assigned_node"),
             started_at=datetime.fromisoformat(obj["started_at"]) if obj.get("started_at") else None,
-            completed_at=datetime.fromisoformat(obj["completed_at"]) if obj.get("completed_at") else None,
+            completed_at=(
+                datetime.fromisoformat(obj["completed_at"]) if obj.get("completed_at") else None
+            ),
             result=obj.get("result"),
             error=obj.get("error"),
-            resources=obj.get("resources", {})
+            resources=obj.get("resources", {}),
         )
 
     async def get_by_id(self, task_id: str) -> Optional[Task]:

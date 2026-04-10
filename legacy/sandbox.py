@@ -18,7 +18,7 @@ from typing import Any, Optional
 warnings.warn(
     "legacy.sandbox.CodeSandbox 已弃用，请迁移到 src.infrastructure.sandbox",
     DeprecationWarning,
-    stacklevel=2
+    stacklevel=2,
 )
 
 # Windows系统不支持resource模块
@@ -33,25 +33,67 @@ class CodeSandbox:
 
     def __init__(self):
         self.allowed_modules = {
-            'math', 'random', 'statistics', 'time', 'datetime',
-            'collections', 'itertools', 'functools', 'operator',
-            'json', 're', 'string', 'hashlib', 'base64',
-            'decimal', 'fractions', 'numbers', 'copy',
-            'typing', 'dataclasses', 'enum',
+            "math",
+            "random",
+            "statistics",
+            "time",
+            "datetime",
+            "collections",
+            "itertools",
+            "functools",
+            "operator",
+            "json",
+            "re",
+            "string",
+            "hashlib",
+            "base64",
+            "decimal",
+            "fractions",
+            "numbers",
+            "copy",
+            "typing",
+            "dataclasses",
+            "enum",
         }
 
         self.dangerous_builtins = {
-            'eval', 'exec', 'compile', 'input', 'open', 'file',
-            '__import__', 'reload', 'globals', 'locals', 'vars',
-            'dir', 'help', 'exit', 'quit', 'license', 'credits',
-            'breakpoint', 'memoryview',
+            "eval",
+            "exec",
+            "compile",
+            "input",
+            "open",
+            "file",
+            "__import__",
+            "reload",
+            "globals",
+            "locals",
+            "vars",
+            "dir",
+            "help",
+            "exit",
+            "quit",
+            "license",
+            "credits",
+            "breakpoint",
+            "memoryview",
         }
 
         self.dangerous_attributes = {
-            '__class__', '__base__', '__bases__', '__subclasses__',
-            '__mro__', '__init__', '__new__', '__del__',
-            '__getattribute__', '__setattr__', '__delattr__',
-            '__dict__', '__globals__', '__code__', '__builtins__',
+            "__class__",
+            "__base__",
+            "__bases__",
+            "__subclasses__",
+            "__mro__",
+            "__init__",
+            "__new__",
+            "__del__",
+            "__getattribute__",
+            "__setattr__",
+            "__delattr__",
+            "__dict__",
+            "__globals__",
+            "__code__",
+            "__builtins__",
         }
 
         self.max_code_length = 100000
@@ -62,8 +104,8 @@ class CodeSandbox:
         """检查代码安全性（增强版）"""
         if len(code) > self.max_code_length:
             return {
-                'safe': False,
-                'error': f'代码长度超过限制: {len(code)} > {self.max_code_length}'
+                "safe": False,
+                "error": f"代码长度超过限制: {len(code)} > {self.max_code_length}",
             }
 
         try:
@@ -72,49 +114,34 @@ class CodeSandbox:
             for node in ast.walk(tree):
                 if isinstance(node, ast.Import):
                     for alias in node.names:
-                        module_name = alias.name.split('.')[0]
+                        module_name = alias.name.split(".")[0]
                         if module_name not in self.allowed_modules:
-                            return {
-                                'safe': False,
-                                'error': f'禁止导入模块: {module_name}'
-                            }
+                            return {"safe": False, "error": f"禁止导入模块: {module_name}"}
 
                 elif isinstance(node, ast.ImportFrom):
-                    module_name = node.module.split('.')[0] if node.module else ''
+                    module_name = node.module.split(".")[0] if node.module else ""
                     if module_name not in self.allowed_modules:
-                        return {
-                            'safe': False,
-                            'error': f'禁止从模块导入: {module_name}'
-                        }
+                        return {"safe": False, "error": f"禁止从模块导入: {module_name}"}
 
                 elif isinstance(node, ast.Call):
                     if isinstance(node.func, ast.Name):
                         func_name = node.func.id
                         if func_name in self.dangerous_builtins:
-                            return {
-                                'safe': False,
-                                'error': f'禁止调用危险函数: {func_name}'
-                            }
+                            return {"safe": False, "error": f"禁止调用危险函数: {func_name}"}
 
                 elif isinstance(node, ast.Attribute):
                     attr_name = node.attr
                     if attr_name in self.dangerous_attributes:
-                        return {
-                            'safe': False,
-                            'error': f'禁止访问危险属性: {attr_name}'
-                        }
-                    elif attr_name.startswith('_'):
-                        return {
-                            'safe': False,
-                            'error': f'禁止访问私有属性: {attr_name}'
-                        }
+                        return {"safe": False, "error": f"禁止访问危险属性: {attr_name}"}
+                    elif attr_name.startswith("_"):
+                        return {"safe": False, "error": f"禁止访问私有属性: {attr_name}"}
 
-            return {'safe': True, 'message': '代码安全检查通过'}
+            return {"safe": True, "message": "代码安全检查通过"}
 
         except SyntaxError as e:
-            return {'safe': False, 'error': f'语法错误: {e}'}
+            return {"safe": False, "error": f"语法错误: {e}"}
         except Exception as e:
-            return {'safe': False, 'error': f'安全检查异常: {e}'}
+            return {"safe": False, "error": f"安全检查异常: {e}"}
 
     def set_memory_limit(self, memory_mb: int):
         """设置内存限制"""
@@ -138,7 +165,9 @@ class CodeSandbox:
         import tempfile
 
         # 创建临时文件，只包含用户代码
-        with tempfile.NamedTemporaryFile(mode='w', suffix='.py', delete=False, encoding='utf-8') as f:
+        with tempfile.NamedTemporaryFile(
+            mode="w", suffix=".py", delete=False, encoding="utf-8"
+        ) as f:
             f.write(code)
             temp_file = f.name
 
@@ -149,7 +178,7 @@ class CodeSandbox:
                 capture_output=True,
                 text=True,
                 timeout=timeout,
-                env={}  # 空环境，限制模块访问
+                env={},  # 空环境，限制模块访问
             )
 
             if result.returncode == 0:
@@ -167,8 +196,9 @@ class CodeSandbox:
             with contextlib.suppress(BaseException):
                 os.unlink(temp_file)
 
-    def execute_safe(self, code: str, timeout: Optional[int] = None,
-                    memory_limit: Optional[int] = None) -> dict[str, Any]:
+    def execute_safe(
+        self, code: str, timeout: Optional[int] = None, memory_limit: Optional[int] = None
+    ) -> dict[str, Any]:
         """安全执行Python代码"""
 
         # 设置默认值
@@ -179,12 +209,12 @@ class CodeSandbox:
 
         # 1. 安全检查
         safety_result = self.check_code_safety(code)
-        if not safety_result['safe']:
+        if not safety_result["safe"]:
             return {
-                'success': False,
-                'error': safety_result['error'],
-                'output': '',
-                'execution_time': 0
+                "success": False,
+                "error": safety_result["error"],
+                "output": "",
+                "execution_time": 0,
             }
 
         # 2. 准备执行环境
@@ -195,15 +225,33 @@ class CodeSandbox:
 
         # 添加安全的__builtins__
         safe_builtins = {
-            'abs': abs, 'max': max, 'min': min, 'sum': sum, 'len': len,
-            'range': range, 'enumerate': enumerate, 'zip': zip,
-            'sorted': sorted, 'reversed': reversed, 'filter': filter,
-            'map': map, 'any': any, 'all': all, 'bool': bool,
-            'int': int, 'float': float, 'str': str, 'list': list,
-            'dict': dict, 'tuple': tuple, 'set': set,
-            'print': print, 'isinstance': isinstance, 'type': type
+            "abs": abs,
+            "max": max,
+            "min": min,
+            "sum": sum,
+            "len": len,
+            "range": range,
+            "enumerate": enumerate,
+            "zip": zip,
+            "sorted": sorted,
+            "reversed": reversed,
+            "filter": filter,
+            "map": map,
+            "any": any,
+            "all": all,
+            "bool": bool,
+            "int": int,
+            "float": float,
+            "str": str,
+            "list": list,
+            "dict": dict,
+            "tuple": tuple,
+            "set": set,
+            "print": print,
+            "isinstance": isinstance,
+            "type": type,
         }
-        safe_globals['__builtins__'] = safe_builtins
+        safe_globals["__builtins__"] = safe_builtins
 
         # 添加允许的模块
         for module_name in self.allowed_modules:
@@ -218,10 +266,10 @@ class CodeSandbox:
             self.set_memory_limit(memory_limit)
         except Exception as e:
             return {
-                'success': False,
-                'error': f'资源限制设置失败: {e}',
-                'output': '',
-                'execution_time': 0
+                "success": False,
+                "error": f"资源限制设置失败: {e}",
+                "output": "",
+                "execution_time": 0,
             }
 
         # 4. 执行代码
@@ -230,18 +278,18 @@ class CodeSandbox:
             execution_time = time.time() - start_time
 
             return {
-                'success': True,
-                'output': output or '执行完成（无输出）',
-                'execution_time': round(execution_time, 3)
+                "success": True,
+                "output": output or "执行完成（无输出）",
+                "execution_time": round(execution_time, 3),
             }
 
         except Exception as e:
             execution_time = time.time() - start_time
             return {
-                'success': False,
-                'error': f'执行异常: {e}',
-                'output': '',
-                'execution_time': round(execution_time, 3)
+                "success": False,
+                "error": f"执行异常: {e}",
+                "output": "",
+                "execution_time": round(execution_time, 3),
             }
 
 

@@ -28,7 +28,7 @@ class ITaskService(ABC):
         timeout: int = 300,
         cpu: float = 1.0,
         memory: int = 512,
-        user_id: Optional[str] = None
+        user_id: Optional[str] = None,
     ) -> tuple[bool, dict[str, Any]]:
         """
         提交单节点任务
@@ -54,7 +54,7 @@ class ITaskService(ABC):
         data: Any,
         chunk_size: int = 10,
         max_parallel_chunks: int = 5,
-        merge_code: Optional[str] = None
+        merge_code: Optional[str] = None,
     ) -> tuple[bool, dict[str, Any]]:
         """
         提交分布式任务

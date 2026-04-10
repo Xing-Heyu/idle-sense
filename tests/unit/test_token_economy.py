@@ -139,10 +139,7 @@ class TestPricingEngine(unittest.TestCase):
 
         price = self.pricing.calculate_price(resources)
 
-        expected = (
-            100.0 * PricingEngine.BASE_CPU_PRICE +
-            50.0 * PricingEngine.BASE_MEMORY_PRICE
-        )
+        expected = 100.0 * PricingEngine.BASE_CPU_PRICE + 50.0 * PricingEngine.BASE_MEMORY_PRICE
         expected_with_fees = expected * (1 + PricingEngine.PRIORITY_FEE_MULTIPLIER)
 
         self.assertGreater(price, 0)
@@ -208,27 +205,20 @@ class TestReputationSystem(unittest.TestCase):
         self.assertEqual(len(self.reputation._reputation_history), 0)
 
     def test_update_reputation_positive(self):
-        new_rep = self.reputation.update_reputation(
-            self.account,
-            ReputationAction.TASK_COMPLETED
-        )
+        new_rep = self.reputation.update_reputation(self.account, ReputationAction.TASK_COMPLETED)
 
         self.assertGreater(new_rep, 50.0)
         self.assertEqual(self.account.tasks_completed, 1)
 
     def test_update_reputation_negative(self):
-        new_rep = self.reputation.update_reputation(
-            self.account,
-            ReputationAction.TASK_FAILED
-        )
+        new_rep = self.reputation.update_reputation(self.account, ReputationAction.TASK_FAILED)
 
         self.assertLess(new_rep, 50.0)
         self.assertEqual(self.account.tasks_failed, 1)
 
     def test_malicious_behavior_penalty(self):
         new_rep = self.reputation.update_reputation(
-            self.account,
-            ReputationAction.MALICIOUS_BEHAVIOR
+            self.account, ReputationAction.MALICIOUS_BEHAVIOR
         )
 
         self.assertLess(new_rep, 50.0)
@@ -236,19 +226,13 @@ class TestReputationSystem(unittest.TestCase):
 
     def test_reputation_bounds(self):
         for _ in range(100):
-            self.reputation.update_reputation(
-                self.account,
-                ReputationAction.TASK_COMPLETED
-            )
+            self.reputation.update_reputation(self.account, ReputationAction.TASK_COMPLETED)
 
         self.assertLessEqual(self.account.reputation, ReputationSystem.MAX_REPUTATION)
 
         self.account.reputation = 50.0
         for _ in range(100):
-            self.reputation.update_reputation(
-                self.account,
-                ReputationAction.MALICIOUS_BEHAVIOR
-            )
+            self.reputation.update_reputation(self.account, ReputationAction.MALICIOUS_BEHAVIOR)
 
         self.assertGreaterEqual(self.account.reputation, ReputationSystem.MIN_REPUTATION)
 
@@ -641,39 +625,27 @@ class TestUptimeReward(unittest.TestCase):
         self.economy = TokenEconomy()
 
     def test_calculate_uptime_reward_minimum(self):
-        reward = self.economy.calculate_uptime_reward(
-            node_id="node1",
-            uptime_seconds=30
-        )
+        reward = self.economy.calculate_uptime_reward(node_id="node1", uptime_seconds=30)
         self.assertEqual(reward, 0.0)
 
     def test_calculate_uptime_reward_one_minute(self):
-        reward = self.economy.calculate_uptime_reward(
-            node_id="node1",
-            uptime_seconds=60
-        )
+        reward = self.economy.calculate_uptime_reward(node_id="node1", uptime_seconds=60)
         self.assertGreater(reward, 0.0)
 
     def test_calculate_uptime_reward_with_capacity(self):
         reward_basic = self.economy.calculate_uptime_reward(
-            node_id="node1",
-            uptime_seconds=120,
-            capacity={"cpu": 1.0, "memory": 1024}
+            node_id="node1", uptime_seconds=120, capacity={"cpu": 1.0, "memory": 1024}
         )
 
         reward_high = self.economy.calculate_uptime_reward(
-            node_id="node2",
-            uptime_seconds=120,
-            capacity={"cpu": 8.0, "memory": 16384}
+            node_id="node2", uptime_seconds=120, capacity={"cpu": 8.0, "memory": 16384}
         )
 
         self.assertGreater(reward_high, reward_basic)
 
     def test_reward_node_uptime_success(self):
         success, result = self.economy.reward_node_uptime(
-            node_id="node1",
-            uptime_seconds=120,
-            capacity={"cpu": 4.0, "memory": 8192}
+            node_id="node1", uptime_seconds=120, capacity={"cpu": 4.0, "memory": 8192}
         )
 
         self.assertTrue(success)
@@ -682,19 +654,14 @@ class TestUptimeReward(unittest.TestCase):
         self.assertIn("tx_id", result)
 
     def test_reward_node_uptime_too_short(self):
-        success, result = self.economy.reward_node_uptime(
-            node_id="node1",
-            uptime_seconds=30
-        )
+        success, result = self.economy.reward_node_uptime(node_id="node1", uptime_seconds=30)
 
         self.assertFalse(success)
         self.assertIn("error", result)
 
     def test_uptime_reward_increases_balance(self):
         self.economy.reward_node_uptime(
-            node_id="node1",
-            uptime_seconds=300,
-            capacity={"cpu": 4.0, "memory": 8192}
+            node_id="node1", uptime_seconds=300, capacity={"cpu": 4.0, "memory": 8192}
         )
 
         balance = self.economy.get_balance("node1")
@@ -702,9 +669,7 @@ class TestUptimeReward(unittest.TestCase):
 
     def test_uptime_reward_increases_reputation(self):
         self.economy.reward_node_uptime(
-            node_id="node1",
-            uptime_seconds=300,
-            capacity={"cpu": 4.0, "memory": 8192}
+            node_id="node1", uptime_seconds=300, capacity={"cpu": 4.0, "memory": 8192}
         )
 
         account = self.economy.get_account("node1")
@@ -712,9 +677,7 @@ class TestUptimeReward(unittest.TestCase):
 
     def test_get_node_earnings(self):
         self.economy.reward_node_uptime(
-            node_id="node1",
-            uptime_seconds=300,
-            capacity={"cpu": 4.0, "memory": 8192}
+            node_id="node1", uptime_seconds=300, capacity={"cpu": 4.0, "memory": 8192}
         )
 
         earnings = self.economy.get_node_earnings("node1")
@@ -727,9 +690,7 @@ class TestUptimeReward(unittest.TestCase):
     def test_multiple_uptime_rewards(self):
         for _i in range(3):
             self.economy.reward_node_uptime(
-                node_id="node1",
-                uptime_seconds=120,
-                capacity={"cpu": 4.0, "memory": 8192}
+                node_id="node1", uptime_seconds=120, capacity={"cpu": 4.0, "memory": 8192}
             )
 
         earnings = self.economy.get_node_earnings("node1")

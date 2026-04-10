@@ -35,40 +35,14 @@ class SchedulerSettings(BaseSettings):
     """调度器配置"""
 
     model_config = SettingsConfigDict(
-        env_prefix="SCHEDULER_",
-        env_file=".env",
-        env_file_encoding="utf-8",
-        extra="ignore"
+        env_prefix="SCHEDULER_", env_file=".env", env_file_encoding="utf-8", extra="ignore"
     )
 
-    URL: str = Field(
-        default="http://localhost:8000",
-        description="调度器URL地址"
-    )
-    API_TIMEOUT: int = Field(
-        default=10,
-        ge=1,
-        le=300,
-        description="API调用超时时间（秒）"
-    )
-    HEALTH_CHECK_TIMEOUT: int = Field(
-        default=3,
-        ge=1,
-        le=30,
-        description="健康检查超时时间（秒）"
-    )
-    MAX_RETRIES: int = Field(
-        default=3,
-        ge=0,
-        le=10,
-        description="最大重试次数"
-    )
-    RETRY_DELAY: float = Field(
-        default=1.0,
-        ge=0.1,
-        le=10.0,
-        description="重试延迟时间（秒）"
-    )
+    URL: str = Field(default="http://localhost:8000", description="调度器URL地址")
+    API_TIMEOUT: int = Field(default=10, ge=1, le=300, description="API调用超时时间（秒）")
+    HEALTH_CHECK_TIMEOUT: int = Field(default=3, ge=1, le=30, description="健康检查超时时间（秒）")
+    MAX_RETRIES: int = Field(default=3, ge=0, le=10, description="最大重试次数")
+    RETRY_DELAY: float = Field(default=1.0, ge=0.1, le=10.0, description="重试延迟时间（秒）")
 
     @field_validator("URL")
     @classmethod
@@ -82,45 +56,19 @@ class ResourceSettings(BaseSettings):
     """资源配置"""
 
     model_config = SettingsConfigDict(
-        env_prefix="RESOURCE_",
-        env_file=".env",
-        env_file_encoding="utf-8",
-        extra="ignore"
+        env_prefix="RESOURCE_", env_file=".env", env_file_encoding="utf-8", extra="ignore"
     )
 
-    DEFAULT_CPU_SHARE: float = Field(
-        default=4.0,
-        ge=0.5,
-        le=32.0,
-        description="默认CPU共享核心数"
-    )
+    DEFAULT_CPU_SHARE: float = Field(default=4.0, ge=0.5, le=32.0, description="默认CPU共享核心数")
     DEFAULT_MEMORY_SHARE: int = Field(
-        default=8192,
-        ge=512,
-        le=65536,
-        description="默认内存共享（MB）"
+        default=8192, ge=512, le=65536, description="默认内存共享（MB）"
     )
-    MIN_CPU_SHARE: float = Field(
-        default=0.5,
-        description="最小CPU共享"
-    )
-    MAX_CPU_SHARE: float = Field(
-        default=16.0,
-        description="最大CPU共享"
-    )
-    MIN_MEMORY_SHARE: int = Field(
-        default=512,
-        description="最小内存共享（MB）"
-    )
-    MAX_MEMORY_SHARE: int = Field(
-        default=32768,
-        description="最大内存共享（MB）"
-    )
+    MIN_CPU_SHARE: float = Field(default=0.5, description="最小CPU共享")
+    MAX_CPU_SHARE: float = Field(default=16.0, description="最大CPU共享")
+    MIN_MEMORY_SHARE: int = Field(default=512, description="最小内存共享（MB）")
+    MAX_MEMORY_SHARE: int = Field(default=32768, description="最大内存共享（MB）")
     DEFAULT_STORAGE_SHARE: int = Field(
-        default=10240,
-        ge=1024,
-        le=102400,
-        description="默认存储共享（MB）"
+        default=10240, ge=1024, le=102400, description="默认存储共享（MB）"
     )
 
 
@@ -128,98 +76,37 @@ class WebUISettings(BaseSettings):
     """Web UI 配置"""
 
     model_config = SettingsConfigDict(
-        env_prefix="WEB_",
-        env_file=".env",
-        env_file_encoding="utf-8",
-        extra="ignore"
+        env_prefix="WEB_", env_file=".env", env_file_encoding="utf-8", extra="ignore"
     )
 
-    PAGE_TITLE: str = Field(
-        default="闲置计算加速器",
-        description="页面标题"
-    )
-    PAGE_ICON: str = Field(
-        default="⚡",
-        description="页面图标"
-    )
-    LAYOUT: str = Field(
-        default="wide",
-        description="页面布局"
-    )
-    INITIAL_SIDEBAR_STATE: str = Field(
-        default="expanded",
-        description="侧边栏初始状态"
-    )
-    AUTO_REFRESH: bool = Field(
-        default=False,
-        description="自动刷新"
-    )
-    REFRESH_INTERVAL: int = Field(
-        default=30,
-        ge=5,
-        le=300,
-        description="刷新间隔（秒）"
-    )
-    MAX_HISTORY: int = Field(
-        default=50,
-        ge=10,
-        le=200,
-        description="最大历史记录数"
-    )
-    DEBUG_MODE: bool = Field(
-        default=False,
-        description="调试模式"
-    )
+    PAGE_TITLE: str = Field(default="闲置计算加速器", description="页面标题")
+    PAGE_ICON: str = Field(default="⚡", description="页面图标")
+    LAYOUT: str = Field(default="wide", description="页面布局")
+    INITIAL_SIDEBAR_STATE: str = Field(default="expanded", description="侧边栏初始状态")
+    AUTO_REFRESH: bool = Field(default=False, description="自动刷新")
+    REFRESH_INTERVAL: int = Field(default=30, ge=5, le=300, description="刷新间隔（秒）")
+    MAX_HISTORY: int = Field(default=50, ge=10, le=200, description="最大历史记录数")
+    DEBUG_MODE: bool = Field(default=False, description="调试模式")
 
 
 class StorageSettings(BaseSettings):
     """存储路径配置"""
 
     model_config = SettingsConfigDict(
-        env_prefix="STORAGE_",
-        env_file=".env",
-        env_file_encoding="utf-8",
-        extra="ignore"
+        env_prefix="STORAGE_", env_file=".env", env_file_encoding="utf-8", extra="ignore"
     )
 
-    BACKEND: str = Field(
-        default="memory",
-        description="存储后端类型: memory, sqlite, redis"
-    )
+    BACKEND: str = Field(default="memory", description="存储后端类型: memory, sqlite, redis")
     SQLITE_DB_PATH: str = Field(
-        default=str(PROJECT_ROOT / "data" / "idle_sense.db"),
-        description="SQLite数据库路径"
+        default=str(PROJECT_ROOT / "data" / "idle_sense.db"), description="SQLite数据库路径"
     )
-    REDIS_URL: str = Field(
-        default="redis://localhost:6379/0",
-        description="Redis连接URL"
-    )
-    REDIS_KEY_PREFIX: str = Field(
-        default="idle_sense:",
-        description="Redis键前缀"
-    )
-    DATA_TTL: int = Field(
-        default=86400,
-        ge=3600,
-        le=604800,
-        description="数据TTL（秒）"
-    )
-    USERS_DIR: str = Field(
-        default=str(PROJECT_ROOT / "local_users"),
-        description="用户数据目录"
-    )
-    NODE_DATA_DIR: str = Field(
-        default=str(PROJECT_ROOT / "node_data"),
-        description="节点数据目录"
-    )
-    LOG_DIR: str = Field(
-        default=str(PROJECT_ROOT / "logs"),
-        description="日志目录"
-    )
-    TEMP_DIR: str = Field(
-        default=str(PROJECT_ROOT / "tmp"),
-        description="临时文件目录"
-    )
+    REDIS_URL: str = Field(default="redis://localhost:6379/0", description="Redis连接URL")
+    REDIS_KEY_PREFIX: str = Field(default="idle_sense:", description="Redis键前缀")
+    DATA_TTL: int = Field(default=86400, ge=3600, le=604800, description="数据TTL（秒）")
+    USERS_DIR: str = Field(default=str(PROJECT_ROOT / "local_users"), description="用户数据目录")
+    NODE_DATA_DIR: str = Field(default=str(PROJECT_ROOT / "node_data"), description="节点数据目录")
+    LOG_DIR: str = Field(default=str(PROJECT_ROOT / "logs"), description="日志目录")
+    TEMP_DIR: str = Field(default=str(PROJECT_ROOT / "tmp"), description="临时文件目录")
 
     def ensure_directories(self) -> None:
         """确保所有目录存在"""
@@ -231,77 +118,49 @@ class DistributedTaskSettings(BaseSettings):
     """分布式任务配置"""
 
     model_config = SettingsConfigDict(
-        env_prefix="DISTRIBUTED_",
-        env_file=".env",
-        env_file_encoding="utf-8",
-        extra="ignore"
+        env_prefix="DISTRIBUTED_", env_file=".env", env_file_encoding="utf-8", extra="ignore"
     )
 
-    DEFAULT_CHUNK_SIZE: int = Field(
-        default=10,
-        ge=1,
-        le=1000,
-        description="默认分片大小"
-    )
+    DEFAULT_CHUNK_SIZE: int = Field(default=10, ge=1, le=1000, description="默认分片大小")
     DEFAULT_MAX_PARALLEL_CHUNKS: int = Field(
-        default=5,
-        ge=1,
-        le=50,
-        description="默认最大并行分片数"
+        default=5, ge=1, le=50, description="默认最大并行分片数"
     )
-    TASK_TIMEOUT: int = Field(
-        default=3600,
-        ge=60,
-        le=86400,
-        description="任务超时时间（秒）"
-    )
-    RESULT_TTL: int = Field(
-        default=86400,
-        ge=3600,
-        le=604800,
-        description="结果保留时间（秒）"
-    )
+    TASK_TIMEOUT: int = Field(default=3600, ge=60, le=86400, description="任务超时时间（秒）")
+    RESULT_TTL: int = Field(default=86400, ge=3600, le=604800, description="结果保留时间（秒）")
 
 
 class SecuritySettings(BaseSettings):
     """安全配置"""
 
     model_config = SettingsConfigDict(
-        env_prefix="SECURITY_",
-        env_file=".env",
-        env_file_encoding="utf-8",
-        extra="ignore"
+        env_prefix="SECURITY_", env_file=".env", env_file_encoding="utf-8", extra="ignore"
     )
 
-    MAX_CODE_SIZE: int = Field(
-        default=10000,
-        ge=100,
-        le=100000,
-        description="最大代码大小（字符）"
-    )
-    MAX_INPUT_SIZE: int = Field(
-        default=1024,
-        ge=1,
-        le=10240,
-        description="最大输入数据大小（KB）"
-    )
-    SANDBOX_ENABLED: bool = Field(
-        default=True,
-        description="是否启用沙箱"
-    )
-    NETWORK_ACCESS: bool = Field(
-        default=False,
-        description="是否允许网络访问"
-    )
+    MAX_CODE_SIZE: int = Field(default=10000, ge=100, le=100000, description="最大代码大小（字符）")
+    MAX_INPUT_SIZE: int = Field(default=1024, ge=1, le=10240, description="最大输入数据大小（KB）")
+    SANDBOX_ENABLED: bool = Field(default=True, description="是否启用沙箱")
+    NETWORK_ACCESS: bool = Field(default=False, description="是否允许网络访问")
     ALLOWED_MODULES: list[str] = Field(
         default=[
-            "math", "random", "datetime", "time",
-            "collections", "itertools", "functools",
-            "json", "re", "statistics", "decimal",
-            "fractions", "hashlib", "secrets",
-            "string", "typing", "uuid"
+            "math",
+            "random",
+            "datetime",
+            "time",
+            "collections",
+            "itertools",
+            "functools",
+            "json",
+            "re",
+            "statistics",
+            "decimal",
+            "fractions",
+            "hashlib",
+            "secrets",
+            "string",
+            "typing",
+            "uuid",
         ],
-        description="允许的安全模块列表"
+        description="允许的安全模块列表",
     )
 
 
@@ -309,66 +168,33 @@ class TokenEconomySettings(BaseSettings):
     """代币经济配置"""
 
     model_config = SettingsConfigDict(
-        env_prefix="TOKEN_",
-        env_file=".env",
-        env_file_encoding="utf-8",
-        extra="ignore"
+        env_prefix="TOKEN_", env_file=".env", env_file_encoding="utf-8", extra="ignore"
     )
 
-    INITIAL_BALANCE: float = Field(
-        default=1000.0,
-        ge=0,
-        description="新用户初始余额"
-    )
+    INITIAL_BALANCE: float = Field(default=1000.0, ge=0, description="新用户初始余额")
     UPTIME_REWARD_INTERVAL: int = Field(
-        default=60,
-        ge=10,
-        le=3600,
-        description="在线时间奖励间隔（秒）"
+        default=60, ge=10, le=3600, description="在线时间奖励间隔（秒）"
     )
-    BASE_REWARD_PER_MINUTE: float = Field(
-        default=1.0,
-        ge=0.1,
-        description="每分钟基础奖励"
-    )
+    BASE_REWARD_PER_MINUTE: float = Field(default=1.0, ge=0.1, description="每分钟基础奖励")
 
 
 class PersistenceSettings(BaseSettings):
     """持久化配置"""
 
     model_config = SettingsConfigDict(
-        env_prefix="PERSISTENCE_",
-        env_file=".env",
-        env_file_encoding="utf-8",
-        extra="ignore"
+        env_prefix="PERSISTENCE_", env_file=".env", env_file_encoding="utf-8", extra="ignore"
     )
 
     DB_PATH: str = Field(
-        default="",
-        description="数据库文件路径（为空则使用 persistence 模块默认路径）"
+        default="", description="数据库文件路径（为空则使用 persistence 模块默认路径）"
     )
-    STORAGE_BACKEND: str = Field(
-        default="sqlite",
-        description="持久化存储后端类型: sqlite, memory"
-    )
-    TOKEN_ECONOMY_PERSISTENCE: bool = Field(
-        default=True,
-        description="是否启用代币经济系统持久化"
-    )
+    STORAGE_BACKEND: str = Field(default="sqlite", description="持久化存储后端类型: sqlite, memory")
+    TOKEN_ECONOMY_PERSISTENCE: bool = Field(default=True, description="是否启用代币经济系统持久化")
     SESSION_BACKEND_TYPE: str = Field(
-        default="file",
-        description="会话存储后端类型: file, memory, redis"
+        default="file", description="会话存储后端类型: file, memory, redis"
     )
-    BACKUP_ENABLED: bool = Field(
-        default=False,
-        description="是否启用自动备份"
-    )
-    DATA_RETENTION_DAYS: int = Field(
-        default=30,
-        ge=1,
-        le=365,
-        description="数据保留天数"
-    )
+    BACKUP_ENABLED: bool = Field(default=False, description="是否启用自动备份")
+    DATA_RETENTION_DAYS: int = Field(default=30, ge=1, le=365, description="数据保留天数")
 
 
 class Settings(BaseSettings):
@@ -382,10 +208,7 @@ class Settings(BaseSettings):
     """
 
     model_config = SettingsConfigDict(
-        env_file=".env",
-        env_file_encoding="utf-8",
-        extra="ignore",
-        case_sensitive=True
+        env_file=".env", env_file_encoding="utf-8", extra="ignore", case_sensitive=True
     )
 
     APP_NAME: str = Field(default="闲置计算加速器", description="应用名称")

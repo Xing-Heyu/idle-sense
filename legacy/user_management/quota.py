@@ -6,6 +6,7 @@ from .models import UserQuota
 
 class QuotaManager:
     """配额管理器 - 支持强制限制"""
+
     def __init__(self):
         self.quotas: dict[str, UserQuota] = {}
         self.last_reset_date = datetime.now().date()
@@ -18,10 +19,7 @@ class QuotaManager:
             self.quotas[user_id] = quota
 
         allowed = quota.can_submit_task()
-        result = {
-            "allowed": allowed,
-            "quota": quota.to_dict()
-        }
+        result = {"allowed": allowed, "quota": quota.to_dict()}
 
         if not allowed:
             result["reason"] = quota.get_rejection_reason()
@@ -48,11 +46,14 @@ class QuotaManager:
         if quota and quota.current_tasks > 0:
             quota.current_tasks -= 1
 
-    def set_user_quota(self, user_id: str,
-                       daily_tasks_limit: int | None = None,
-                       concurrent_tasks_limit: int | None = None,
-                       cpu_quota: float | None = None,
-                       memory_quota: int | None = None) -> UserQuota:
+    def set_user_quota(
+        self,
+        user_id: str,
+        daily_tasks_limit: int | None = None,
+        concurrent_tasks_limit: int | None = None,
+        cpu_quota: float | None = None,
+        memory_quota: int | None = None,
+    ) -> UserQuota:
         """设置用户配额"""
         quota = self.quotas.get(user_id)
         if not quota:
@@ -101,8 +102,16 @@ class QuotaManager:
             "user_id": user_id,
             "daily_usage": quota.daily_usage,
             "daily_limit": quota.daily_tasks_limit,
-            "daily_remaining": max(0, quota.daily_tasks_limit - quota.daily_usage) if quota.daily_tasks_limit > 0 else "无限制",
+            "daily_remaining": (
+                max(0, quota.daily_tasks_limit - quota.daily_usage)
+                if quota.daily_tasks_limit > 0
+                else "无限制"
+            ),
             "current_tasks": quota.current_tasks,
             "concurrent_limit": quota.concurrent_tasks_limit,
-            "concurrent_remaining": max(0, quota.concurrent_tasks_limit - quota.current_tasks) if quota.concurrent_tasks_limit > 0 else "无限制"
+            "concurrent_remaining": (
+                max(0, quota.concurrent_tasks_limit - quota.current_tasks)
+                if quota.concurrent_tasks_limit > 0
+                else "无限制"
+            ),
         }

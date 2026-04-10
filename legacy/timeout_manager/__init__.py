@@ -59,7 +59,7 @@ class TimeoutContext:
             "elapsed_time": round(self.elapsed_time, 3),
             "remaining_time": round(self.remaining_time, 3),
             "state": self.state.value,
-            "is_expired": self.is_expired
+            "is_expired": self.is_expired,
         }
 
 
@@ -85,7 +85,7 @@ class TimeoutStats:
             "triggered_timeouts": self.triggered_timeouts,
             "cancelled_timeouts": self.cancelled_timeouts,
             "avg_execution_time": round(self.avg_execution_time, 3),
-            "avg_timeout_ratio": round(self.avg_timeout_ratio, 3)
+            "avg_timeout_ratio": round(self.avg_timeout_ratio, 3),
         }
 
 
@@ -102,16 +102,14 @@ class TimeoutManager:
         self,
         timeout_seconds: float,
         callback: Callable | None = None,
-        timeout_id: str | None = None
+        timeout_id: str | None = None,
     ) -> TimeoutContext:
         import uuid
 
         tid = timeout_id or str(uuid.uuid4())
 
         context = TimeoutContext(
-            timeout_id=tid,
-            timeout_seconds=timeout_seconds,
-            state=TimeoutState.PENDING
+            timeout_id=tid, timeout_seconds=timeout_seconds, state=TimeoutState.PENDING
         )
 
         with self._lock:
@@ -133,9 +131,7 @@ class TimeoutManager:
             context.start_time = time.time()
 
             timer = threading.Timer(
-                context.timeout_seconds,
-                self._handle_timeout,
-                args=(timeout_id,)
+                context.timeout_seconds, self._handle_timeout, args=(timeout_id,)
             )
             timer.daemon = True
             timer.start()
@@ -232,7 +228,8 @@ class TimeoutManager:
         with self._lock:
             for tid, context in self._timeouts.items():
                 if (
-                    context.state in (TimeoutState.COMPLETED, TimeoutState.TIMEOUT, TimeoutState.CANCELLED)
+                    context.state
+                    in (TimeoutState.COMPLETED, TimeoutState.TIMEOUT, TimeoutState.CANCELLED)
                     and context.end_time
                     and (now - context.end_time) > max_age_seconds
                 ):
@@ -251,7 +248,7 @@ class TimeoutExecutor:
         default_timeout: float = 30.0,
         action: TimeoutAction = TimeoutAction.RAISE,
         default_value: Any = None,
-        on_timeout: Callable[[TimeoutContext], None] | None = None
+        on_timeout: Callable[[TimeoutContext], None] | None = None,
     ):
         self.default_timeout = default_timeout
         self.action = action
@@ -259,19 +256,10 @@ class TimeoutExecutor:
         self.on_timeout = on_timeout
         self._manager = TimeoutManager()
 
-    def execute(
-        self,
-        func: Callable[..., T],
-        *args,
-        timeout: float | None = None,
-        **kwargs
-    ) -> T:
+    def execute(self, func: Callable[..., T], *args, timeout: float | None = None, **kwargs) -> T:
         timeout_seconds = timeout or self.default_timeout
 
-        context = self._manager.register(
-            timeout_seconds,
-            callback=self.on_timeout
-        )
+        context = self._manager.register(timeout_seconds, callback=self.on_timeout)
 
         result = [None]
         error = [None]
@@ -301,10 +289,7 @@ class TimeoutExecutor:
         self._manager._handle_timeout(context.timeout_id)
 
         if self.action == TimeoutAction.RAISE:
-            raise TimeoutError(
-                f"Operation timed out after {timeout_seconds} seconds",
-                context
-            )
+            raise TimeoutError(f"Operation timed out after {timeout_seconds} seconds", context)
         elif self.action == TimeoutAction.RETURN_DEFAULT:
             return self.default_value
         elif self.action == TimeoutAction.CALLBACK:
@@ -318,16 +303,8 @@ class TimeoutExecutor:
         return self._manager.get_stats()
 
 
-def timeout(
-    seconds: float,
-    action: TimeoutAction = TimeoutAction.RAISE,
-    default: Any = None
-):
-    executor = TimeoutExecutor(
-        default_timeout=seconds,
-        action=action,
-        default_value=default
-    )
+def timeout(seconds: float, action: TimeoutAction = TimeoutAction.RAISE, default: Any = None):
+    executor = TimeoutExecutor(default_timeout=seconds, action=action, default_value=default)
 
     def decorator(func: Callable[..., T]) -> Callable[..., T]:
         def wrapper(*args, **kwargs) -> T:
@@ -342,6 +319,7 @@ def timeout(
 @contextmanager
 def timeout_context(seconds: float, message: str = "Operation timed out"):
     if threading.current_thread() is threading.main_thread():
+
         def timeout_handler(signum, frame):
             raise TimeoutError(message)
 

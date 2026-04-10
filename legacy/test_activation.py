@@ -8,12 +8,10 @@ print("Testing local node activation...")
 # 1. 激活本地节点
 print("\n1. Activating local node...")
 try:
-    activation_payload = {
-        "cpu_limit": 1.0,
-        "memory_limit": 512,
-        "storage_limit": 1024
-    }
-    response = requests.post('http://localhost:8000/api/nodes/activate-local', json=activation_payload, timeout=10)
+    activation_payload = {"cpu_limit": 1.0, "memory_limit": 512, "storage_limit": 1024}
+    response = requests.post(
+        "http://localhost:8000/api/nodes/activate-local", json=activation_payload, timeout=10
+    )
     print(f"Activation Status: {response.status_code}")
 
     if response.status_code == 200:
@@ -26,7 +24,7 @@ try:
 
             # 2. 检查节点列表
             print("\n2. Checking node list...")
-            nodes_response = requests.get('http://localhost:8000/api/nodes', timeout=10)
+            nodes_response = requests.get("http://localhost:8000/api/nodes", timeout=10)
             print(f"Nodes Status: {nodes_response.status_code}")
 
             if nodes_response.status_code == 200:
@@ -38,9 +36,11 @@ try:
                 task_payload = {
                     "code": "print('Hello from idle computer!'); result = 21 * 2; print(f'Result: {result}')",
                     "timeout": 30,
-                    "resources": {"cpu": 0.5, "memory": 128}
+                    "resources": {"cpu": 0.5, "memory": 128},
                 }
-                task_response = requests.post('http://localhost:8000/submit', json=task_payload, timeout=10)
+                task_response = requests.post(
+                    "http://localhost:8000/submit", json=task_payload, timeout=10
+                )
                 print(f"Task Submission Status: {task_response.status_code}")
 
                 if task_response.status_code == 200:
@@ -53,7 +53,9 @@ try:
                         print(f"\n4. Waiting for task execution (task_id: {task_id})...")
                         time.sleep(5)
 
-                        status_response = requests.get(f'http://localhost:8000/status/{task_id}', timeout=10)
+                        status_response = requests.get(
+                            f"http://localhost:8000/status/{task_id}", timeout=10
+                        )
                         print(f"Task Status Check: {status_response.status_code}")
 
                         if status_response.status_code == 200:

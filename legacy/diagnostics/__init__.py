@@ -4,6 +4,7 @@ Health Check and Diagnostics Module.
 This module provides comprehensive health checking and diagnostic
 capabilities for the idle-accelerator system.
 """
+
 import json
 import os
 import platform
@@ -15,6 +16,7 @@ from typing import Any, Callable, Optional
 
 try:
     import psutil
+
     PSUTIL_AVAILABLE = True
 except ImportError:
     PSUTIL_AVAILABLE = False
@@ -23,6 +25,7 @@ except ImportError:
 
 class HealthStatus(str, Enum):
     """Health check status."""
+
     HEALTHY = "healthy"
     DEGRADED = "degraded"
     UNHEALTHY = "unhealthy"
@@ -32,6 +35,7 @@ class HealthStatus(str, Enum):
 @dataclass
 class HealthCheckResult:
     """Result of a health check."""
+
     name: str
     status: HealthStatus
     message: str
@@ -53,6 +57,7 @@ class HealthCheckResult:
 @dataclass
 class SystemDiagnostics:
     """System diagnostics information."""
+
     hostname: str
     platform: str
     python_version: str
@@ -118,9 +123,7 @@ class HealthChecker:
 
         if not check_func:
             return HealthCheckResult(
-                name=name,
-                status=HealthStatus.UNKNOWN,
-                message=f"Health check '{name}' not found"
+                name=name, status=HealthStatus.UNKNOWN, message=f"Health check '{name}' not found"
             )
 
         start_time = time.time()
@@ -138,14 +141,14 @@ class HealthChecker:
                     status=HealthStatus(result.get("status", "unknown")),
                     message=result.get("message", ""),
                     details=result.get("details", {}),
-                    duration_ms=(time.time() - start_time) * 1000
+                    duration_ms=(time.time() - start_time) * 1000,
                 )
 
             return HealthCheckResult(
                 name=name,
                 status=HealthStatus.HEALTHY,
                 message="Check passed",
-                duration_ms=(time.time() - start_time) * 1000
+                duration_ms=(time.time() - start_time) * 1000,
             )
 
         except Exception as e:
@@ -153,7 +156,7 @@ class HealthChecker:
                 name=name,
                 status=HealthStatus.UNHEALTHY,
                 message=f"Check failed: {str(e)}",
-                duration_ms=(time.time() - start_time) * 1000
+                duration_ms=(time.time() - start_time) * 1000,
             )
 
     def run_all(self) -> list[HealthCheckResult]:
@@ -186,7 +189,7 @@ class HealthChecker:
     def _check_system(self) -> HealthCheckResult:
         """Check system health."""
         try:
-            load_avg = os.getloadavg() if hasattr(os, 'getloadavg') else (0, 0, 0)
+            load_avg = os.getloadavg() if hasattr(os, "getloadavg") else (0, 0, 0)
 
             return HealthCheckResult(
                 name="system",
@@ -196,14 +199,14 @@ class HealthChecker:
                     "platform": platform.system(),
                     "platform_version": platform.version(),
                     "load_average": load_avg,
-                    "uptime": time.time() - psutil.boot_time() if PSUTIL_AVAILABLE else "unknown"
-                }
+                    "uptime": time.time() - psutil.boot_time() if PSUTIL_AVAILABLE else "unknown",
+                },
             )
         except Exception as e:
             return HealthCheckResult(
                 name="system",
                 status=HealthStatus.DEGRADED,
-                message=f"System check warning: {str(e)}"
+                message=f"System check warning: {str(e)}",
             )
 
     def _check_memory(self) -> HealthCheckResult:
@@ -211,6 +214,7 @@ class HealthChecker:
         try:
             if self._has_psutil():
                 import psutil
+
                 memory = psutil.virtual_memory()
 
                 if memory.percent > 90:
@@ -230,20 +234,18 @@ class HealthChecker:
                     details={
                         "total_gb": round(memory.total / (1024**3), 2),
                         "available_gb": round(memory.available / (1024**3), 2),
-                        "used_percent": memory.percent
-                    }
+                        "used_percent": memory.percent,
+                    },
                 )
 
             return HealthCheckResult(
-                name="memory",
-                status=HealthStatus.UNKNOWN,
-                message="psutil not available"
+                name="memory", status=HealthStatus.UNKNOWN, message="psutil not available"
             )
         except Exception as e:
             return HealthCheckResult(
                 name="memory",
                 status=HealthStatus.UNHEALTHY,
-                message=f"Memory check failed: {str(e)}"
+                message=f"Memory check failed: {str(e)}",
             )
 
     def _check_disk(self) -> HealthCheckResult:
@@ -251,7 +253,8 @@ class HealthChecker:
         try:
             if self._has_psutil():
                 import psutil
-                disk = psutil.disk_usage('/')
+
+                disk = psutil.disk_usage("/")
 
                 if disk.percent > 95:
                     status = HealthStatus.UNHEALTHY
@@ -270,20 +273,16 @@ class HealthChecker:
                     details={
                         "total_gb": round(disk.total / (1024**3), 2),
                         "free_gb": round(disk.free / (1024**3), 2),
-                        "used_percent": disk.percent
-                    }
+                        "used_percent": disk.percent,
+                    },
                 )
 
             return HealthCheckResult(
-                name="disk",
-                status=HealthStatus.UNKNOWN,
-                message="psutil not available"
+                name="disk", status=HealthStatus.UNKNOWN, message="psutil not available"
             )
         except Exception as e:
             return HealthCheckResult(
-                name="disk",
-                status=HealthStatus.UNHEALTHY,
-                message=f"Disk check failed: {str(e)}"
+                name="disk", status=HealthStatus.UNHEALTHY, message=f"Disk check failed: {str(e)}"
             )
 
     def _check_network(self) -> HealthCheckResult:
@@ -295,18 +294,14 @@ class HealthChecker:
                 name="network",
                 status=HealthStatus.HEALTHY,
                 message="Network connectivity OK",
-                details={
-                    "internet_reachable": True
-                }
+                details={"internet_reachable": True},
             )
         except Exception as e:
             return HealthCheckResult(
                 name="network",
                 status=HealthStatus.DEGRADED,
                 message=f"Network connectivity issue: {str(e)}",
-                details={
-                    "internet_reachable": False
-                }
+                details={"internet_reachable": False},
             )
 
     def _has_psutil(self) -> bool:
@@ -335,7 +330,7 @@ class DiagnosticsCollector:
             memory = psutil.virtual_memory()
             memory_total_gb = round(memory.total / (1024**3), 2)
 
-            disk = psutil.disk_usage('/')
+            disk = psutil.disk_usage("/")
             disk_total_gb = round(disk.total / (1024**3), 2)
 
             network_interfaces = list(psutil.net_if_addrs().keys())
@@ -355,7 +350,7 @@ class DiagnosticsCollector:
             memory_total_gb=memory_total_gb,
             disk_total_gb=disk_total_gb,
             network_interfaces=network_interfaces,
-            environment=env_vars
+            environment=env_vars,
         )
 
 
@@ -396,7 +391,7 @@ def create_health_endpoint(app, checker: Optional[HealthChecker] = None):
         return Response(
             content=json.dumps({"status": "not_ready", "overall": overall.value}),
             status_code=503,
-            media_type="application/json"
+            media_type="application/json",
         )
 
     @app.get("/health/detailed")
@@ -408,7 +403,7 @@ def create_health_endpoint(app, checker: Optional[HealthChecker] = None):
         return {
             "overall_status": overall.value,
             "checks": [r.to_dict() for r in results],
-            "timestamp": time.time()
+            "timestamp": time.time(),
         }
 
     @app.get("/diagnostics")

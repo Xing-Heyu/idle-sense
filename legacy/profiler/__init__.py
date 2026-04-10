@@ -56,7 +56,7 @@ class FunctionProfile:
             "min_time": round(self.min_time, 6) if self.min_time != float("inf") else 0,
             "max_time": round(self.max_time, 6),
             "avg_time": round(self.avg_time, 6),
-            "total_memory": self.total_memory
+            "total_memory": self.total_memory,
         }
 
 
@@ -80,7 +80,7 @@ class BlockProfile:
             "name": self.name,
             "duration_ms": round(self.duration_ms, 3),
             "memory_delta_kb": self.memory_delta / 1024,
-            "children": [c.to_dict() for c in self.children]
+            "children": [c.to_dict() for c in self.children],
         }
 
 
@@ -100,9 +100,7 @@ class ProfileReport:
 
     def get_hotspots(self, top_n: int = 10) -> list[FunctionProfile]:
         sorted_profiles = sorted(
-            self.function_profiles.values(),
-            key=lambda p: p.total_time,
-            reverse=True
+            self.function_profiles.values(), key=lambda p: p.total_time, reverse=True
         )
         return sorted_profiles[:top_n]
 
@@ -118,10 +116,10 @@ class ProfileReport:
                     "count": len(v),
                     "avg": statistics.mean(v) if v else 0,
                     "min": min(v) if v else 0,
-                    "max": max(v) if v else 0
+                    "max": max(v) if v else 0,
                 }
                 for k, v in self.custom_metrics.items()
-            }
+            },
         }
 
 
@@ -137,14 +135,11 @@ class MemoryTracker:
         self._enabled = False
 
     def snapshot(self, label: str = "") -> dict[str, Any]:
-        snapshot = {
-            "timestamp": time.time(),
-            "label": label,
-            "memory_mb": 0
-        }
+        snapshot = {"timestamp": time.time(), "label": label, "memory_mb": 0}
 
         try:
             import psutil
+
             process = psutil.Process()
             snapshot["memory_mb"] = process.memory_info().rss / 1024 / 1024
         except ImportError:
@@ -157,8 +152,7 @@ class MemoryTracker:
 
     def get_memory_delta(self, start_snapshot: dict, end_snapshot: dict) -> int:
         return int(
-            (end_snapshot.get("memory_mb", 0) - start_snapshot.get("memory_mb", 0))
-            * 1024 * 1024
+            (end_snapshot.get("memory_mb", 0) - start_snapshot.get("memory_mb", 0)) * 1024 * 1024
         )
 
     def clear(self):
@@ -194,10 +188,7 @@ class Profiler:
         session_id = session_id or f"session_{int(time.time() * 1000)}"
 
         with self._profile_lock:
-            self._reports[session_id] = ProfileReport(
-                session_id=session_id,
-                start_time=time.time()
-            )
+            self._reports[session_id] = ProfileReport(session_id=session_id, start_time=time.time())
             self._current_session = session_id
 
         return session_id
@@ -220,9 +211,7 @@ class Profiler:
         return report
 
     def profile_function(
-        self,
-        name: str | None = None,
-        track_memory: bool = False
+        self, name: str | None = None, track_memory: bool = False
     ) -> Callable[[F], F]:
         def decorator(func: F) -> F:
             profile_name = name or f"{func.__module__}.{func.__qualname__}"
@@ -325,6 +314,7 @@ class Profiler:
 
     def profile_code(self, code: str, globals_dict: dict | None = None) -> str:
         from src.infrastructure.sandbox.security import CodeValidator
+
         validator = CodeValidator()
         is_valid, errors = validator.validate(code)
         if not is_valid:
@@ -370,12 +360,14 @@ class PerformanceAnalyzer:
 
         for name, profile in self.report.function_profiles.items():
             if profile.avg_time * 1000 >= threshold_ms:
-                bottlenecks.append({
-                    "function": name,
-                    "avg_time_ms": profile.avg_time * 1000,
-                    "calls": profile.calls,
-                    "total_time_ms": profile.total_time * 1000
-                })
+                bottlenecks.append(
+                    {
+                        "function": name,
+                        "avg_time_ms": profile.avg_time * 1000,
+                        "calls": profile.calls,
+                        "total_time_ms": profile.total_time * 1000,
+                    }
+                )
 
         return sorted(bottlenecks, key=lambda x: x["total_time_ms"], reverse=True)
 
@@ -384,19 +376,14 @@ class PerformanceAnalyzer:
 
         for block in self.report.block_profiles:
             if block.memory_delta / 1024 / 1024 >= threshold_mb:
-                leaks.append({
-                    "block": block.name,
-                    "memory_delta_mb": block.memory_delta / 1024 / 1024
-                })
+                leaks.append(
+                    {"block": block.name, "memory_delta_mb": block.memory_delta / 1024 / 1024}
+                )
 
         return leaks
 
     def get_call_patterns(self) -> dict[str, Any]:
-        patterns = {
-            "most_called": None,
-            "slowest": None,
-            "most_memory": None
-        }
+        patterns = {"most_called": None, "slowest": None, "most_memory": None}
 
         if not self.report.function_profiles:
             return patterns
@@ -419,7 +406,7 @@ class PerformanceAnalyzer:
             "## Top Hotspots",
             "",
             "| Function | Calls | Total Time (ms) | Avg Time (ms) |",
-            "|----------|-------|-----------------|---------------|"
+            "|----------|-------|-----------------|---------------|",
         ]
 
         for profile in self.report.get_hotspots(10):
@@ -430,13 +417,11 @@ class PerformanceAnalyzer:
 
         bottlenecks = self.get_bottlenecks()
         if bottlenecks:
-            lines.extend([
-                "",
-                "## Bottlenecks (>100ms avg)",
-                ""
-            ])
+            lines.extend(["", "## Bottlenecks (>100ms avg)", ""])
             for b in bottlenecks[:5]:
-                lines.append(f"- **{b['function']}**: {b['avg_time_ms']:.1f}ms avg ({b['calls']} calls)")
+                lines.append(
+                    f"- **{b['function']}**: {b['avg_time_ms']:.1f}ms avg ({b['calls']} calls)"
+                )
 
         return "\n".join(lines)
 

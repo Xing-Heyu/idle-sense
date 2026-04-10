@@ -37,6 +37,7 @@ class User:
     - 验证用户数据有效性
     - 记录用户登录状态
     """
+
     user_id: str
     username: str
     created_at: datetime = field(default_factory=datetime.now)
@@ -61,7 +62,7 @@ class User:
         if len(self.username) > 20:
             return False, "用户名长度不能超过20个字符"
 
-        pattern = r'^[\u4e00-\u9fa5a-zA-Z0-9]+$'
+        pattern = r"^[\u4e00-\u9fa5a-zA-Z0-9]+$"
         if not re.match(pattern, self.username):
             return False, "用户名只能包含中文、英文和数字"
 
@@ -78,7 +79,7 @@ class User:
             "username": self.username,
             "created_at": self.created_at.isoformat() if self.created_at else None,
             "folder_location": self.folder_location,
-            "last_login": self.last_login.isoformat() if self.last_login else None
+            "last_login": self.last_login.isoformat() if self.last_login else None,
         }
 
     @classmethod
@@ -87,9 +88,15 @@ class User:
         return cls(
             user_id=data.get("user_id", ""),
             username=data.get("username", ""),
-            created_at=datetime.fromisoformat(data["created_at"]) if data.get("created_at") else datetime.now(),
+            created_at=(
+                datetime.fromisoformat(data["created_at"])
+                if data.get("created_at")
+                else datetime.now()
+            ),
             folder_location=data.get("folder_location", "project"),
-            last_login=datetime.fromisoformat(data["last_login"]) if data.get("last_login") else None
+            last_login=(
+                datetime.fromisoformat(data["last_login"]) if data.get("last_login") else None
+            ),
         )
 
     @staticmethod
@@ -114,11 +121,7 @@ class UserFactory:
             用户实体
         """
         user_id = User.generate_user_id(username)
-        return User(
-            user_id=user_id,
-            username=username,
-            folder_location=folder_location
-        )
+        return User(user_id=user_id, username=username, folder_location=folder_location)
 
     @staticmethod
     def create_from_dict(data: dict) -> User:

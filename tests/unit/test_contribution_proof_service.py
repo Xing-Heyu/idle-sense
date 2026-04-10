@@ -26,10 +26,7 @@ class TestResourceMetrics(unittest.TestCase):
 
     def test_resource_metrics_creation(self):
         metrics = ResourceMetrics(
-            cpu_seconds=100.0,
-            memory_gb_seconds=50.0,
-            storage_gb=10.0,
-            network_gb=5.0
+            cpu_seconds=100.0, memory_gb_seconds=50.0, storage_gb=10.0, network_gb=5.0
         )
 
         self.assertEqual(metrics.cpu_seconds, 100.0)
@@ -46,10 +43,7 @@ class TestResourceMetrics(unittest.TestCase):
         self.assertEqual(metrics.network_gb, 0.0)
 
     def test_resource_metrics_to_dict(self):
-        metrics = ResourceMetrics(
-            cpu_seconds=100.0,
-            memory_gb_seconds=50.0
-        )
+        metrics = ResourceMetrics(cpu_seconds=100.0, memory_gb_seconds=50.0)
 
         data = metrics.to_dict()
 
@@ -63,7 +57,7 @@ class TestResourceMetrics(unittest.TestCase):
             "cpu_seconds": 200.0,
             "memory_gb_seconds": 100.0,
             "storage_gb": 20.0,
-            "network_gb": 10.0
+            "network_gb": 10.0,
         }
 
         metrics = ResourceMetrics.from_dict(data)
@@ -75,10 +69,7 @@ class TestResourceMetrics(unittest.TestCase):
 
     def test_resource_metrics_roundtrip(self):
         original = ResourceMetrics(
-            cpu_seconds=150.0,
-            memory_gb_seconds=75.0,
-            storage_gb=15.0,
-            network_gb=8.0
+            cpu_seconds=150.0, memory_gb_seconds=75.0, storage_gb=15.0, network_gb=8.0
         )
 
         data = original.to_dict()
@@ -104,7 +95,7 @@ class TestContributionProofDataclass(unittest.TestCase):
             complexity_coefficient=1.5,
             reputation_bonus=1.0,
             contribution_score=150.0,
-            timestamp=time.time()
+            timestamp=time.time(),
         )
 
         self.assertEqual(proof.proof_id, "proof-001")
@@ -123,7 +114,7 @@ class TestContributionProofDataclass(unittest.TestCase):
             complexity_coefficient=1.0,
             reputation_bonus=1.0,
             contribution_score=0.0,
-            timestamp=time.time()
+            timestamp=time.time(),
         )
 
         self.assertIsNone(proof.verifier_address)
@@ -144,7 +135,7 @@ class TestContributionProofDataclass(unittest.TestCase):
             timestamp=1234567890.0,
             verifier_address="verifier1",
             verified=True,
-            signature="abc123"
+            signature="abc123",
         )
 
         data = proof.to_dict()
@@ -170,7 +161,7 @@ class TestContributionProofDataclass(unittest.TestCase):
                 "cpu_seconds": 200.0,
                 "memory_gb_seconds": 100.0,
                 "storage_gb": 0.0,
-                "network_gb": 0.0
+                "network_gb": 0.0,
             },
             "quality_score": 0.8,
             "complexity_coefficient": 2.0,
@@ -179,7 +170,7 @@ class TestContributionProofDataclass(unittest.TestCase):
             "timestamp": 1234567890.0,
             "verifier_address": "verifier2",
             "verified": True,
-            "signature": "def456"
+            "signature": "def456",
         }
 
         proof = ContributionProof.from_dict(data)
@@ -194,10 +185,7 @@ class TestContributionProofDataclass(unittest.TestCase):
         self.assertEqual(proof.resource_metrics.cpu_seconds, 200.0)
 
     def test_contribution_proof_roundtrip(self):
-        metrics = ResourceMetrics(
-            cpu_seconds=300.0,
-            memory_gb_seconds=150.0
-        )
+        metrics = ResourceMetrics(cpu_seconds=300.0, memory_gb_seconds=150.0)
         original = ContributionProof(
             proof_id="proof-003",
             node_address="node3",
@@ -209,7 +197,7 @@ class TestContributionProofDataclass(unittest.TestCase):
             contribution_score=500.0,
             timestamp=time.time(),
             verified=True,
-            signature="sig789"
+            signature="sig789",
         )
 
         data = original.to_dict()
@@ -231,9 +219,7 @@ class TestContributionProofGeneration(unittest.TestCase):
     def test_generate_proof_basic(self):
         metrics = ResourceMetrics(cpu_seconds=100.0)
         proof = self.service.generate_proof(
-            node_address="node1",
-            task_id="task1",
-            resource_metrics=metrics
+            node_address="node1", task_id="task1", resource_metrics=metrics
         )
 
         self.assertIsNotNone(proof.proof_id)
@@ -245,17 +231,11 @@ class TestContributionProofGeneration(unittest.TestCase):
         metrics = ResourceMetrics(cpu_seconds=100.0)
 
         proof_high = self.service.generate_proof(
-            node_address="node1",
-            task_id="task1",
-            resource_metrics=metrics,
-            quality_score=1.0
+            node_address="node1", task_id="task1", resource_metrics=metrics, quality_score=1.0
         )
 
         proof_low = self.service.generate_proof(
-            node_address="node2",
-            task_id="task2",
-            resource_metrics=metrics,
-            quality_score=0.5
+            node_address="node2", task_id="task2", resource_metrics=metrics, quality_score=0.5
         )
 
         self.assertGreater(proof_high.contribution_score, proof_low.contribution_score)
@@ -264,17 +244,11 @@ class TestContributionProofGeneration(unittest.TestCase):
         metrics = ResourceMetrics(cpu_seconds=100.0)
 
         proof_high_rep = self.service.generate_proof(
-            node_address="node1",
-            task_id="task1",
-            resource_metrics=metrics,
-            reputation=90.0
+            node_address="node1", task_id="task1", resource_metrics=metrics, reputation=90.0
         )
 
         proof_low_rep = self.service.generate_proof(
-            node_address="node2",
-            task_id="task2",
-            resource_metrics=metrics,
-            reputation=30.0
+            node_address="node2", task_id="task2", resource_metrics=metrics, reputation=30.0
         )
 
         self.assertGreater(proof_high_rep.reputation_bonus, proof_low_rep.reputation_bonus)
@@ -288,7 +262,7 @@ class TestContributionProofGeneration(unittest.TestCase):
             task_id="task1",
             resource_metrics=metrics_simple,
             code_length=100,
-            dependencies=1
+            dependencies=1,
         )
 
         proof_complex = self.service.generate_proof(
@@ -296,27 +270,22 @@ class TestContributionProofGeneration(unittest.TestCase):
             task_id="task2",
             resource_metrics=metrics_complex,
             code_length=5000,
-            dependencies=20
+            dependencies=20,
         )
 
         self.assertGreater(
-            proof_complex.complexity_coefficient,
-            proof_simple.complexity_coefficient
+            proof_complex.complexity_coefficient, proof_simple.complexity_coefficient
         )
 
     def test_generate_proof_unique_ids(self):
         metrics = ResourceMetrics(cpu_seconds=100.0)
 
         proof1 = self.service.generate_proof(
-            node_address="node1",
-            task_id="task1",
-            resource_metrics=metrics
+            node_address="node1", task_id="task1", resource_metrics=metrics
         )
 
         proof2 = self.service.generate_proof(
-            node_address="node1",
-            task_id="task2",
-            resource_metrics=metrics
+            node_address="node1", task_id="task2", resource_metrics=metrics
         )
 
         self.assertNotEqual(proof1.proof_id, proof2.proof_id)
@@ -325,9 +294,7 @@ class TestContributionProofGeneration(unittest.TestCase):
         before = time.time()
         metrics = ResourceMetrics(cpu_seconds=100.0)
         proof = self.service.generate_proof(
-            node_address="node1",
-            task_id="task1",
-            resource_metrics=metrics
+            node_address="node1", task_id="task1", resource_metrics=metrics
         )
         after = time.time()
 
@@ -344,9 +311,7 @@ class TestSignatureVerification(unittest.TestCase):
     def test_verify_valid_signature(self):
         metrics = ResourceMetrics(cpu_seconds=100.0)
         proof = self.service.generate_proof(
-            node_address="node1",
-            task_id="task1",
-            resource_metrics=metrics
+            node_address="node1", task_id="task1", resource_metrics=metrics
         )
 
         self.assertTrue(self.service.verify_proof(proof))
@@ -354,9 +319,7 @@ class TestSignatureVerification(unittest.TestCase):
     def test_verify_proof_by_id(self):
         metrics = ResourceMetrics(cpu_seconds=100.0)
         proof = self.service.generate_proof(
-            node_address="node1",
-            task_id="task1",
-            resource_metrics=metrics
+            node_address="node1", task_id="task1", resource_metrics=metrics
         )
 
         self.assertTrue(self.service.verify_proof_by_id(proof.proof_id))
@@ -364,9 +327,7 @@ class TestSignatureVerification(unittest.TestCase):
     def test_verify_invalid_signature(self):
         metrics = ResourceMetrics(cpu_seconds=100.0)
         proof = self.service.generate_proof(
-            node_address="node1",
-            task_id="task1",
-            resource_metrics=metrics
+            node_address="node1", task_id="task1", resource_metrics=metrics
         )
 
         proof.signature = "tampered_signature"
@@ -376,9 +337,7 @@ class TestSignatureVerification(unittest.TestCase):
     def test_verify_missing_signature(self):
         metrics = ResourceMetrics(cpu_seconds=100.0)
         proof = self.service.generate_proof(
-            node_address="node1",
-            task_id="task1",
-            resource_metrics=metrics
+            node_address="node1", task_id="task1", resource_metrics=metrics
         )
 
         proof.signature = None
@@ -394,9 +353,7 @@ class TestSignatureVerification(unittest.TestCase):
 
         metrics = ResourceMetrics(cpu_seconds=100.0)
         proof = service1.generate_proof(
-            node_address="node1",
-            task_id="task1",
-            resource_metrics=metrics
+            node_address="node1", task_id="task1", resource_metrics=metrics
         )
 
         self.assertTrue(service1.verify_proof(proof))
@@ -417,10 +374,7 @@ class TestContributionScoreCalculation(unittest.TestCase):
 
     def test_calculate_contribution_score_with_memory(self):
         metrics_cpu_only = ResourceMetrics(cpu_seconds=100.0)
-        metrics_with_memory = ResourceMetrics(
-            cpu_seconds=100.0,
-            memory_gb_seconds=50.0
-        )
+        metrics_with_memory = ResourceMetrics(cpu_seconds=100.0, memory_gb_seconds=50.0)
 
         score_cpu = self.service.calculate_contribution_score(metrics_cpu_only)
         score_with_memory = self.service.calculate_contribution_score(metrics_with_memory)
@@ -430,14 +384,8 @@ class TestContributionScoreCalculation(unittest.TestCase):
     def test_calculate_contribution_score_with_quality(self):
         metrics = ResourceMetrics(cpu_seconds=100.0)
 
-        score_high = self.service.calculate_contribution_score(
-            metrics,
-            quality_score=1.0
-        )
-        score_low = self.service.calculate_contribution_score(
-            metrics,
-            quality_score=0.5
-        )
+        score_high = self.service.calculate_contribution_score(metrics, quality_score=1.0)
+        score_low = self.service.calculate_contribution_score(metrics, quality_score=0.5)
 
         self.assertGreater(score_high, score_low)
 
@@ -445,12 +393,10 @@ class TestContributionScoreCalculation(unittest.TestCase):
         metrics = ResourceMetrics(cpu_seconds=100.0)
 
         score_simple = self.service.calculate_contribution_score(
-            metrics,
-            complexity_coefficient=1.0
+            metrics, complexity_coefficient=1.0
         )
         score_complex = self.service.calculate_contribution_score(
-            metrics,
-            complexity_coefficient=2.0
+            metrics, complexity_coefficient=2.0
         )
 
         self.assertGreater(score_complex, score_simple)
@@ -458,14 +404,8 @@ class TestContributionScoreCalculation(unittest.TestCase):
     def test_calculate_contribution_score_with_reputation(self):
         metrics = ResourceMetrics(cpu_seconds=100.0)
 
-        score_low_rep = self.service.calculate_contribution_score(
-            metrics,
-            reputation=30.0
-        )
-        score_high_rep = self.service.calculate_contribution_score(
-            metrics,
-            reputation=90.0
-        )
+        score_low_rep = self.service.calculate_contribution_score(metrics, reputation=30.0)
+        score_high_rep = self.service.calculate_contribution_score(metrics, reputation=90.0)
 
         self.assertGreater(score_high_rep, score_low_rep)
 
@@ -477,20 +417,14 @@ class TestContributionScoreCalculation(unittest.TestCase):
 
     def test_complexity_coefficient_calculation(self):
         coefficient = self.service._calculate_complexity_coefficient(
-            code_length=1000,
-            dependencies=10,
-            cpu_seconds=100.0,
-            memory_mb=1000.0
+            code_length=1000, dependencies=10, cpu_seconds=100.0, memory_mb=1000.0
         )
 
         self.assertGreater(coefficient, 1.0)
 
     def test_complexity_coefficient_max(self):
         coefficient = self.service._calculate_complexity_coefficient(
-            code_length=100000,
-            dependencies=1000,
-            cpu_seconds=10000.0,
-            memory_mb=100000.0
+            code_length=100000, dependencies=1000, cpu_seconds=10000.0, memory_mb=100000.0
         )
 
         self.assertLessEqual(coefficient, 10.0)
@@ -524,9 +458,7 @@ class TestProofManagement(unittest.TestCase):
     def test_get_proof(self):
         metrics = ResourceMetrics(cpu_seconds=100.0)
         proof = self.service.generate_proof(
-            node_address="node1",
-            task_id="task1",
-            resource_metrics=metrics
+            node_address="node1", task_id="task1", resource_metrics=metrics
         )
 
         retrieved = self.service.get_proof(proof.proof_id)
@@ -543,9 +475,7 @@ class TestProofManagement(unittest.TestCase):
         for i in range(5):
             metrics = ResourceMetrics(cpu_seconds=100.0 * i)
             self.service.generate_proof(
-                node_address="node1",
-                task_id=f"task{i}",
-                resource_metrics=metrics
+                node_address="node1", task_id=f"task{i}", resource_metrics=metrics
             )
 
         proofs = self.service.get_node_proofs("node1")
@@ -556,9 +486,7 @@ class TestProofManagement(unittest.TestCase):
         for i in range(20):
             metrics = ResourceMetrics(cpu_seconds=100.0)
             self.service.generate_proof(
-                node_address="node1",
-                task_id=f"task{i}",
-                resource_metrics=metrics
+                node_address="node1", task_id=f"task{i}", resource_metrics=metrics
             )
 
         proofs = self.service.get_node_proofs("node1", limit=10)
@@ -570,9 +498,7 @@ class TestProofManagement(unittest.TestCase):
             time.sleep(0.01)
             metrics = ResourceMetrics(cpu_seconds=100.0)
             self.service.generate_proof(
-                node_address="node1",
-                task_id=f"task{i}",
-                resource_metrics=metrics
+                node_address="node1", task_id=f"task{i}", resource_metrics=metrics
             )
 
         proofs = self.service.get_node_proofs("node1")
@@ -583,9 +509,7 @@ class TestProofManagement(unittest.TestCase):
     def test_add_verification(self):
         metrics = ResourceMetrics(cpu_seconds=100.0)
         proof = self.service.generate_proof(
-            node_address="node1",
-            task_id="task1",
-            resource_metrics=metrics
+            node_address="node1", task_id="task1", resource_metrics=metrics
         )
 
         result = self.service.add_verification(proof.proof_id, "verifier1")
@@ -603,9 +527,7 @@ class TestProofManagement(unittest.TestCase):
         for i in range(3):
             metrics = ResourceMetrics(cpu_seconds=100.0)
             self.service.generate_proof(
-                node_address="node1",
-                task_id=f"task{i}",
-                resource_metrics=metrics
+                node_address="node1", task_id=f"task{i}", resource_metrics=metrics
             )
 
         total = self.service.get_node_total_contribution("node1")
@@ -635,9 +557,7 @@ class TestContributionProofStats(unittest.TestCase):
         for i in range(5):
             metrics = ResourceMetrics(cpu_seconds=100.0)
             self.service.generate_proof(
-                node_address=f"node{i}",
-                task_id=f"task{i}",
-                resource_metrics=metrics
+                node_address=f"node{i}", task_id=f"task{i}", resource_metrics=metrics
             )
 
         stats = self.service.get_stats()
@@ -649,9 +569,7 @@ class TestContributionProofStats(unittest.TestCase):
     def test_stats_verified_count(self):
         metrics = ResourceMetrics(cpu_seconds=100.0)
         proof = self.service.generate_proof(
-            node_address="node1",
-            task_id="task1",
-            resource_metrics=metrics
+            node_address="node1", task_id="task1", resource_metrics=metrics
         )
 
         self.service.add_verification(proof.proof_id, "verifier1")
@@ -665,9 +583,7 @@ class TestContributionProofStats(unittest.TestCase):
         for i in range(3):
             metrics = ResourceMetrics(cpu_seconds=100.0)
             self.service.generate_proof(
-                node_address="node1",
-                task_id=f"task{i}",
-                resource_metrics=metrics
+                node_address="node1", task_id=f"task{i}", resource_metrics=metrics
             )
 
         stats = self.service.get_stats()
@@ -696,9 +612,7 @@ class TestSecretKeyManagement(unittest.TestCase):
 
         metrics = ResourceMetrics(cpu_seconds=100.0)
         proof = service1.generate_proof(
-            node_address="node1",
-            task_id="task1",
-            resource_metrics=metrics
+            node_address="node1", task_id="task1", resource_metrics=metrics
         )
 
         self.assertTrue(service1.verify_proof(proof))

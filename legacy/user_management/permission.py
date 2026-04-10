@@ -11,6 +11,7 @@ from .auth import AuthManager
 
 class PermissionDeniedError(Exception):
     """权限拒绝异常"""
+
     def __init__(self, message: str = "无权操作此资源"):
         self.message = message
         super().__init__(self.message)
@@ -68,22 +69,26 @@ def require_permission(get_resource_user_id: Callable[..., str]):
     Args:
         get_resource_user_id: 从函数参数中获取资源所属用户ID的函数
     """
+
     def decorator(func: Callable) -> Callable:
         @wraps(func)
         def wrapper(*args, **kwargs) -> Any:
-            session_id = kwargs.get('session_id')
+            session_id = kwargs.get("session_id")
             if not session_id:
                 raise PermissionDeniedError("缺少会话信息")
 
             resource_user_id = get_resource_user_id(args, kwargs)
 
             from . import get_permission_validator
+
             validator = get_permission_validator()
 
             validator.validate_resource_ownership(session_id, resource_user_id)
 
             return func(*args, **kwargs)
+
         return wrapper
+
     return decorator
 
 
@@ -96,21 +101,24 @@ def require_session(func: Callable) -> Callable:
         def get_my_tasks(session_id: str):
             ...
     """
+
     @wraps(func)
     def wrapper(*args, **kwargs) -> Any:
-        session_id = kwargs.get('session_id')
+        session_id = kwargs.get("session_id")
         if not session_id:
             raise PermissionDeniedError("缺少会话信息")
 
         from . import get_permission_validator
+
         validator = get_permission_validator()
 
         user_id = validator.validate_session(session_id)
         validator.validate_user_active(user_id)
 
-        kwargs['_validated_user_id'] = user_id
+        kwargs["_validated_user_id"] = user_id
 
         return func(*args, **kwargs)
+
     return wrapper
 
 

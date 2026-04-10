@@ -120,12 +120,12 @@ class TestBackwardCompatibility:
         adapter = LegacyAdapter()
 
         # 检查必需的方法存在
-        assert hasattr(adapter, 'login')
-        assert hasattr(adapter, 'register')
-        assert hasattr(adapter, 'logout')
-        assert hasattr(adapter, 'submit_task')
-        assert hasattr(adapter, 'get_nodes')
-        assert hasattr(adapter, 'get_system_stats')
+        assert hasattr(adapter, "login")
+        assert hasattr(adapter, "register")
+        assert hasattr(adapter, "logout")
+        assert hasattr(adapter, "submit_task")
+        assert hasattr(adapter, "get_nodes")
+        assert hasattr(adapter, "get_system_stats")
 
     def test_method_signatures(self):
         """测试方法签名兼容性"""
@@ -136,18 +136,18 @@ class TestBackwardCompatibility:
         # 检查 login 方法签名
         sig = inspect.signature(adapter.login)
         params = list(sig.parameters.keys())
-        assert 'username' in params
+        assert "username" in params
 
         # 检查 register 方法签名
         sig = inspect.signature(adapter.register)
         params = list(sig.parameters.keys())
-        assert 'username' in params
-        assert 'folder_location' in params
+        assert "username" in params
+        assert "folder_location" in params
 
         # 检查 submit_task 方法签名
         sig = inspect.signature(adapter.submit_task)
         params = list(sig.parameters.keys())
-        assert 'code' in params
+        assert "code" in params
 
 
 if __name__ == "__main__":

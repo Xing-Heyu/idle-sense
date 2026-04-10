@@ -1,4 +1,5 @@
 """Unit tests for scheduler module."""
+
 import os
 import sys
 import unittest
@@ -43,7 +44,7 @@ class TestTaskSubmission(unittest.TestCase):
             code="print('hello')",
             timeout=600,
             resources={"cpu": 2.0, "memory": 1024},
-            user_id="user_001"
+            user_id="user_001",
         )
         self.assertEqual(task.timeout, 600)
         self.assertEqual(task.resources["cpu"], 2.0)
@@ -58,7 +59,7 @@ class TestNodeHeartbeat(unittest.TestCase):
             node_id="node_001",
             current_load={"cpu": 50.0, "memory": 60.0},
             is_idle=True,
-            available_resources={"cpu": 2.0, "memory": 4096}
+            available_resources={"cpu": 2.0, "memory": 4096},
         )
         self.assertEqual(heartbeat.node_id, "node_001")
         self.assertTrue(heartbeat.is_idle)
@@ -71,7 +72,7 @@ class TestNodeHeartbeat(unittest.TestCase):
             available_resources={},
             cpu_usage=75.0,
             memory_usage=80.0,
-            is_available=False
+            is_available=False,
         )
         self.assertEqual(heartbeat.cpu_usage, 75.0)
         self.assertEqual(heartbeat.memory_usage, 80.0)
@@ -95,7 +96,7 @@ class TestOptimizedMemoryStorage(unittest.TestCase):
         task_id = self.storage.add_task(
             code=self.sample_task["code"],
             timeout=self.sample_task["timeout"],
-            resources=self.sample_task["resources"]
+            resources=self.sample_task["resources"],
         )
         self.assertIsNotNone(task_id)
         self.assertIn(task_id, self.storage.tasks)
@@ -105,7 +106,7 @@ class TestOptimizedMemoryStorage(unittest.TestCase):
         task_id = self.storage.add_task(
             code=self.sample_task["code"],
             timeout=self.sample_task["timeout"],
-            resources=self.sample_task["resources"]
+            resources=self.sample_task["resources"],
         )
         task_status = self.storage.get_task_status(task_id)
         self.assertIsNotNone(task_status)
@@ -127,33 +128,31 @@ class TestOptimizedMemoryStorage(unittest.TestCase):
             node_id=node_id,
             current_load={"cpu_usage": 30.0, "memory_usage": 50.0},
             is_idle=True,
-            available_resources={"cpu": 3.0, "memory": 6000}
+            available_resources={"cpu": 3.0, "memory": 6000},
         )
 
         self.storage.update_node_heartbeat(heartbeat)
         self.assertIn(node_id, self.storage.node_heartbeats)
 
     def test_get_node_status_offline(self):
-        self.storage.register_node(NodeRegistration(
-            node_id="node_001",
-            capacity={"cpu": 4.0, "memory": 8192}
-        ))
+        self.storage.register_node(
+            NodeRegistration(node_id="node_001", capacity={"cpu": 4.0, "memory": 8192})
+        )
 
         status = self.storage._get_node_status("node_001")
         self.assertIn(status["status"], ["offline", "online_available", "online_busy"])
 
     def test_get_node_status_available(self):
         node_id = "node_001"
-        self.storage.register_node(NodeRegistration(
-            node_id=node_id,
-            capacity={"cpu": 4.0, "memory": 8192}
-        ))
+        self.storage.register_node(
+            NodeRegistration(node_id=node_id, capacity={"cpu": 4.0, "memory": 8192})
+        )
 
         heartbeat = NodeHeartbeat(
             node_id=node_id,
             current_load={"cpu_usage": 0.5, "memory_usage": 30.0},
             is_idle=True,
-            available_resources={"cpu": 4.0, "memory": 8192}
+            available_resources={"cpu": 4.0, "memory": 8192},
         )
         self.storage.update_node_heartbeat(heartbeat)
 
@@ -162,23 +161,22 @@ class TestOptimizedMemoryStorage(unittest.TestCase):
 
     def test_get_task_for_node(self):
         node_id = "node_001"
-        self.storage.register_node(NodeRegistration(
-            node_id=node_id,
-            capacity={"cpu": 4.0, "memory": 8192}
-        ))
+        self.storage.register_node(
+            NodeRegistration(node_id=node_id, capacity={"cpu": 4.0, "memory": 8192})
+        )
 
         heartbeat = NodeHeartbeat(
             node_id=node_id,
             current_load={"cpu_usage": 0.5, "memory_usage": 30.0},
             is_idle=True,
-            available_resources={"cpu": 4.0, "memory": 8192}
+            available_resources={"cpu": 4.0, "memory": 8192},
         )
         self.storage.update_node_heartbeat(heartbeat)
 
         self.storage.add_task(
             code=self.sample_task["code"],
             timeout=self.sample_task["timeout"],
-            resources=self.sample_task["resources"]
+            resources=self.sample_task["resources"],
         )
 
         task = self.storage.get_task_for_node(node_id)
@@ -186,23 +184,22 @@ class TestOptimizedMemoryStorage(unittest.TestCase):
 
     def test_complete_task(self):
         node_id = "node_001"
-        self.storage.register_node(NodeRegistration(
-            node_id=node_id,
-            capacity={"cpu": 4.0, "memory": 8192}
-        ))
+        self.storage.register_node(
+            NodeRegistration(node_id=node_id, capacity={"cpu": 4.0, "memory": 8192})
+        )
 
         heartbeat = NodeHeartbeat(
             node_id=node_id,
             current_load={"cpu_usage": 0.5, "memory_usage": 30.0},
             is_idle=True,
-            available_resources={"cpu": 4.0, "memory": 8192}
+            available_resources={"cpu": 4.0, "memory": 8192},
         )
         self.storage.update_node_heartbeat(heartbeat)
 
         task_id = self.storage.add_task(
             code=self.sample_task["code"],
             timeout=self.sample_task["timeout"],
-            resources=self.sample_task["resources"]
+            resources=self.sample_task["resources"],
         )
 
         self.storage.get_task_for_node(node_id)
@@ -216,23 +213,22 @@ class TestOptimizedMemoryStorage(unittest.TestCase):
 
     def test_get_all_results(self):
         node_id = "node_001"
-        self.storage.register_node(NodeRegistration(
-            node_id=node_id,
-            capacity={"cpu": 4.0, "memory": 8192}
-        ))
+        self.storage.register_node(
+            NodeRegistration(node_id=node_id, capacity={"cpu": 4.0, "memory": 8192})
+        )
 
         heartbeat = NodeHeartbeat(
             node_id=node_id,
             current_load={"cpu_usage": 0.5, "memory_usage": 30.0},
             is_idle=True,
-            available_resources={"cpu": 4.0, "memory": 8192}
+            available_resources={"cpu": 4.0, "memory": 8192},
         )
         self.storage.update_node_heartbeat(heartbeat)
 
         task_id = self.storage.add_task(
             code=self.sample_task["code"],
             timeout=self.sample_task["timeout"],
-            resources=self.sample_task["resources"]
+            resources=self.sample_task["resources"],
         )
 
         self.storage.get_task_for_node(node_id)
@@ -250,46 +246,38 @@ class TestTaskMatching(unittest.TestCase):
 
     def test_resource_match(self):
         node_id = "node_001"
-        self.storage.register_node(NodeRegistration(
-            node_id=node_id,
-            capacity={"cpu": 4.0, "memory": 8192}
-        ))
+        self.storage.register_node(
+            NodeRegistration(node_id=node_id, capacity={"cpu": 4.0, "memory": 8192})
+        )
 
         heartbeat = NodeHeartbeat(
             node_id=node_id,
             current_load={"cpu_usage": 0.5, "memory_usage": 20.0},
             is_idle=True,
-            available_resources={"cpu": 3.5, "memory": 6000}
+            available_resources={"cpu": 3.5, "memory": 6000},
         )
         self.storage.update_node_heartbeat(heartbeat)
 
-        self.storage.add_task(
-            code="print('test')",
-            resources={"cpu": 2.0, "memory": 2048}
-        )
+        self.storage.add_task(code="print('test')", resources={"cpu": 2.0, "memory": 2048})
 
         matched_task = self.storage.get_task_for_node(node_id)
         self.assertIsNotNone(matched_task)
 
     def test_resource_mismatch(self):
         node_id = "node_001"
-        self.storage.register_node(NodeRegistration(
-            node_id=node_id,
-            capacity={"cpu": 1.0, "memory": 512}
-        ))
+        self.storage.register_node(
+            NodeRegistration(node_id=node_id, capacity={"cpu": 1.0, "memory": 512})
+        )
 
         heartbeat = NodeHeartbeat(
             node_id=node_id,
             current_load={"cpu_usage": 10.0, "memory_usage": 20.0},
             is_idle=True,
-            available_resources={"cpu": 0.5, "memory": 256}
+            available_resources={"cpu": 0.5, "memory": 256},
         )
         self.storage.update_node_heartbeat(heartbeat)
 
-        self.storage.add_task(
-            code="print('test')",
-            resources={"cpu": 2.0, "memory": 2048}
-        )
+        self.storage.add_task(code="print('test')", resources={"cpu": 2.0, "memory": 2048})
 
         matched_task = self.storage.get_task_for_node(node_id)
         self.assertIsNone(matched_task)
@@ -311,12 +299,12 @@ class TestStatistics(unittest.TestCase):
         self.storage.add_task(
             code=self.sample_task["code"],
             timeout=self.sample_task["timeout"],
-            resources=self.sample_task["resources"]
+            resources=self.sample_task["resources"],
         )
         self.storage.add_task(
             code=self.sample_task["code"],
             timeout=self.sample_task["timeout"],
-            resources=self.sample_task["resources"]
+            resources=self.sample_task["resources"],
         )
 
         stats = self.storage.get_system_stats()
@@ -324,10 +312,9 @@ class TestStatistics(unittest.TestCase):
         self.assertEqual(stats["tasks"]["pending"], 2)
 
     def test_node_stats(self):
-        self.storage.register_node(NodeRegistration(
-            node_id="node_001",
-            capacity={"cpu": 4.0, "memory": 8192}
-        ))
+        self.storage.register_node(
+            NodeRegistration(node_id="node_001", capacity={"cpu": 4.0, "memory": 8192})
+        )
 
         stats = self.storage.get_system_stats()
         self.assertEqual(stats["nodes"]["total"], 1)

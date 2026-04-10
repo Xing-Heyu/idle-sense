@@ -26,7 +26,7 @@ class TestTaskChunk:
             stage_id="stage-1",
             task_id="task-001",
             data=[1, 2, 3],
-            code="result = sum(data)"
+            code="result = sum(data)",
         )
 
         assert chunk.chunk_id == "stage-1-chunk-0"
@@ -41,7 +41,7 @@ class TestTaskChunk:
             stage_id="stage-1",
             task_id="task-001",
             data=[1, 2, 3],
-            code="test"
+            code="test",
         )
 
         data = chunk.to_dict()
@@ -55,11 +55,7 @@ class TestStage:
 
     def test_create_stage(self):
         """Test creating a stage."""
-        stage = Stage(
-            stage_id="stage-1",
-            name="Map Stage",
-            code_template="result = process(item)"
-        )
+        stage = Stage(stage_id="stage-1", name="Map Stage", code_template="result = process(item)")
 
         assert stage.stage_id == "stage-1"
         assert stage.status == StageStatus.PENDING
@@ -71,7 +67,7 @@ class TestStage:
             stage_id="stage-2",
             name="Reduce Stage",
             code_template="result = reduce(items)",
-            dependencies=["stage-1"]
+            dependencies=["stage-1"],
         )
 
         assert stage.is_ready(set()) is False
@@ -79,11 +75,7 @@ class TestStage:
 
     def test_get_progress(self):
         """Test progress calculation."""
-        stage = Stage(
-            stage_id="stage-1",
-            name="Test Stage",
-            code_template="test"
-        )
+        stage = Stage(stage_id="stage-1", name="Test Stage", code_template="test")
 
         assert stage.get_progress() == 0.0
 
@@ -93,7 +85,7 @@ class TestStage:
             TaskChunk("c3", "s1", "t1", [], "code", status=TaskStatus.PENDING),
         ]
 
-        assert stage.get_progress() == pytest.approx(2/3)
+        assert stage.get_progress() == pytest.approx(2 / 3)
 
     def test_to_dict(self):
         """Test stage serialization."""
@@ -101,9 +93,7 @@ class TestStage:
             stage_id="stage-1",
             name="Test Stage",
             code_template="test",
-            chunks=[
-                TaskChunk("c1", "s1", "t1", [], "code")
-            ]
+            chunks=[TaskChunk("c1", "s1", "t1", [], "code")],
         )
 
         data = stage.to_dict()
@@ -117,11 +107,7 @@ class TestDAGTask:
 
     def test_create_task(self):
         """Test creating a DAG task."""
-        task = DAGTask(
-            task_id="task-001",
-            name="Test Task",
-            description="A test task"
-        )
+        task = DAGTask(task_id="task-001", name="Test Task", description="A test task")
 
         assert task.task_id == "task-001"
         assert task.status == TaskStatus.PENDING
@@ -135,7 +121,7 @@ class TestDAGTask:
             stages=[
                 Stage("s1", "Stage 1", "code"),
                 Stage("s2", "Stage 2", "code", dependencies=["s1"]),
-            ]
+            ],
         )
 
         ready = task.get_ready_stages(set())
@@ -152,10 +138,10 @@ class TestDAGTask:
                 Stage("s1", "Stage 1", "code", status=StageStatus.COMPLETED),
                 Stage("s2", "Stage 2", "code", status=StageStatus.COMPLETED),
                 Stage("s3", "Stage 3", "code", status=StageStatus.PENDING),
-            ]
+            ],
         )
 
-        assert task.get_progress() == pytest.approx(2/3)
+        assert task.get_progress() == pytest.approx(2 / 3)
 
 
 class TestDAGBuilder:
@@ -169,7 +155,7 @@ class TestDAGBuilder:
                 stage_id="map-1",
                 code_template="result = process(item)",
                 data=[1, 2, 3, 4, 5],
-                partition_count=2
+                partition_count=2,
             )
             .build()
         )
@@ -186,12 +172,10 @@ class TestDAGBuilder:
                 stage_id="map",
                 code_template="result = map(item)",
                 data=[1, 2, 3, 4],
-                partition_count=2
+                partition_count=2,
             )
             .add_reduce_stage(
-                stage_id="reduce",
-                code_template="result = reduce(items)",
-                dependencies=["map"]
+                stage_id="reduce", code_template="result = reduce(items)", dependencies=["map"]
             )
             .build()
         )
@@ -227,11 +211,7 @@ class TestDAGExecutionEngine:
     def test_submit_task(self, engine):
         """Test submitting a task."""
         task = DAGTask(
-            task_id="task-001",
-            name="Test Task",
-            stages=[
-                Stage("s1", "Stage 1", "code")
-            ]
+            task_id="task-001", name="Test Task", stages=[Stage("s1", "Stage 1", "code")]
         )
 
         task_id = engine.submit_task(task)
@@ -241,10 +221,7 @@ class TestDAGExecutionEngine:
 
     def test_get_task_status(self, engine):
         """Test getting task status."""
-        task = DAGTask(
-            task_id="task-001",
-            name="Test Task"
-        )
+        task = DAGTask(task_id="task-001", name="Test Task")
         engine.submit_task(task)
 
         status = engine.get_task_status("task-001")
@@ -261,10 +238,7 @@ class TestDAGExecutionEngine:
     def test_get_task_result(self, engine):
         """Test getting task result."""
         task = DAGTask(
-            task_id="task-001",
-            name="Test Task",
-            status=TaskStatus.COMPLETED,
-            result={"total": 100}
+            task_id="task-001", name="Test Task", status=TaskStatus.COMPLETED, result={"total": 100}
         )
         engine.tasks["task-001"] = task
 
@@ -274,11 +248,7 @@ class TestDAGExecutionEngine:
 
     def test_get_task_result_not_completed(self, engine):
         """Test getting result for incomplete task."""
-        task = DAGTask(
-            task_id="task-001",
-            name="Test Task",
-            status=TaskStatus.RUNNING
-        )
+        task = DAGTask(task_id="task-001", name="Test Task", status=TaskStatus.RUNNING)
         engine.tasks["task-001"] = task
 
         result = engine.get_task_result("task-001")
@@ -286,11 +256,7 @@ class TestDAGExecutionEngine:
 
     def test_cancel_task(self, engine):
         """Test canceling a task."""
-        task = DAGTask(
-            task_id="task-001",
-            name="Test Task",
-            status=TaskStatus.RUNNING
-        )
+        task = DAGTask(task_id="task-001", name="Test Task", status=TaskStatus.RUNNING)
         engine.tasks["task-001"] = task
 
         success = engine.cancel_task("task-001")
@@ -317,10 +283,7 @@ class TestDAGExecutionEngine:
         task = (
             DAGBuilder("task-001", "Test Task")
             .add_map_stage(
-                stage_id="map",
-                code_template="result = item * 2",
-                data=[1, 2, 3],
-                partition_count=1
+                stage_id="map", code_template="result = item * 2", data=[1, 2, 3], partition_count=1
             )
             .build()
         )

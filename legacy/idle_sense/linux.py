@@ -15,6 +15,7 @@ from typing import Optional
 # psutil 作为可选依赖，用于获取CPU/内存使用率
 try:
     import psutil
+
     PSUTIL_AVAILABLE = True
 except ImportError:
     PSUTIL_AVAILABLE = False
@@ -22,6 +23,7 @@ except ImportError:
 # X11 相关依赖（可选）
 try:
     import Xlib.display
+
     XLIB_AVAILABLE = True
 except ImportError:
     XLIB_AVAILABLE = False
@@ -41,12 +43,12 @@ class LinuxIdleDetector:
         idle_threshold_sec: int = 300,
         cpu_threshold: float = 15.0,
         memory_threshold: float = 70.0,
-        display: Optional[str] = None
+        display: Optional[str] = None,
     ):
         self.idle_threshold_sec = idle_threshold_sec
         self.cpu_threshold = cpu_threshold
         self.memory_threshold = memory_threshold
-        self.display = display or os.environ.get('DISPLAY', ':0')
+        self.display = display or os.environ.get("DISPLAY", ":0")
 
         self._display = None
         self._x11_available = False
@@ -69,19 +71,15 @@ class LinuxIdleDetector:
 
         try:
             info = self._display.screen().root.query_screensaver()
-            return info.idle if hasattr(info, 'idle') else None
+            return info.idle if hasattr(info, "idle") else None
         except Exception:
             return None
 
     def _get_xprintidle(self) -> Optional[int]:
         try:
             import subprocess
-            result = subprocess.run(
-                ['xprintidle'],
-                capture_output=True,
-                text=True,
-                timeout=2
-            )
+
+            result = subprocess.run(["xprintidle"], capture_output=True, text=True, timeout=2)
             if result.returncode == 0 and result.stdout.strip():
                 return int(result.stdout.strip())
         except Exception:
@@ -91,18 +89,15 @@ class LinuxIdleDetector:
     def _get_console_idle_time_ms(self) -> int:
         try:
             import subprocess
-            result = subprocess.run(
-                ['who', '-u'],
-                capture_output=True,
-                text=True,
-                timeout=2
-            )
+
+            result = subprocess.run(["who", "-u"], capture_output=True, text=True, timeout=2)
             tty_stats = result.stdout
             if not tty_stats:
                 return 0
 
             import re
-            idle_pattern = r'(\d+):(\d+)'
+
+            idle_pattern = r"(\d+):(\d+)"
             max_idle_seconds = 0
 
             for match in re.finditer(idle_pattern, tty_stats):
@@ -128,11 +123,12 @@ class LinuxIdleDetector:
     def is_screen_locked(self) -> bool:
         try:
             import subprocess
+
             result = subprocess.run(
-                ['loginctl', 'list-sessions', '--no-legend'],
+                ["loginctl", "list-sessions", "--no-legend"],
                 capture_output=True,
                 text=True,
-                timeout=2
+                timeout=2,
             )
             if result.returncode == 0 and result.stdout:
                 for line in result.stdout.splitlines():
@@ -140,12 +136,12 @@ class LinuxIdleDetector:
                     if session_id:
                         try:
                             session_result = subprocess.run(
-                                ['loginctl', 'show-session', session_id, '--property=LockedHint'],
+                                ["loginctl", "show-session", session_id, "--property=LockedHint"],
                                 capture_output=True,
                                 text=True,
-                                timeout=1
+                                timeout=1,
                             )
-                            if session_result.returncode == 0 and 'yes' in session_result.stdout:
+                            if session_result.returncode == 0 and "yes" in session_result.stdout:
                                 return True
                         except Exception:
                             pass
@@ -154,21 +150,19 @@ class LinuxIdleDetector:
 
         try:
             import subprocess
+
             result = subprocess.run(
-                ['gnome-screensaver-command', '-q'],
-                capture_output=True,
-                text=True,
-                timeout=2
+                ["gnome-screensaver-command", "-q"], capture_output=True, text=True, timeout=2
             )
-            if result.returncode == 0 and 'is active' in result.stdout:
+            if result.returncode == 0 and "is active" in result.stdout:
                 return True
         except Exception:
             pass
 
         try:
             lock_files = [
-                '/tmp/.X0-lock',
-                '/var/run/screensaver',
+                "/tmp/.X0-lock",
+                "/var/run/screensaver",
             ]
             for lock_file in lock_files:
                 if os.path.exists(lock_file):
@@ -188,7 +182,7 @@ class LinuxIdleDetector:
 
     def _get_cpu_memory_from_proc(self) -> tuple[float, float]:
         try:
-            with open('/proc/stat') as f:
+            with open("/proc/stat") as f:
                 line = f.readline()
                 parts = line.split()[1:8]
                 cpu_times = [int(x) for x in parts]
@@ -218,16 +212,16 @@ class LinuxIdleDetector:
 
     def _get_memory_usage_from_proc(self) -> float:
         try:
-            with open('/proc/meminfo') as f:
+            with open("/proc/meminfo") as f:
                 meminfo = {}
                 for line in f:
                     parts = line.split()
-                    key = parts[0].rstrip(':')
+                    key = parts[0].rstrip(":")
                     value = int(parts[1])
                     meminfo[key] = value
 
-            total = meminfo.get('MemTotal', 1)
-            available = meminfo.get('MemAvailable', meminfo.get('MemFree', 0))
+            total = meminfo.get("MemTotal", 1)
+            available = meminfo.get("MemAvailable", meminfo.get("MemFree", 0))
             used = total - available
 
             return 100.0 * used / total
@@ -254,9 +248,9 @@ class LinuxIdleDetector:
         screen_locked = self.is_screen_locked()
 
         is_idle = (
-            idle_time_ms / 1000.0 >= self.idle_threshold_sec or
-            screen_locked or
-            (cpu_usage < self.cpu_threshold and memory_usage < self.memory_threshold)
+            idle_time_ms / 1000.0 >= self.idle_threshold_sec
+            or screen_locked
+            or (cpu_usage < self.cpu_threshold and memory_usage < self.memory_threshold)
         )
 
         return {
@@ -270,28 +264,28 @@ class LinuxIdleDetector:
             "thresholds": {
                 "idle_sec": self.idle_threshold_sec,
                 "cpu_percent": self.cpu_threshold,
-                "memory_percent": self.memory_threshold
-            }
+                "memory_percent": self.memory_threshold,
+            },
         }
 
 
-def is_idle(idle_threshold_sec: int = 300,
-            cpu_threshold: float = 15.0,
-            memory_threshold: float = 70.0) -> bool:
+def is_idle(
+    idle_threshold_sec: int = 300, cpu_threshold: float = 15.0, memory_threshold: float = 70.0
+) -> bool:
     detector = LinuxIdleDetector(
         idle_threshold_sec=idle_threshold_sec,
         cpu_threshold=cpu_threshold,
-        memory_threshold=memory_threshold
+        memory_threshold=memory_threshold,
     )
     return detector.is_idle()
 
 
-def get_system_status(idle_threshold_sec: int = 300,
-                      cpu_threshold: float = 15.0,
-                      memory_threshold: float = 70.0) -> dict:
+def get_system_status(
+    idle_threshold_sec: int = 300, cpu_threshold: float = 15.0, memory_threshold: float = 70.0
+) -> dict:
     detector = LinuxIdleDetector(
         idle_threshold_sec=idle_threshold_sec,
         cpu_threshold=cpu_threshold,
-        memory_threshold=memory_threshold
+        memory_threshold=memory_threshold,
     )
     return detector.get_system_status()

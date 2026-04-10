@@ -4,6 +4,7 @@ Priority Queue Implementation for Task Scheduling.
 This module provides multiple priority queue implementations
 for different scheduling scenarios.
 """
+
 import asyncio
 import heapq
 import logging
@@ -19,6 +20,7 @@ T = TypeVar("T")
 @dataclass(order=True)
 class PrioritizedItem(Generic[T]):
     """Item with priority for heap-based priority queue."""
+
     priority: float
     sequence: int = field(compare=True)
     item: T = field(compare=False)
@@ -45,10 +47,7 @@ class PriorityQueue(Generic[T]):
         self._not_empty = asyncio.Condition()
 
     async def put(
-        self,
-        item: T,
-        priority: float = 0.0,
-        metadata: Optional[dict[str, Any]] = None
+        self, item: T, priority: float = 0.0, metadata: Optional[dict[str, Any]] = None
     ) -> bool:
         """Add an item to the queue."""
         async with self._lock:
@@ -56,10 +55,7 @@ class PriorityQueue(Generic[T]):
                 return False
 
             prioritized = PrioritizedItem(
-                priority=priority,
-                sequence=self._sequence,
-                item=item,
-                metadata=metadata or {}
+                priority=priority, sequence=self._sequence, item=item, metadata=metadata or {}
             )
 
             self._sequence += 1
@@ -71,20 +67,14 @@ class PriorityQueue(Generic[T]):
             return True
 
     def put_nowait(
-        self,
-        item: T,
-        priority: float = 0.0,
-        metadata: Optional[dict[str, Any]] = None
+        self, item: T, priority: float = 0.0, metadata: Optional[dict[str, Any]] = None
     ) -> bool:
         """Add an item without waiting."""
         if self._maxsize > 0 and len(self._queue) >= self._maxsize:
             return False
 
         prioritized = PrioritizedItem(
-            priority=priority,
-            sequence=self._sequence,
-            item=item,
-            metadata=metadata or {}
+            priority=priority, sequence=self._sequence, item=item, metadata=metadata or {}
         )
 
         self._sequence += 1
@@ -97,10 +87,7 @@ class PriorityQueue(Generic[T]):
         async with self._not_empty:
             if not self._queue:
                 try:
-                    await asyncio.wait_for(
-                        self._not_empty.wait(),
-                        timeout=timeout
-                    )
+                    await asyncio.wait_for(self._not_empty.wait(), timeout=timeout)
                 except asyncio.TimeoutError:
                     return None
 
@@ -148,10 +135,7 @@ class BoundedPriorityQueue(Generic[T]):
     """
 
     def __init__(
-        self,
-        maxsize: int = 1000,
-        aging_factor: float = 0.1,
-        aging_interval: float = 60.0
+        self, maxsize: int = 1000, aging_factor: float = 0.1, aging_interval: float = 60.0
     ):
         self._queue: list[PrioritizedItem[T]] = []
         self._sequence = 0
@@ -168,10 +152,7 @@ class BoundedPriorityQueue(Generic[T]):
         }
 
     def put(
-        self,
-        item: T,
-        priority: float = 0.0,
-        metadata: Optional[dict[str, Any]] = None
+        self, item: T, priority: float = 0.0, metadata: Optional[dict[str, Any]] = None
     ) -> bool:
         """Add an item to the queue."""
         self._apply_aging()
@@ -184,10 +165,7 @@ class BoundedPriorityQueue(Generic[T]):
             priority=priority,
             sequence=self._sequence,
             item=item,
-            metadata={
-                **(metadata or {}),
-                "enqueued_at": time.time()
-            }
+            metadata={**(metadata or {}), "enqueued_at": time.time()},
         )
 
         self._sequence += 1
@@ -244,27 +222,16 @@ class MultiLevelPriorityQueue(Generic[T]):
 
     def __init__(self, levels: int = 3):
         self._levels = levels
-        self._queues: list[list[PrioritizedItem[T]]] = [
-            [] for _ in range(levels)
-        ]
+        self._queues: list[list[PrioritizedItem[T]]] = [[] for _ in range(levels)]
         self._sequence = 0
         self._current_level = 0
 
-    def put(
-        self,
-        item: T,
-        priority: float = 0.0,
-        level: int = 0
-    ) -> bool:
+    def put(self, item: T, priority: float = 0.0, level: int = 0) -> bool:
         """Add an item to a specific priority level."""
         if level < 0 or level >= self._levels:
             return False
 
-        prioritized = PrioritizedItem(
-            priority=priority,
-            sequence=self._sequence,
-            item=item
-        )
+        prioritized = PrioritizedItem(priority=priority, sequence=self._sequence, item=item)
 
         self._sequence += 1
         heapq.heappush(self._queues[level], prioritized)

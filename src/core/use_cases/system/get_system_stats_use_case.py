@@ -26,12 +26,14 @@ from src.core.interfaces.services import ISchedulerService
 @dataclass
 class GetSystemStatsRequest:
     """获取系统统计请求"""
+
     include_details: bool = False
 
 
 @dataclass
 class GetSystemStatsResponse:
     """获取系统统计响应"""
+
     success: bool
     stats: dict[str, Any] = None
     message: str = ""
@@ -45,7 +47,7 @@ class GetSystemStatsUseCase:
         user_repository: IUserRepository,
         task_repository: ITaskRepository,
         node_repository: INodeRepository,
-        scheduler_service: ISchedulerService
+        scheduler_service: ISchedulerService,
     ):
         """
         初始化获取系统统计用例
@@ -131,20 +133,17 @@ class GetSystemStatsUseCase:
 
             # 详细信息
             if request.include_details:
-                stats["users_list"] = [{"user_id": u.user_id, "username": u.username} for u in users]
-                stats["nodes_list"] = [{"node_id": n.node_id, "status": n.status.value} for n in nodes]
+                stats["users_list"] = [
+                    {"user_id": u.user_id, "username": u.username} for u in users
+                ]
+                stats["nodes_list"] = [
+                    {"node_id": n.node_id, "status": n.status.value} for n in nodes
+                ]
 
-            return GetSystemStatsResponse(
-                success=True,
-                stats=stats,
-                message="获取系统统计成功"
-            )
+            return GetSystemStatsResponse(success=True, stats=stats, message="获取系统统计成功")
 
         except Exception as e:
-            return GetSystemStatsResponse(
-                success=False,
-                message=f"获取系统统计失败: {str(e)}"
-            )
+            return GetSystemStatsResponse(success=False, message=f"获取系统统计失败: {str(e)}")
 
 
 __all__ = ["GetSystemStatsUseCase", "GetSystemStatsRequest", "GetSystemStatsResponse"]

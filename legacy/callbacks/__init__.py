@@ -15,6 +15,7 @@ Usage:
     def handle_failure(error, task_id):
         print(f"Task {task_id} failed: {error}")
 """
+
 import asyncio
 import logging
 import time
@@ -27,6 +28,7 @@ logger = logging.getLogger(__name__)
 @dataclass
 class CallbackContext:
     """Context passed to callback functions."""
+
     task_id: int
     event_type: str
     result: Any = None
@@ -41,6 +43,7 @@ class CallbackContext:
 @dataclass
 class CallbackConfig:
     """Configuration for a callback."""
+
     callback: Callable
     event_type: str
     async_callback: bool = False
@@ -106,21 +109,12 @@ class TaskCallbackManager:
         """Register a callback for an event type."""
         async_callback = asyncio.iscoroutinefunction(func)
 
-        config = CallbackConfig(
-            callback=func,
-            event_type=event_type,
-            async_callback=async_callback
-        )
+        config = CallbackConfig(callback=func, event_type=event_type, async_callback=async_callback)
 
         self._callbacks[event_type].append(config)
         logger.debug(f"Registered {event_type} callback: {func.__name__}")
 
-    def register_task_callback(
-        self,
-        task_id: int,
-        event_type: str,
-        callback: Callable
-    ) -> None:
+    def register_task_callback(self, task_id: int, event_type: str, callback: Callable) -> None:
         """Register a callback for a specific task."""
         if task_id not in self._task_callbacks:
             self._task_callbacks[task_id] = {}
@@ -130,11 +124,7 @@ class TaskCallbackManager:
 
         self._task_callbacks[task_id][event_type].append(callback)
 
-    def trigger(
-        self,
-        event_type: str,
-        context: CallbackContext
-    ) -> None:
+    def trigger(self, event_type: str, context: CallbackContext) -> None:
         """Trigger callbacks for an event."""
         callbacks = self._callbacks.get(event_type, [])
 
@@ -152,26 +142,16 @@ class TaskCallbackManager:
                 if config.async_callback:
                     loop = asyncio.get_event_loop()
                     if loop.is_running():
-                        asyncio.create_task(
-                            self._run_async_callback(config, context)
-                        )
+                        asyncio.create_task(self._run_async_callback(config, context))
                     else:
-                        loop.run_until_complete(
-                            self._run_async_callback(config, context)
-                        )
+                        loop.run_until_complete(self._run_async_callback(config, context))
                 else:
                     self._run_sync_callback(config, context)
 
             except Exception as e:
-                logger.error(
-                    f"Callback error for {event_type} on task {context.task_id}: {e}"
-                )
+                logger.error(f"Callback error for {event_type} on task {context.task_id}: {e}")
 
-    async def trigger_async(
-        self,
-        event_type: str,
-        context: CallbackContext
-    ) -> None:
+    async def trigger_async(self, event_type: str, context: CallbackContext) -> None:
         """Trigger callbacks asynchronously."""
         callbacks = self._callbacks.get(event_type, [])
 
@@ -192,19 +172,11 @@ class TaskCallbackManager:
                     f"Async callback error for {event_type} on task {context.task_id}: {e}"
                 )
 
-    def _run_sync_callback(
-        self,
-        config: CallbackConfig,
-        context: CallbackContext
-    ) -> None:
+    def _run_sync_callback(self, config: CallbackConfig, context: CallbackContext) -> None:
         """Run a synchronous callback."""
         config.callback(context)
 
-    async def _run_async_callback(
-        self,
-        config: CallbackConfig,
-        context: CallbackContext
-    ) -> None:
+    async def _run_async_callback(self, config: CallbackConfig, context: CallbackContext) -> None:
         """Run an asynchronous callback."""
         await config.callback(context)
 
@@ -216,8 +188,7 @@ class TaskCallbackManager:
         """Get callback statistics."""
         return {
             "global_callbacks": {
-                event: len(callbacks)
-                for event, callbacks in self._callbacks.items()
+                event: len(callbacks) for event, callbacks in self._callbacks.items()
             },
             "task_specific_count": len(self._task_callbacks),
         }

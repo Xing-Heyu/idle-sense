@@ -12,6 +12,7 @@ from typing import Any, Optional
 
 class SecurityLevel(Enum):
     """安全级别"""
+
     LOW = "low"
     MEDIUM = "medium"
     HIGH = "high"
@@ -21,27 +22,76 @@ class SecurityLevel(Enum):
 @dataclass
 class SecurityPolicy:
     """安全策略配置"""
-    allowed_modules: set[str] = field(default_factory=lambda: {
-        'math', 'random', 'statistics', 'time', 'datetime',
-        'collections', 'itertools', 'functools', 'operator',
-        'json', 're', 'string', 'hashlib', 'base64',
-        'decimal', 'fractions', 'numbers', 'copy',
-        'typing', 'dataclasses', 'enum',
-    })
 
-    dangerous_builtins: set[str] = field(default_factory=lambda: {
-        'eval', 'exec', 'compile', 'input', 'open', 'file',
-        '__import__', 'reload', 'globals', 'locals', 'vars',
-        'dir', 'help', 'exit', 'quit', 'license', 'credits',
-        'breakpoint', 'memoryview',
-    })
+    allowed_modules: set[str] = field(
+        default_factory=lambda: {
+            "math",
+            "random",
+            "statistics",
+            "time",
+            "datetime",
+            "collections",
+            "itertools",
+            "functools",
+            "operator",
+            "json",
+            "re",
+            "string",
+            "hashlib",
+            "base64",
+            "decimal",
+            "fractions",
+            "numbers",
+            "copy",
+            "typing",
+            "dataclasses",
+            "enum",
+        }
+    )
 
-    dangerous_attributes: set[str] = field(default_factory=lambda: {
-        '__class__', '__base__', '__bases__', '__subclasses__',
-        '__mro__', '__init__', '__new__', '__del__',
-        '__getattribute__', '__setattr__', '__delattr__',
-        '__dict__', '__globals__', '__code__', '__builtins__',
-    })
+    dangerous_builtins: set[str] = field(
+        default_factory=lambda: {
+            "eval",
+            "exec",
+            "compile",
+            "input",
+            "open",
+            "file",
+            "__import__",
+            "reload",
+            "globals",
+            "locals",
+            "vars",
+            "dir",
+            "help",
+            "exit",
+            "quit",
+            "license",
+            "credits",
+            "breakpoint",
+            "memoryview",
+        }
+    )
+
+    dangerous_attributes: set[str] = field(
+        default_factory=lambda: {
+            "__class__",
+            "__base__",
+            "__bases__",
+            "__subclasses__",
+            "__mro__",
+            "__init__",
+            "__new__",
+            "__del__",
+            "__getattribute__",
+            "__setattr__",
+            "__delattr__",
+            "__dict__",
+            "__globals__",
+            "__code__",
+            "__builtins__",
+        }
+    )
 
     max_code_length: int = 100000
     max_loop_iterations: int = 10000000
@@ -65,6 +115,7 @@ class SecurityPolicy:
 @dataclass
 class ValidationResult:
     """验证结果"""
+
     is_safe: bool
     errors: list[str] = field(default_factory=list)
     warnings: list[str] = field(default_factory=list)
@@ -93,9 +144,7 @@ class CodeValidator:
         if len(code) > self.policy.max_code_length:
             errors.append(f"代码长度超过限制: {len(code)} > {self.policy.max_code_length}")
             return ValidationResult(
-                is_safe=False,
-                errors=errors,
-                security_level=SecurityLevel.CRITICAL
+                is_safe=False, errors=errors, security_level=SecurityLevel.CRITICAL
             )
 
         try:
@@ -103,20 +152,18 @@ class CodeValidator:
         except SyntaxError as e:
             errors.append(f"语法错误: {e}")
             return ValidationResult(
-                is_safe=False,
-                errors=errors,
-                security_level=SecurityLevel.CRITICAL
+                is_safe=False, errors=errors, security_level=SecurityLevel.CRITICAL
             )
 
         for node in ast.walk(tree):
             if isinstance(node, ast.Import):
                 for alias in node.names:
-                    module_name = alias.name.split('.')[0]
+                    module_name = alias.name.split(".")[0]
                     if module_name not in self.policy.allowed_modules:
                         errors.append(f"禁止导入模块: {module_name}")
 
             elif isinstance(node, ast.ImportFrom):
-                module_name = node.module.split('.')[0] if node.module else ''
+                module_name = node.module.split(".")[0] if node.module else ""
                 if module_name not in self.policy.allowed_modules:
                     errors.append(f"禁止从模块导入: {module_name}")
 
@@ -130,7 +177,7 @@ class CodeValidator:
                 attr_name = node.attr
                 if attr_name in self.policy.dangerous_attributes:
                     errors.append(f"禁止访问危险属性: {attr_name}")
-                elif attr_name.startswith('_') and not attr_name.startswith('__'):
+                elif attr_name.startswith("_") and not attr_name.startswith("__"):
                     warnings.append(f"访问私有属性: {attr_name}")
 
         security_level = SecurityLevel.LOW
@@ -143,17 +190,17 @@ class CodeValidator:
             is_safe=len(errors) == 0,
             errors=errors,
             warnings=warnings,
-            security_level=security_level
+            security_level=security_level,
         )
 
     def check_code_safety(self, code: str) -> dict[str, Any]:
         """兼容旧接口的安全检查"""
         result = self.validate(code)
         return {
-            'safe': result.is_safe,
-            'error': '; '.join(result.errors) if result.errors else None,
-            'warnings': result.warnings,
-            'security_level': result.security_level.value,
+            "safe": result.is_safe,
+            "error": "; ".join(result.errors) if result.errors else None,
+            "warnings": result.warnings,
+            "security_level": result.security_level.value,
         }
 
 

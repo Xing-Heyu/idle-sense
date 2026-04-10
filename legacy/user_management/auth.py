@@ -9,6 +9,7 @@ from .models import User, UserQuota
 @dataclass
 class SessionInfo:
     """会话信息"""
+
     user_id: str
     created_at: float
     expires_at: float
@@ -17,6 +18,7 @@ class SessionInfo:
 
 class AuthManager:
     """认证管理器 - 支持密码认证和权限验证"""
+
     SESSION_TIMEOUT = 3600  # 会话超时时间（秒）
 
     def __init__(self):
@@ -25,9 +27,14 @@ class AuthManager:
         self.user_quotas: dict[str, UserQuota] = {}
         self.sessions: dict[str, SessionInfo] = {}
 
-    def register_user(self, username: str, email: str, password: str,
-                      agree_folder_usage: bool = False,
-                      quota_config: dict | None = None) -> dict[str, Any]:
+    def register_user(
+        self,
+        username: str,
+        email: str,
+        password: str,
+        agree_folder_usage: bool = False,
+        quota_config: dict | None = None,
+    ) -> dict[str, Any]:
         """注册新用户（需要密码）"""
         if username in self.users_by_username:
             return {"success": False, "error": "用户名已存在"}
@@ -43,10 +50,10 @@ class AuthManager:
         if quota_config:
             quota = UserQuota(
                 user.user_id,
-                daily_tasks_limit=quota_config.get('daily_tasks_limit'),
-                concurrent_tasks_limit=quota_config.get('concurrent_tasks_limit'),
-                cpu_quota=quota_config.get('cpu_quota'),
-                memory_quota=quota_config.get('memory_quota')
+                daily_tasks_limit=quota_config.get("daily_tasks_limit"),
+                concurrent_tasks_limit=quota_config.get("concurrent_tasks_limit"),
+                cpu_quota=quota_config.get("cpu_quota"),
+                memory_quota=quota_config.get("memory_quota"),
             )
         else:
             quota = UserQuota(user.user_id)
@@ -63,7 +70,7 @@ class AuthManager:
             "user_id": user.user_id,
             "user": user.to_dict(),
             "quota": quota.to_dict(),
-            "folder_agreement": agree_folder_usage
+            "folder_agreement": agree_folder_usage,
         }
 
     def login(self, username: str, password: str) -> dict[str, Any]:
@@ -91,7 +98,7 @@ class AuthManager:
             "session_id": session_id,
             "user_id": user.user_id,
             "user": user.to_dict(),
-            "quota": quota.to_dict() if quota else None
+            "quota": quota.to_dict() if quota else None,
         }
 
     def logout(self, session_id: str) -> bool:
@@ -131,7 +138,7 @@ class AuthManager:
             user_id=user_id,
             created_at=now,
             expires_at=now + self.SESSION_TIMEOUT,
-            ip_address=ip_address
+            ip_address=ip_address,
         )
         return session_id
 
@@ -176,7 +183,9 @@ class AuthManager:
             del self.sessions[sid]
         return len(expired)
 
-    def get_user_by_session(self, session_id: str, ip_address: Optional[str] = None) -> Optional[User]:
+    def get_user_by_session(
+        self, session_id: str, ip_address: Optional[str] = None
+    ) -> Optional[User]:
         """通过会话ID获取用户"""
         user_id = self.validate_session(session_id, ip_address)
         if user_id:
@@ -198,7 +207,9 @@ class AuthManager:
         user.set_password(new_password)
         return {"success": True, "message": "密码修改成功"}
 
-    def verify_permission(self, session_id: str, resource_user_id: str, ip_address: Optional[str] = None) -> dict[str, Any]:
+    def verify_permission(
+        self, session_id: str, resource_user_id: str, ip_address: Optional[str] = None
+    ) -> dict[str, Any]:
         """验证用户是否有权限操作指定资源"""
         user_id = self.validate_session(session_id, ip_address)
         if not user_id:

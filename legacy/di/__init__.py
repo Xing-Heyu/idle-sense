@@ -16,6 +16,7 @@ Usage:
     # Resolve dependencies
     db = container.resolve(Database)
 """
+
 import logging
 from dataclasses import dataclass, field
 from enum import Enum
@@ -35,6 +36,7 @@ T = TypeVar("T")
 
 class Scope(str, Enum):
     """Dependency scope enumeration."""
+
     SINGLETON = "singleton"
     TRANSIENT = "transient"
     SCOPED = "scoped"
@@ -43,6 +45,7 @@ class Scope(str, Enum):
 @dataclass
 class DependencyDescriptor:
     """Descriptor for a registered dependency."""
+
     interface: type
     implementation: type
     scope: Scope = Scope.TRANSIENT
@@ -72,56 +75,52 @@ class Container:
         self,
         interface: type[T],
         implementation: Optional[type[T]] = None,
-        factory: Optional[Callable[[], T]] = None
+        factory: Optional[Callable[[], T]] = None,
     ) -> None:
         """Register a singleton dependency."""
         self._register(
             interface=interface,
             implementation=implementation or interface,
             scope=Scope.SINGLETON,
-            factory=factory
+            factory=factory,
         )
 
     def register_transient(
         self,
         interface: type[T],
         implementation: Optional[type[T]] = None,
-        factory: Optional[Callable[[], T]] = None
+        factory: Optional[Callable[[], T]] = None,
     ) -> None:
         """Register a transient dependency."""
         self._register(
             interface=interface,
             implementation=implementation or interface,
             scope=Scope.TRANSIENT,
-            factory=factory
+            factory=factory,
         )
 
     def register_scoped(
         self,
         interface: type[T],
         implementation: Optional[type[T]] = None,
-        factory: Optional[Callable[[], T]] = None
+        factory: Optional[Callable[[], T]] = None,
     ) -> None:
         """Register a scoped dependency."""
         self._register(
             interface=interface,
             implementation=implementation or interface,
             scope=Scope.SCOPED,
-            factory=factory
+            factory=factory,
         )
 
-    def register_instance(
-        self,
-        interface: type[T],
-        instance: T
-    ) -> None:
+    def register_instance(self, interface: type[T], instance: T) -> None:
         """Register an existing instance as a singleton."""
         self._singletons[interface] = instance
         self._registrations[interface] = DependencyDescriptor(
             interface=interface,
             implementation=type(instance),
             scope=Scope.SINGLETON,
-            instance=instance
+            instance=instance,
         )
 
     def _register(
@@ -129,7 +128,7 @@ class Container:
         interface: type,
         implementation: type,
         scope: Scope,
-        factory: Optional[Callable] = None
+        factory: Optional[Callable] = None,
     ) -> None:
         """Internal registration method."""
         dependencies = self._analyze_dependencies(implementation)
@@ -139,7 +138,7 @@ class Container:
             implementation=implementation,
             scope=scope,
             factory=factory,
-            dependencies=dependencies
+            dependencies=dependencies,
         )
 
         logger.debug(
@@ -190,9 +189,7 @@ class Container:
             return self._scoped_instances[interface]
 
         if interface in self._resolving:
-            raise RuntimeError(
-                f"Circular dependency detected: {interface.__name__}"
-            )
+            raise RuntimeError(f"Circular dependency detected: {interface.__name__}")
 
         self._resolving.add(interface)
 
@@ -249,7 +246,9 @@ class Injectable:
         super().__init_subclass__(**kwargs)
 
 
-def injectable(cls: type[T] = None, *, scope: Scope = Scope.TRANSIENT) -> Union[type[T], Callable[[type[T]], type[T]]]:
+def injectable(
+    cls: type[T] = None, *, scope: Scope = Scope.TRANSIENT
+) -> Union[type[T], Callable[[type[T]], type[T]]]:
     """
     Decorator to mark a class as injectable.
 
@@ -262,6 +261,7 @@ def injectable(cls: type[T] = None, *, scope: Scope = Scope.TRANSIENT) -> Union[
         class Database:
             pass
     """
+
     def decorator(c: type[T]) -> type[T]:
         c._injectable_scope = scope
         return c

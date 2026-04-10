@@ -82,7 +82,7 @@ class Task(Generic[T]):
             "execution_time": round(self.execution_time, 3),
             "retries": self.retries,
             "error": self.error,
-            "tags": self.tags
+            "tags": self.tags,
         }
 
 
@@ -108,7 +108,7 @@ class QueueStats:
             "pending_size": self.pending_size,
             "running_size": self.running_size,
             "avg_wait_time_ms": round(self.avg_wait_time_ms, 3),
-            "avg_execution_time_ms": round(self.avg_execution_time_ms, 3)
+            "avg_execution_time_ms": round(self.avg_execution_time_ms, 3),
         }
 
 
@@ -209,7 +209,7 @@ class RedisQueueBackend(TaskQueueBackend):
         host: str = "localhost",
         port: int = 6379,
         db: int = 0,
-        password: str | None = None
+        password: str | None = None,
     ):
         self.queue_name = queue_name
         self.host = host
@@ -224,12 +224,13 @@ class RedisQueueBackend(TaskQueueBackend):
         if self._client is None:
             try:
                 import redis
+
                 self._client = redis.Redis(
                     host=self.host,
                     port=self.port,
                     db=self.db,
                     password=self.password,
-                    decode_responses=True
+                    decode_responses=True,
                 )
             except ImportError as e:
                 raise ImportError("Redis support requires redis package") from e
@@ -242,18 +243,20 @@ class RedisQueueBackend(TaskQueueBackend):
         import json as json_module
 
         task.status = TaskStatus.QUEUED
-        task_data = json_module.dumps({
-            "id": task.id,
-            "name": task.name,
-            "priority": task.priority,
-            "payload": task.payload,
-            "status": task.status.value,
-            "created_at": task.created_at,
-            "timeout_seconds": task.timeout_seconds,
-            "max_retries": task.max_retries,
-            "metadata": task.metadata,
-            "tags": task.tags
-        })
+        task_data = json_module.dumps(
+            {
+                "id": task.id,
+                "name": task.name,
+                "priority": task.priority,
+                "payload": task.payload,
+                "status": task.status.value,
+                "created_at": task.created_at,
+                "timeout_seconds": task.timeout_seconds,
+                "max_retries": task.max_retries,
+                "metadata": task.metadata,
+                "tags": task.tags,
+            }
+        )
 
         self.client.hset(self._task_key(task.id), "data", task_data)
         self.client.zadd(self.queue_name, {task.id: -task.priority})
@@ -286,14 +289,14 @@ class RedisQueueBackend(TaskQueueBackend):
             timeout_seconds=data.get("timeout_seconds", 300),
             max_retries=data.get("max_retries", 3),
             metadata=data.get("metadata", {}),
-            tags=data.get("tags", [])
+            tags=data.get("tags", []),
         )
 
-        self.client.hset(self._task_key(task.id), "data", json_module.dumps({
-            **data,
-            "status": task.status.value,
-            "started_at": task.started_at
-        }))
+        self.client.hset(
+            self._task_key(task.id),
+            "data",
+            json_module.dumps({**data, "status": task.status.value, "started_at": task.started_at}),
+        )
 
         return task
 
@@ -344,7 +347,7 @@ class RedisQueueBackend(TaskQueueBackend):
             max_retries=data.get("max_retries", 3),
             timeout_seconds=data.get("timeout_seconds", 300),
             metadata=data.get("metadata", {}),
-            tags=data.get("tags", [])
+            tags=data.get("tags", []),
         )
 
     def update_task(self, task: Task) -> bool:
@@ -353,23 +356,25 @@ class RedisQueueBackend(TaskQueueBackend):
         if not self.client.exists(self._task_key(task.id)):
             return False
 
-        task_data = json_module.dumps({
-            "id": task.id,
-            "name": task.name,
-            "priority": task.priority,
-            "payload": task.payload,
-            "status": task.status.value,
-            "created_at": task.created_at,
-            "started_at": task.started_at,
-            "completed_at": task.completed_at,
-            "result": task.result,
-            "error": task.error,
-            "retries": task.retries,
-            "max_retries": task.max_retries,
-            "timeout_seconds": task.timeout_seconds,
-            "metadata": task.metadata,
-            "tags": task.tags
-        })
+        task_data = json_module.dumps(
+            {
+                "id": task.id,
+                "name": task.name,
+                "priority": task.priority,
+                "payload": task.payload,
+                "status": task.status.value,
+                "created_at": task.created_at,
+                "started_at": task.started_at,
+                "completed_at": task.completed_at,
+                "result": task.result,
+                "error": task.error,
+                "retries": task.retries,
+                "max_retries": task.max_retries,
+                "timeout_seconds": task.timeout_seconds,
+                "metadata": task.metadata,
+                "tags": task.tags,
+            }
+        )
 
         self.client.hset(self._task_key(task.id), "data", task_data)
         return True
@@ -380,7 +385,7 @@ class TaskQueue(Generic[T]):
         self,
         backend: TaskQueueBackend | None = None,
         max_workers: int = 4,
-        default_timeout: float = 300.0
+        default_timeout: float = 300.0,
     ):
         self.backend = backend or MemoryQueueBackend()
         self.max_workers = max_workers
@@ -409,7 +414,7 @@ class TaskQueue(Generic[T]):
         timeout: float | None = None,
         max_retries: int = 3,
         metadata: dict | None = None,
-        tags: list[str] | None = None
+        tags: list[str] | None = None,
     ) -> Task:
         task = Task(
             name=name,
@@ -418,7 +423,7 @@ class TaskQueue(Generic[T]):
             timeout_seconds=timeout or self.default_timeout,
             max_retries=max_retries,
             metadata=metadata or {},
-            tags=tags or []
+            tags=tags or [],
         )
 
         if self.backend.enqueue(task):
@@ -454,7 +459,9 @@ class TaskQueue(Generic[T]):
             self._execution_times.append(task.execution_time)
             if len(self._execution_times) > 100:
                 self._execution_times = self._execution_times[-100:]
-            self._stats.avg_execution_time_ms = sum(self._execution_times) / len(self._execution_times) * 1000
+            self._stats.avg_execution_time_ms = (
+                sum(self._execution_times) / len(self._execution_times) * 1000
+            )
 
         self.backend.update_task(task)
 
@@ -492,9 +499,7 @@ class TaskQueue(Generic[T]):
         with self._lock:
             self._stats.pending_size = self.backend.size()
             self._stats.running_size = len(self._running_tasks)
-            return QueueStats(
-                **dict(self._stats.__dict__.items())
-            )
+            return QueueStats(**dict(self._stats.__dict__.items()))
 
     def start_workers(self):
         if self._running:

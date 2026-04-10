@@ -12,7 +12,20 @@ setup(
     version="2.0.0",
     description="Idle-Sense Distributed Computing Platform",
     author="Idle-Sense Team",
-    packages=find_packages(include=["src", "src.*", "config", "config.*", "legacy", "legacy.*", "serializer", "serializer.*", "security_audit", "security_audit.*"]),
+    packages=find_packages(
+        include=[
+            "src",
+            "src.*",
+            "config",
+            "config.*",
+            "legacy",
+            "legacy.*",
+            "serializer",
+            "serializer.*",
+            "security_audit",
+            "security_audit.*",
+        ]
+    ),
     python_requires=">=3.9",
     install_requires=requirements,
 )

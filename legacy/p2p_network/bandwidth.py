@@ -27,6 +27,7 @@ class TrafficPriority(IntEnum):
 @dataclass
 class BandwidthConfig:
     """Configuration for bandwidth limiting."""
+
     max_upload_bytes_per_sec: int = 1024 * 1024
     max_download_bytes_per_sec: int = 10 * 1024 * 1024
     max_connections: int = 100
@@ -39,6 +40,7 @@ class BandwidthConfig:
 @dataclass
 class TokenBucket:
     """Token bucket for rate limiting."""
+
     capacity: int
     refill_rate: float
     tokens: float = 0.0
@@ -48,10 +50,7 @@ class TokenBucket:
         """Refill tokens based on elapsed time."""
         now = time.time()
         elapsed = now - self.last_refill
-        self.tokens = min(
-            self.capacity,
-            self.tokens + elapsed * self.refill_rate
-        )
+        self.tokens = min(self.capacity, self.tokens + elapsed * self.refill_rate)
         self.last_refill = now
 
     def consume(self, amount: int) -> bool:
@@ -74,6 +73,7 @@ class TokenBucket:
 @dataclass
 class ConnectionStats:
     """Statistics for a connection."""
+
     connection_id: str
     bytes_sent: int = 0
     bytes_received: int = 0
@@ -110,12 +110,10 @@ class BandwidthManager:
         self.config = config or BandwidthConfig()
 
         self.upload_bucket = TokenBucket(
-            capacity=self.config.max_bucket_size,
-            refill_rate=self.config.token_refill_rate
+            capacity=self.config.max_bucket_size, refill_rate=self.config.token_refill_rate
         )
         self.download_bucket = TokenBucket(
-            capacity=self.config.max_bucket_size,
-            refill_rate=self.config.token_refill_rate
+            capacity=self.config.max_bucket_size, refill_rate=self.config.token_refill_rate
         )
 
         self._connections: dict[str, ConnectionStats] = {}
@@ -137,8 +135,7 @@ class BandwidthManager:
 
         self._connections[connection_id] = ConnectionStats(connection_id=connection_id)
         self._connection_buckets[connection_id] = TokenBucket(
-            capacity=self.config.burst_size,
-            refill_rate=self.config.token_refill_rate
+            capacity=self.config.burst_size, refill_rate=self.config.token_refill_rate
         )
         self._stats["connections_created"] += 1
         return True
@@ -154,14 +151,22 @@ class BandwidthManager:
             self._stats["throttled_count"] += 1
             return False
 
-        return not (connection_id and connection_id in self._connection_buckets and not self._connection_buckets[connection_id].consume(size))
+        return not (
+            connection_id
+            and connection_id in self._connection_buckets
+            and not self._connection_buckets[connection_id].consume(size)
+        )
 
     def can_receive(self, size: int, connection_id: str = None) -> bool:
         """Check if we can receive data."""
         if not self.download_bucket.consume(size):
             return False
 
-        return not (connection_id and connection_id in self._connection_buckets and not self._connection_buckets[connection_id].consume(size))
+        return not (
+            connection_id
+            and connection_id in self._connection_buckets
+            and not self._connection_buckets[connection_id].consume(size)
+        )
 
     def record_send(self, size: int, connection_id: str = None):
         """Record sent data."""
@@ -213,7 +218,8 @@ class BandwidthManager:
         """Remove idle connections."""
         now = time.time()
         idle_connections = [
-            conn_id for conn_id, conn in self._connections.items()
+            conn_id
+            for conn_id, conn in self._connections.items()
             if now - conn.last_activity > max_idle_time
         ]
         for conn_id in idle_connections:

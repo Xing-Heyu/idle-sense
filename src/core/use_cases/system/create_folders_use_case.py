@@ -24,6 +24,7 @@ from typing import Optional
 @dataclass
 class CreateFoldersRequest:
     """创建文件夹请求"""
+
     user_id: str
     username: str
     folder_location: str = "project"
@@ -32,6 +33,7 @@ class CreateFoldersRequest:
 @dataclass
 class CreateFoldersResponse:
     """创建文件夹响应"""
+
     success: bool
     paths: dict = field(default_factory=dict)
     message: str = ""
@@ -43,9 +45,11 @@ class FolderService:
     @staticmethod
     def get_base_path(folder_location: str) -> str:
         """根据用户选择获取基础路径"""
-        project_root = os.path.dirname(os.path.dirname(os.path.dirname(
-            os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-        )))
+        project_root = os.path.dirname(
+            os.path.dirname(
+                os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+            )
+        )
 
         if folder_location == "project":
             return os.path.join(project_root, "node_data")
@@ -63,7 +67,9 @@ class FolderService:
             "user_system_dir": os.path.join(base_path, "user_system (系统专用-请勿修改)", user_id),
             "user_data_dir": os.path.join(base_path, "user_data (您的数据文件-主要工作区)"),
             "temp_data_dir": os.path.join(base_path, "temp_data (临时文件-自动清理)"),
-            "docs_dir": os.path.join(base_path, "user_system (系统专用-请勿修改)", user_id, "docs (说明文档)")
+            "docs_dir": os.path.join(
+                base_path, "user_system (系统专用-请勿修改)", user_id, "docs (说明文档)"
+            ),
         }
 
         for folder_path in folders.values():
@@ -77,7 +83,7 @@ class FolderService:
         system_info = {
             "user_id": user_id,
             "username": username,
-            "purpose": "此文件包含闲置计算加速器系统运行所需的信息，请勿删除"
+            "purpose": "此文件包含闲置计算加速器系统运行所需的信息，请勿删除",
         }
 
         system_file_path = os.path.join(folders["user_system_dir"], "system_info.json")
@@ -86,12 +92,7 @@ class FolderService:
 
         return system_file_path
 
-    def create_user_folders(
-        self,
-        user_id: str,
-        username: str,
-        location: str
-    ) -> dict:
+    def create_user_folders(self, user_id: str, username: str, location: str) -> dict:
         """
         创建用户文件夹
 
@@ -113,7 +114,7 @@ class FolderService:
             "user_data_dir": folders["user_data_dir"],
             "temp_data_dir": folders["temp_data_dir"],
             "docs_dir": folders["docs_dir"],
-            "system_file": system_file
+            "system_file": system_file,
         }
 
 
@@ -141,25 +142,13 @@ class CreateFoldersUseCase:
         """
         try:
             paths = self._folder_service.create_user_folders(
-                user_id=request.user_id,
-                username=request.username,
-                location=request.folder_location
+                user_id=request.user_id, username=request.username, location=request.folder_location
             )
-            return CreateFoldersResponse(
-                success=True,
-                paths=paths,
-                message="文件夹创建成功"
-            )
+            return CreateFoldersResponse(success=True, paths=paths, message="文件夹创建成功")
         except PermissionError:
-            return CreateFoldersResponse(
-                success=False,
-                message="权限不足，无法创建文件夹"
-            )
+            return CreateFoldersResponse(success=False, message="权限不足，无法创建文件夹")
         except Exception as e:
-            return CreateFoldersResponse(
-                success=False,
-                message=f"文件夹创建失败: {str(e)}"
-            )
+            return CreateFoldersResponse(success=False, message=f"文件夹创建失败: {str(e)}")
 
 
 __all__ = ["CreateFoldersUseCase", "CreateFoldersRequest", "CreateFoldersResponse", "FolderService"]

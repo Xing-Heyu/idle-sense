@@ -85,20 +85,13 @@ class TestConnectionStats:
 
     def test_total_bytes(self):
         """Test total bytes calculation."""
-        stats = ConnectionStats(
-            connection_id="conn-001",
-            bytes_sent=100,
-            bytes_received=200
-        )
+        stats = ConnectionStats(connection_id="conn-001", bytes_sent=100, bytes_received=200)
 
         assert stats.total_bytes == 300
 
     def test_age(self):
         """Test age calculation."""
-        stats = ConnectionStats(
-            connection_id="conn-001",
-            created_at=time.time() - 10.0
-        )
+        stats = ConnectionStats(connection_id="conn-001", created_at=time.time() - 10.0)
 
         assert stats.age >= 10.0
 

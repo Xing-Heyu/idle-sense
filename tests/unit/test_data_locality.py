@@ -21,7 +21,7 @@ class TestDataLocation:
             data_type=DataType.FILE,
             node_id="node-001",
             path="/data/file.txt",
-            size_bytes=1024
+            size_bytes=1024,
         )
 
         assert loc.data_id == "data-001"
@@ -30,11 +30,7 @@ class TestDataLocation:
 
     def test_record_access(self):
         """Test recording access."""
-        loc = DataLocation(
-            data_id="data-001",
-            data_type=DataType.FILE,
-            node_id="node-001"
-        )
+        loc = DataLocation(data_id="data-001", data_type=DataType.FILE, node_id="node-001")
 
         initial_count = loc.access_count
         loc.record_access()
@@ -44,10 +40,7 @@ class TestDataLocation:
     def test_to_dict(self):
         """Test serialization."""
         loc = DataLocation(
-            data_id="data-001",
-            data_type=DataType.MEMORY,
-            node_id="node-001",
-            size_bytes=2048
+            data_id="data-001", data_type=DataType.MEMORY, node_id="node-001", size_bytes=2048
         )
 
         data = loc.to_dict()
@@ -62,11 +55,7 @@ class TestNodeInfo:
 
     def test_create_node_info(self):
         """Test creating node info."""
-        info = NodeInfo(
-            node_id="node-001",
-            rack_id="rack-1",
-            data_center="dc-1"
-        )
+        info = NodeInfo(node_id="node-001", rack_id="rack-1", data_center="dc-1")
 
         assert info.node_id == "node-001"
         assert info.rack_id == "rack-1"

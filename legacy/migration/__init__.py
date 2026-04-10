@@ -111,8 +111,7 @@ class SQLiteBackend(MigrationBackend):
 
     def table_exists(self, table_name: str) -> bool:
         result = self.query(
-            "SELECT name FROM sqlite_master WHERE type='table' AND name=?",
-            (table_name,)
+            "SELECT name FROM sqlite_master WHERE type='table' AND name=?", (table_name,)
         )
         return len(result) > 0
 
@@ -143,14 +142,21 @@ class MigrationStore:
             """)
 
     def record_migration(self, record: MigrationRecord):
-        self.backend.execute(f"""
+        self.backend.execute(
+            f"""
             INSERT OR REPLACE INTO {self.TABLE_NAME}
             (version, name, checksum, applied_at, execution_time_ms, status)
             VALUES (?, ?, ?, ?, ?, ?)
-        """, (
-            record.version, record.name, record.checksum,
-            record.applied_at, record.execution_time_ms, record.status.value
-        ))
+        """,
+            (
+                record.version,
+                record.name,
+                record.checksum,
+                record.applied_at,
+                record.execution_time_ms,
+                record.status.value,
+            ),
+        )
 
     def get_applied_migrations(self) -> list[MigrationRecord]:
         rows = self.backend.query(f"""
@@ -165,15 +171,14 @@ class MigrationStore:
                 checksum=row[2],
                 applied_at=datetime.fromisoformat(row[3]) if isinstance(row[3], str) else row[3],
                 execution_time_ms=row[4],
-                status=MigrationStatus(row[5])
+                status=MigrationStatus(row[5]),
             )
             for row in rows
         ]
 
     def is_applied(self, version: str) -> bool:
         rows = self.backend.query(
-            f"SELECT version FROM {self.TABLE_NAME} WHERE version = ?",
-            (version,)
+            f"SELECT version FROM {self.TABLE_NAME} WHERE version = ?", (version,)
         )
         return len(rows) > 0
 
@@ -186,18 +191,11 @@ class MigrationStore:
         return rows[0][0] if rows else None
 
     def remove_migration(self, version: str):
-        self.backend.execute(
-            f"DELETE FROM {self.TABLE_NAME} WHERE version = ?",
-            (version,)
-        )
+        self.backend.execute(f"DELETE FROM {self.TABLE_NAME} WHERE version = ?", (version,))
 
 
 class MigrationRunner:
-    def __init__(
-        self,
-        backend: MigrationBackend,
-        migrations_dir: str = "migrations"
-    ):
+    def __init__(self, backend: MigrationBackend, migrations_dir: str = "migrations"):
         self.backend = backend
         self.store = MigrationStore(backend)
         self.migrations_dir = Path(migrations_dir)
@@ -220,7 +218,7 @@ class MigrationRunner:
                     down_sql=data.get("down_sql", ""),
                     description=data.get("description", ""),
                     author=data.get("author", ""),
-                    dependencies=data.get("dependencies", [])
+                    dependencies=data.get("dependencies", []),
                 )
                 self.migrations[migration.version] = migration
             except (json.JSONDecodeError, KeyError) as e:
@@ -230,23 +228,22 @@ class MigrationRunner:
         self.migrations[migration.version] = migration
         file_path = self.migrations_dir / f"{migration.version}_{migration.name}.json"
         with open(file_path, "w", encoding="utf-8") as f:
-            json.dump({
-                "version": migration.version,
-                "name": migration.name,
-                "up_sql": migration.up_sql,
-                "down_sql": migration.down_sql,
-                "description": migration.description,
-                "author": migration.author,
-                "dependencies": migration.dependencies
-            }, f, indent=2)
+            json.dump(
+                {
+                    "version": migration.version,
+                    "name": migration.name,
+                    "up_sql": migration.up_sql,
+                    "down_sql": migration.down_sql,
+                    "description": migration.description,
+                    "author": migration.author,
+                    "dependencies": migration.dependencies,
+                },
+                f,
+                indent=2,
+            )
 
     def create_migration(
-        self,
-        name: str,
-        up_sql: str,
-        down_sql: str = "",
-        description: str = "",
-        author: str = ""
+        self, name: str, up_sql: str, down_sql: str = "", description: str = "", author: str = ""
     ) -> Migration:
         last_version = self.store.get_last_version()
         if last_version:
@@ -264,7 +261,7 @@ class MigrationRunner:
             up_sql=up_sql,
             down_sql=down_sql,
             description=description,
-            author=author
+            author=author,
         )
         self.register_migration(migration)
         return migration
@@ -299,7 +296,7 @@ class MigrationRunner:
                 checksum=migration.checksum,
                 applied_at=datetime.now(),
                 execution_time_ms=execution_time,
-                status=MigrationStatus.COMPLETED
+                status=MigrationStatus.COMPLETED,
             )
             self.store.record_migration(record)
             return record
@@ -311,7 +308,7 @@ class MigrationRunner:
                 checksum=migration.checksum,
                 applied_at=datetime.now(),
                 execution_time_ms=0,
-                status=MigrationStatus.FAILED
+                status=MigrationStatus.FAILED,
             )
             self.store.record_migration(record)
             raise
@@ -376,10 +373,7 @@ class MigrationRunner:
                 {"version": m.version, "name": m.name, "applied_at": m.applied_at.isoformat()}
                 for m in applied
             ],
-            "pending": [
-                {"version": m.version, "name": m.name}
-                for m in pending
-            ]
+            "pending": [{"version": m.version, "name": m.name} for m in pending],
         }
 
 
@@ -388,7 +382,7 @@ def migration(
     name: str,
     up_sql: str = "",
     down_sql: str = "",
-    dependencies: list[str] | None = None
+    dependencies: list[str] | None = None,
 ):
     def decorator(func: Callable) -> Migration:
         return Migration(
@@ -397,8 +391,9 @@ def migration(
             up_sql=up_sql,
             down_sql=down_sql,
             up_callback=func,
-            dependencies=dependencies or []
+            dependencies=dependencies or [],
         )
+
     return decorator
 
 

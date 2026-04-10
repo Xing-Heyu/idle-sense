@@ -32,6 +32,7 @@ from ..utils.api_utils import safe_api_call
 @dataclass
 class NodeInfo:
     """节点信息"""
+
     node_id: str
     is_online: bool
     is_idle: bool
@@ -58,13 +59,14 @@ class NodeInfo:
             platform=data.get("platform", "unknown"),
             capacity=data.get("capacity", {}),
             tags=data.get("tags", {}),
-            owner=data.get("tags", {}).get("user_id", "未知")
+            owner=data.get("tags", {}).get("user_id", "未知"),
         )
 
 
 @dataclass
 class HealthInfo:
     """健康检查信息"""
+
     status: str
     online_nodes: int
     total_nodes: int
@@ -76,7 +78,7 @@ class HealthInfo:
         return cls(
             status=data.get("status", "unknown"),
             online_nodes=nodes_info.get("online", 0),
-            total_nodes=nodes_info.get("total", 0)
+            total_nodes=nodes_info.get("total", 0),
         )
 
 
@@ -98,7 +100,7 @@ class SchedulerClient:
         base_url: str = "http://localhost:8000",
         timeout: int = 10,
         health_check_timeout: int = 3,
-        max_retries: int = 3
+        max_retries: int = 3,
     ):
         """
         初始化调度器客户端
@@ -115,12 +117,7 @@ class SchedulerClient:
         self.max_retries = max_retries
         self._session = requests.Session()
 
-    def _request(
-        self,
-        method: str,
-        endpoint: str,
-        **kwargs
-    ) -> tuple[bool, Any]:
+    def _request(self, method: str, endpoint: str, **kwargs) -> tuple[bool, Any]:
         """
         发送HTTP请求
 
@@ -133,7 +130,7 @@ class SchedulerClient:
             (是否成功, 结果或错误信息)
         """
         url = f"{self.base_url}{endpoint}"
-        kwargs.setdefault('timeout', self.timeout)
+        kwargs.setdefault("timeout", self.timeout)
 
         if method.upper() == "GET":
             return safe_api_call(self._session.get, url, **kwargs)
@@ -153,20 +150,19 @@ class SchedulerClient:
         Returns:
             (是否在线, 健康信息)
         """
-        success, health_data = self._request(
-            "GET", "/health", timeout=self.health_check_timeout
-        )
+        success, health_data = self._request("GET", "/health", timeout=self.health_check_timeout)
 
         if not success:
-            success, root_data = self._request(
-                "GET", "/", timeout=self.health_check_timeout
-            )
+            success, root_data = self._request("GET", "/", timeout=self.health_check_timeout)
             if success:
                 return True, {"status": "online", "nodes": {"online": 0, "total": 0}}
             return False, health_data
 
         success, nodes_data = self._request(
-            "GET", "/api/nodes", params={"online_only": False}, timeout=self.health_check_timeout + 1
+            "GET",
+            "/api/nodes",
+            params={"online_only": False},
+            timeout=self.health_check_timeout + 1,
         )
 
         if success:
@@ -211,9 +207,7 @@ class SchedulerClient:
         Returns:
             (是否成功, 节点信息)
         """
-        success, data = self._request(
-            "GET", "/api/nodes", params={"online_only": False}, timeout=5
-        )
+        success, data = self._request("GET", "/api/nodes", params={"online_only": False}, timeout=5)
 
         if not success:
             return success, data
@@ -225,17 +219,19 @@ class SchedulerClient:
 
         for node in nodes:
             node_info = NodeInfo.from_dict(node)
-            processed_nodes.append({
-                "node_id": node_info.node_id,
-                "is_online": node_info.is_online,
-                "is_idle": node_info.is_idle,
-                "status": node_info.status,
-                "status_detail": node_info.status_detail,
-                "platform": node_info.platform,
-                "capacity": node_info.capacity,
-                "tags": node_info.tags,
-                "owner": node_info.owner
-            })
+            processed_nodes.append(
+                {
+                    "node_id": node_info.node_id,
+                    "is_online": node_info.is_online,
+                    "is_idle": node_info.is_idle,
+                    "status": node_info.status,
+                    "status_detail": node_info.status_detail,
+                    "platform": node_info.platform,
+                    "capacity": node_info.capacity,
+                    "tags": node_info.tags,
+                    "owner": node_info.owner,
+                }
+            )
 
             if node_info.is_online:
                 online_count += 1
@@ -247,7 +243,7 @@ class SchedulerClient:
             "total_nodes": len(processed_nodes),
             "online_nodes": online_count,
             "idle_nodes": idle_count,
-            "busy_nodes": online_count - idle_count
+            "busy_nodes": online_count - idle_count,
         }
 
     def submit_task(
@@ -256,7 +252,7 @@ class SchedulerClient:
         timeout: int = 300,
         cpu: float = 1.0,
         memory: int = 512,
-        user_id: Optional[str] = None
+        user_id: Optional[str] = None,
     ) -> tuple[bool, dict[str, Any]]:
         """
         提交任务到调度中心
@@ -275,7 +271,7 @@ class SchedulerClient:
             "code": code,
             "timeout": timeout,
             "resources": {"cpu": cpu, "memory": memory},
-            "user_id": user_id
+            "user_id": user_id,
         }
         return self._request("POST", "/submit", json=payload, timeout=10)
 
@@ -332,18 +328,20 @@ class SchedulerClient:
                 "total": tasks_info.get("total", 0),
                 "completed": tasks_info.get("completed", 0),
                 "failed": tasks_info.get("failed", 0),
-                "avg_time": tasks_info.get("avg_completion_time", 0)
+                "avg_time": tasks_info.get("avg_completion_time", 0),
             },
             "nodes": {
                 "idle": nodes_info.get("idle", 0),
                 "busy": max(0, nodes_info.get("online", 0) - nodes_info.get("idle", 0)),
                 "offline": nodes_info.get("offline", 0),
-                "total": nodes_info.get("total", 0)
+                "total": nodes_info.get("total", 0),
             },
             "throughput": {
-                "compute_hours": tasks_info.get("total", 0) * tasks_info.get("avg_completion_time", 0) / 3600
+                "compute_hours": tasks_info.get("total", 0)
+                * tasks_info.get("avg_completion_time", 0)
+                / 3600
             },
-            "scheduler": data.get("scheduler", {})
+            "scheduler": data.get("scheduler", {}),
         }
 
     def stop_node(self, node_id: str) -> tuple[bool, dict[str, Any]]:
@@ -359,11 +357,7 @@ class SchedulerClient:
         return self._request("POST", f"/api/nodes/{node_id}/stop", timeout=5)
 
     def activate_local_node(
-        self,
-        cpu_limit: float,
-        memory_limit: int,
-        storage_limit: int,
-        user_id: Optional[str] = None
+        self, cpu_limit: float, memory_limit: int, storage_limit: int, user_id: Optional[str] = None
     ) -> tuple[bool, dict[str, Any]]:
         """
         激活本地节点
@@ -384,9 +378,9 @@ class SchedulerClient:
                 "cpu_limit": cpu_limit,
                 "memory_limit": memory_limit,
                 "storage_limit": storage_limit,
-                "user_id": user_id
+                "user_id": user_id,
             },
-            timeout=10
+            timeout=10,
         )
 
     def close(self):
@@ -434,7 +428,7 @@ class DistributedTaskClient:
         data: Any,
         chunk_size: int = 10,
         max_parallel_chunks: int = 5,
-        merge_code: Optional[str] = None
+        merge_code: Optional[str] = None,
     ) -> tuple[bool, dict[str, Any]]:
         """
         提交分布式任务
@@ -462,10 +456,11 @@ class DistributedTaskClient:
                 data=data,
                 chunk_size=chunk_size,
                 max_parallel_chunks=max_parallel_chunks,
-                merge_code=merge_code
+                merge_code=merge_code,
             )
 
             if self.manager.create_task_chunks(task_id):
+
                 def execute_task():
                     self.manager.execute_distributed_task(task_id)
 

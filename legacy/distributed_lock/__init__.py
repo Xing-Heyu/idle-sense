@@ -50,7 +50,7 @@ class LockInfo:
             "acquired_at": self.acquired_at,
             "expires_at": self.expires_at,
             "is_expired": self.is_expired,
-            "ttl_seconds": self.ttl_seconds
+            "ttl_seconds": self.ttl_seconds,
         }
 
 
@@ -62,7 +62,7 @@ class LockBackend(ABC):
         owner: str,
         ttl_seconds: float | None = None,
         timeout_seconds: float = 0,
-        retry_interval: float = 0.1
+        retry_interval: float = 0.1,
     ) -> LockInfo | None:
         pass
 
@@ -99,7 +99,7 @@ class MemoryLockBackend(LockBackend):
         owner: str,
         ttl_seconds: float | None = None,
         timeout_seconds: float = 0,
-        retry_interval: float = 0.1
+        retry_interval: float = 0.1,
     ) -> LockInfo | None:
         start_time = time.time()
 
@@ -116,7 +116,7 @@ class MemoryLockBackend(LockBackend):
                         resource=resource,
                         owner=owner,
                         acquired_at=now,
-                        expires_at=now + ttl_seconds if ttl_seconds else None
+                        expires_at=now + ttl_seconds if ttl_seconds else None,
                     )
 
                     self._locks[resource] = lock_info
@@ -162,10 +162,7 @@ class MemoryLockBackend(LockBackend):
 
     def get_all_locks(self) -> list[LockInfo]:
         with self._lock:
-            return [
-                lock for lock in self._locks.values()
-                if not lock.is_expired
-            ]
+            return [lock for lock in self._locks.values() if not lock.is_expired]
 
 
 class RedisLockBackend(LockBackend):
@@ -175,7 +172,7 @@ class RedisLockBackend(LockBackend):
         port: int = 6379,
         db: int = 0,
         password: str | None = None,
-        prefix: str = "lock:"
+        prefix: str = "lock:",
     ):
         self.host = host
         self.port = port
@@ -189,12 +186,13 @@ class RedisLockBackend(LockBackend):
         if self._client is None:
             try:
                 import redis
+
                 self._client = redis.Redis(
                     host=self.host,
                     port=self.port,
                     db=self.db,
                     password=self.password,
-                    decode_responses=True
+                    decode_responses=True,
                 )
             except ImportError as e:
                 raise ImportError("Redis support requires redis package") from e
@@ -209,26 +207,19 @@ class RedisLockBackend(LockBackend):
         owner: str,
         ttl_seconds: float | None = None,
         timeout_seconds: float = 0,
-        retry_interval: float = 0.1
+        retry_interval: float = 0.1,
     ) -> LockInfo | None:
         key = self._make_key(resource)
         lock_id = str(uuid.uuid4())
         now = time.time()
 
-        lock_data = json.dumps({
-            "lock_id": lock_id,
-            "owner": owner,
-            "acquired_at": now
-        })
+        lock_data = json.dumps({"lock_id": lock_id, "owner": owner, "acquired_at": now})
 
         start_time = time.time()
 
         while True:
             acquired = self.client.set(
-                key,
-                lock_data,
-                nx=True,
-                ex=int(ttl_seconds) if ttl_seconds else None
+                key, lock_data, nx=True, ex=int(ttl_seconds) if ttl_seconds else None
             )
 
             if acquired:
@@ -237,7 +228,7 @@ class RedisLockBackend(LockBackend):
                     resource=resource,
                     owner=owner,
                     acquired_at=now,
-                    expires_at=now + ttl_seconds if ttl_seconds else None
+                    expires_at=now + ttl_seconds if ttl_seconds else None,
                 )
 
             if timeout_seconds <= 0:
@@ -268,9 +259,7 @@ class RedisLockBackend(LockBackend):
 
         for resource in self.client.keys(f"{self.prefix}*"):
             key = resource if isinstance(resource, str) else resource.decode()
-            result = self.client.eval(
-                script, 1, key, lock_id, owner
-            )
+            result = self.client.eval(script, 1, key, lock_id, owner)
             if result:
                 return True
 
@@ -296,9 +285,7 @@ class RedisLockBackend(LockBackend):
 
         for resource in self.client.keys(f"{self.prefix}*"):
             key = resource if isinstance(resource, str) else resource.decode()
-            result = self.client.eval(
-                script, 1, key, lock_id, owner, int(ttl_seconds)
-            )
+            result = self.client.eval(script, 1, key, lock_id, owner, int(ttl_seconds))
             if result:
                 return True
 
@@ -320,7 +307,7 @@ class RedisLockBackend(LockBackend):
                 resource=resource,
                 owner=decoded["owner"],
                 acquired_at=decoded["acquired_at"],
-                expires_at=time.time() + ttl if ttl > 0 else None
+                expires_at=time.time() + ttl if ttl > 0 else None,
             )
         except (json.JSONDecodeError, KeyError):
             return None
@@ -335,7 +322,7 @@ class RedisLockBackend(LockBackend):
             if isinstance(key, bytes):
                 key = key.decode()
 
-            resource = key[len(self.prefix):]
+            resource = key[len(self.prefix) :]
             lock = self.get_lock(resource)
             if lock:
                 locks.append(lock)
@@ -348,7 +335,7 @@ class DistributedLock:
         self,
         backend: LockBackend | None = None,
         default_ttl: float | None = 30.0,
-        owner: str | None = None
+        owner: str | None = None,
     ):
         self.backend = backend or MemoryLockBackend()
         self.default_ttl = default_ttl
@@ -361,14 +348,14 @@ class DistributedLock:
         resource: str,
         ttl_seconds: float | None = None,
         timeout_seconds: float = 0,
-        retry_interval: float = 0.1
+        retry_interval: float = 0.1,
     ) -> LockState:
         lock_info = self.backend.acquire(
             resource=resource,
             owner=self.owner,
             ttl_seconds=ttl_seconds or self.default_ttl,
             timeout_seconds=timeout_seconds,
-            retry_interval=retry_interval
+            retry_interval=retry_interval,
         )
 
         if lock_info:
@@ -399,13 +386,13 @@ class DistributedLock:
         resource: str,
         ttl_seconds: float | None = None,
         timeout_seconds: float = 10.0,
-        retry_interval: float = 0.1
+        retry_interval: float = 0.1,
     ):
         state = self.acquire(
             resource=resource,
             ttl_seconds=ttl_seconds,
             timeout_seconds=timeout_seconds,
-            retry_interval=retry_interval
+            retry_interval=retry_interval,
         )
 
         if state != LockState.ACQUIRED:
@@ -456,7 +443,11 @@ class ReadWriteLock:
             current = self._get_reader_count(resource)
             self._set_reader_count(resource, current + 1)
 
-            if current == 0 and self._write_lock.acquire(resource, timeout_seconds=timeout) != LockState.ACQUIRED:
+            if (
+                current == 0
+                and self._write_lock.acquire(resource, timeout_seconds=timeout)
+                != LockState.ACQUIRED
+            ):
                 self._set_reader_count(resource, current)
                 return False
 
@@ -470,9 +461,7 @@ class ReadWriteLock:
             self._set_reader_count(resource, max(0, current - 1))
 
             if current == 1:
-                self._write_lock.release(
-                    self._get_write_lock_id(resource)
-                )
+                self._write_lock.release(self._get_write_lock_id(resource))
 
     def acquire_write(self, resource: str, timeout: float = 10.0) -> bool:
         return self._write_lock.acquire(resource, timeout_seconds=timeout) == LockState.ACQUIRED
@@ -515,12 +504,7 @@ class ReadWriteLock:
 
 
 class Semaphore:
-    def __init__(
-        self,
-        name: str,
-        max_count: int,
-        backend: LockBackend | None = None
-    ):
+    def __init__(self, name: str, max_count: int, backend: LockBackend | None = None):
         self.name = name
         self.max_count = max_count
         self.backend = backend or MemoryLockBackend()

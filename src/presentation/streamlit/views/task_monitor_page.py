@@ -22,7 +22,9 @@ def render(user_id: Optional[str] = None):
     if st.button("🔄 刷新任务列表"):
         st.rerun()
 
-    task_monitor_type = st.radio("监控任务类型", ["所有任务", "单节点任务", "分布式任务"], horizontal=True)
+    task_monitor_type = st.radio(
+        "监控任务类型", ["所有任务", "单节点任务", "分布式任务"], horizontal=True
+    )
 
     client = container.scheduler_client()
     success, results = client.get_all_results()
@@ -44,9 +46,11 @@ def render(user_id: Optional[str] = None):
                             task_type = "分布式任务"
                             break
 
-                if task_monitor_type == "所有任务" or \
-                   (task_monitor_type == "单节点任务" and task_type == "单节点任务") or \
-                   (task_monitor_type == "分布式任务" and task_type == "分布式任务"):
+                if (
+                    task_monitor_type == "所有任务"
+                    or (task_monitor_type == "单节点任务" and task_type == "单节点任务")
+                    or (task_monitor_type == "分布式任务" and task_type == "分布式任务")
+                ):
 
                     completed_at = result.get("completed_at")
                     if completed_at:
@@ -60,19 +64,23 @@ def render(user_id: Optional[str] = None):
                     else:
                         result_preview = result_text or "无结果"
 
-                    results_data.append({
-                        "任务ID": task_id,
-                        "任务类型": task_type,
-                        "完成时间": time_str,
-                        "执行节点": result.get("assigned_node", "未知"),
-                        "结果预览": result_preview
-                    })
+                    results_data.append(
+                        {
+                            "任务ID": task_id,
+                            "任务类型": task_type,
+                            "完成时间": time_str,
+                            "执行节点": result.get("assigned_node", "未知"),
+                            "结果预览": result_preview,
+                        }
+                    )
 
             if results_data:
                 results_df = pd.DataFrame(results_data)
                 st.dataframe(results_df, width="stretch", hide_index=True)
 
-                selected_task_id = st.selectbox("选择任务查看完整结果", [r["任务ID"] for r in results_data])
+                selected_task_id = st.selectbox(
+                    "选择任务查看完整结果", [r["任务ID"] for r in results_data]
+                )
 
                 if selected_task_id:
                     full_result = None
@@ -98,13 +106,17 @@ def render(user_id: Optional[str] = None):
                             if distributed_client.is_available:
                                 st.subheader("分布式任务详情")
 
-                                status_success, status_info = distributed_client.get_status(selected_task_id)
+                                status_success, status_info = distributed_client.get_status(
+                                    selected_task_id
+                                )
                                 if status_success:
                                     col1, col2, col3 = st.columns(3)
                                     with col1:
                                         st.metric("总分片数", status_info.get("total_chunks", 0))
                                     with col2:
-                                        st.metric("已完成分片", status_info.get("completed_chunks", 0))
+                                        st.metric(
+                                            "已完成分片", status_info.get("completed_chunks", 0)
+                                        )
                                     with col3:
                                         st.metric("失败分片", status_info.get("failed_chunks", 0))
 
@@ -112,7 +124,9 @@ def render(user_id: Optional[str] = None):
                                     st.progress(progress)
                                     st.write(f"任务进度: {progress:.1%}")
                                 else:
-                                    st.warning(f"无法获取分布式任务状态: {status_info.get('error', '未知错误')}")
+                                    st.warning(
+                                        f"无法获取分布式任务状态: {status_info.get('error', '未知错误')}"
+                                    )
             else:
                 st.info(f"没有找到{task_monitor_type}的已完成任务")
         else:
@@ -141,14 +155,15 @@ def render(user_id: Optional[str] = None):
             for task_id in history_df["task_id"].tolist():
                 success, task_info = client.get_task_status(task_id)
                 if success and task_info.get("status") in ["pending", "assigned", "running"]:
-                    deletable_tasks.append({
-                        "task_id": task_id,
-                        "status": task_info.get("status", "unknown")
-                    })
+                    deletable_tasks.append(
+                        {"task_id": task_id, "status": task_info.get("status", "unknown")}
+                    )
 
             if deletable_tasks:
-                task_options = {f"任务{task['task_id']} (状态: {task['status']})": task['task_id']
-                              for task in deletable_tasks}
+                task_options = {
+                    f"任务{task['task_id']} (状态: {task['status']})": task["task_id"]
+                    for task in deletable_tasks
+                }
                 selected_task_label = st.selectbox("选择要删除的任务", list(task_options.keys()))
                 selected_task_id = task_options[selected_task_label]
 
@@ -159,7 +174,8 @@ def render(user_id: Optional[str] = None):
                         if delete_success:
                             st.success("✅ 任务删除成功！")
                             st.session_state.task_history = [
-                                task for task in st.session_state.task_history
+                                task
+                                for task in st.session_state.task_history
                                 if task["task_id"] != selected_task_id
                             ]
                             time.sleep(0.5)
@@ -172,7 +188,9 @@ def render(user_id: Optional[str] = None):
             st.divider()
 
             if not history_df.empty:
-                selected_task = st.selectbox("查看任务实时状态", history_df["task_id"].tolist(), key="task_status_select")
+                selected_task = st.selectbox(
+                    "查看任务实时状态", history_df["task_id"].tolist(), key="task_status_select"
+                )
 
                 if selected_task:
                     with st.spinner("获取任务状态中..."):
@@ -183,8 +201,12 @@ def render(user_id: Optional[str] = None):
                             with col1:
                                 status = task_info.get("status", "unknown")
                                 status_color = {
-                                    "pending": "🟡", "running": "🔵", "completed": "🟢",
-                                    "failed": "🔴", "assigned": "🟠", "deleted": "🔘"
+                                    "pending": "🟡",
+                                    "running": "🔵",
+                                    "completed": "🟢",
+                                    "failed": "🔴",
+                                    "assigned": "🟠",
+                                    "deleted": "🔘",
                                 }.get(status, "⚪")
                                 st.metric("状态", f"{status_color} {status}")
 
@@ -207,8 +229,10 @@ def render(user_id: Optional[str] = None):
                                     st.code(task_info["result"], language="text")
 
                             if task_info.get("required_resources"):
-                                st.info(f"资源需求: CPU={task_info['required_resources'].get('cpu', 1.0)}核心, "
-                                      f"内存={task_info['required_resources'].get('memory', 512)}MB")
+                                st.info(
+                                    f"资源需求: CPU={task_info['required_resources'].get('cpu', 1.0)}核心, "
+                                    f"内存={task_info['required_resources'].get('memory', 512)}MB"
+                                )
                         else:
                             st.warning(f"无法获取任务详情: {task_info.get('error', '未知错误')}")
     else:

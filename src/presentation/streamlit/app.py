@@ -33,13 +33,11 @@ from src.presentation.streamlit.views.task_submission_page import (
 def configure_page():
     """配置页面"""
     st.set_page_config(
-        page_title="闲置计算加速器",
-        page_icon="🚀",
-        layout="wide",
-        initial_sidebar_state="expanded"
+        page_title="闲置计算加速器", page_icon="🚀", layout="wide", initial_sidebar_state="expanded"
     )
 
-    st.markdown("""
+    st.markdown(
+        """
     <style>
     .main-header {
         background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
@@ -57,7 +55,9 @@ def configure_page():
         opacity: 0.9;
     }
     </style>
-    """, unsafe_allow_html=True)
+    """,
+        unsafe_allow_html=True,
+    )
 
 
 def init_session_state():
@@ -69,23 +69,20 @@ def init_session_state():
 
 def render_main():
     """渲染主界面"""
-    st.markdown("""
+    st.markdown(
+        """
     <div class="main-header">
         <h1>🚀 闲置计算加速器</h1>
         <p>分布式计算资源调度平台 - Clean Architecture 版本</p>
     </div>
-    """, unsafe_allow_html=True)
+    """,
+        unsafe_allow_html=True,
+    )
 
     if st.session_state.user_session:
         user_id = st.session_state.user_session.get("user_id")
 
-        tabs = st.tabs([
-            "📝 提交任务",
-            "📊 任务监控",
-            "🖥️ 节点管理",
-            "📈 系统统计",
-            "📋 任务结果"
-        ])
+        tabs = st.tabs(["📝 提交任务", "📊 任务监控", "🖥️ 节点管理", "📈 系统统计", "📋 任务结果"])
 
         with tabs[0]:
             render_task_submission(user_id)

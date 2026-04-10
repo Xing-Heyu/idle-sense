@@ -48,7 +48,7 @@ class HealthCheckResult:
             "details": self.details,
             "timestamp": self.timestamp,
             "duration_ms": self.duration_ms,
-            "error": self.error
+            "error": self.error,
         }
 
 
@@ -80,8 +80,8 @@ class HealthReport:
             "summary": {
                 "total": len(self.checks),
                 "healthy": self.healthy_count,
-                "unhealthy": self.unhealthy_count
-            }
+                "unhealthy": self.unhealthy_count,
+            },
         }
 
 
@@ -105,7 +105,7 @@ class HealthCheck(ABC):
                 check_name=self.name,
                 check_type=self.check_type,
                 status=HealthStatus.UNHEALTHY,
-                error=str(e)
+                error=str(e),
             )
 
         result.duration_ms = int((time.time() - start_time) * 1000)
@@ -120,6 +120,7 @@ class CPUHealthCheck(HealthCheck):
     def execute(self) -> HealthCheckResult:
         try:
             import psutil
+
             cpu_percent = psutil.cpu_percent(interval=1)
 
             if cpu_percent >= self.threshold_percent:
@@ -128,7 +129,7 @@ class CPUHealthCheck(HealthCheck):
                     check_type=self.check_type,
                     status=HealthStatus.UNHEALTHY,
                     message=f"CPU usage {cpu_percent}% exceeds threshold {self.threshold_percent}%",
-                    details={"cpu_percent": cpu_percent, "threshold": self.threshold_percent}
+                    details={"cpu_percent": cpu_percent, "threshold": self.threshold_percent},
                 )
             elif cpu_percent >= self.threshold_percent * 0.8:
                 return HealthCheckResult(
@@ -136,7 +137,7 @@ class CPUHealthCheck(HealthCheck):
                     check_type=self.check_type,
                     status=HealthStatus.DEGRADED,
                     message=f"CPU usage {cpu_percent}% is high",
-                    details={"cpu_percent": cpu_percent, "threshold": self.threshold_percent}
+                    details={"cpu_percent": cpu_percent, "threshold": self.threshold_percent},
                 )
 
             return HealthCheckResult(
@@ -144,14 +145,14 @@ class CPUHealthCheck(HealthCheck):
                 check_type=self.check_type,
                 status=HealthStatus.HEALTHY,
                 message=f"CPU usage is normal at {cpu_percent}%",
-                details={"cpu_percent": cpu_percent}
+                details={"cpu_percent": cpu_percent},
             )
         except ImportError:
             return HealthCheckResult(
                 check_name=self.name,
                 check_type=self.check_type,
                 status=HealthStatus.UNKNOWN,
-                message="psutil not available"
+                message="psutil not available",
             )
 
 
@@ -163,6 +164,7 @@ class MemoryHealthCheck(HealthCheck):
     def execute(self) -> HealthCheckResult:
         try:
             import psutil
+
             memory = psutil.virtual_memory()
 
             if memory.percent >= self.threshold_percent:
@@ -174,8 +176,8 @@ class MemoryHealthCheck(HealthCheck):
                     details={
                         "percent": memory.percent,
                         "available_mb": memory.available / 1024 / 1024,
-                        "total_mb": memory.total / 1024 / 1024
-                    }
+                        "total_mb": memory.total / 1024 / 1024,
+                    },
                 )
             elif memory.percent >= self.threshold_percent * 0.8:
                 return HealthCheckResult(
@@ -183,7 +185,7 @@ class MemoryHealthCheck(HealthCheck):
                     check_type=self.check_type,
                     status=HealthStatus.DEGRADED,
                     message=f"Memory usage {memory.percent}% is high",
-                    details={"percent": memory.percent}
+                    details={"percent": memory.percent},
                 )
 
             return HealthCheckResult(
@@ -191,14 +193,14 @@ class MemoryHealthCheck(HealthCheck):
                 check_type=self.check_type,
                 status=HealthStatus.HEALTHY,
                 message=f"Memory usage is normal at {memory.percent}%",
-                details={"percent": memory.percent}
+                details={"percent": memory.percent},
             )
         except ImportError:
             return HealthCheckResult(
                 check_name=self.name,
                 check_type=self.check_type,
                 status=HealthStatus.UNKNOWN,
-                message="psutil not available"
+                message="psutil not available",
             )
 
 
@@ -211,6 +213,7 @@ class DiskHealthCheck(HealthCheck):
     def execute(self) -> HealthCheckResult:
         try:
             import psutil
+
             disk = psutil.disk_usage(self.path)
 
             if disk.percent >= self.threshold_percent:
@@ -222,8 +225,8 @@ class DiskHealthCheck(HealthCheck):
                     details={
                         "path": self.path,
                         "percent": disk.percent,
-                        "free_gb": disk.free / 1024 / 1024 / 1024
-                    }
+                        "free_gb": disk.free / 1024 / 1024 / 1024,
+                    },
                 )
 
             return HealthCheckResult(
@@ -231,31 +234,26 @@ class DiskHealthCheck(HealthCheck):
                 check_type=self.check_type,
                 status=HealthStatus.HEALTHY,
                 message=f"Disk usage is normal at {disk.percent}%",
-                details={"path": self.path, "percent": disk.percent}
+                details={"path": self.path, "percent": disk.percent},
             )
         except ImportError:
             return HealthCheckResult(
                 check_name=self.name,
                 check_type=self.check_type,
                 status=HealthStatus.UNKNOWN,
-                message="psutil not available"
+                message="psutil not available",
             )
         except Exception as e:
             return HealthCheckResult(
                 check_name=self.name,
                 check_type=self.check_type,
                 status=HealthStatus.UNHEALTHY,
-                error=str(e)
+                error=str(e),
             )
 
 
 class NetworkHealthCheck(HealthCheck):
-    def __init__(
-        self,
-        host: str = "8.8.8.8",
-        port: int = 53,
-        timeout: float = 5.0
-    ):
+    def __init__(self, host: str = "8.8.8.8", port: int = 53, timeout: float = 5.0):
         super().__init__("network", CheckType.NETWORK)
         self.host = host
         self.port = port
@@ -273,7 +271,7 @@ class NetworkHealthCheck(HealthCheck):
                 check_type=self.check_type,
                 status=HealthStatus.HEALTHY,
                 message=f"Network connectivity OK, latency: {latency:.2f}ms",
-                details={"host": self.host, "latency_ms": latency}
+                details={"host": self.host, "latency_ms": latency},
             )
         except socket.timeout:
             return HealthCheckResult(
@@ -281,25 +279,19 @@ class NetworkHealthCheck(HealthCheck):
                 check_type=self.check_type,
                 status=HealthStatus.UNHEALTHY,
                 message="Network connection timed out",
-                details={"host": self.host}
+                details={"host": self.host},
             )
         except Exception as e:
             return HealthCheckResult(
                 check_name=self.name,
                 check_type=self.check_type,
                 status=HealthStatus.UNHEALTHY,
-                error=str(e)
+                error=str(e),
             )
 
 
 class HTTPHealthCheck(HealthCheck):
-    def __init__(
-        self,
-        name: str,
-        url: str,
-        expected_status: int = 200,
-        timeout: float = 5.0
-    ):
+    def __init__(self, name: str, url: str, expected_status: int = 200, timeout: float = 5.0):
         super().__init__(name, CheckType.DEPENDENCY)
         self.url = url
         self.expected_status = expected_status
@@ -323,7 +315,7 @@ class HTTPHealthCheck(HealthCheck):
                         check_type=self.check_type,
                         status=HealthStatus.HEALTHY,
                         message=f"HTTP check passed, status: {status}",
-                        details={"url": self.url, "status": status, "latency_ms": latency}
+                        details={"url": self.url, "status": status, "latency_ms": latency},
                     )
                 else:
                     return HealthCheckResult(
@@ -331,7 +323,11 @@ class HTTPHealthCheck(HealthCheck):
                         check_type=self.check_type,
                         status=HealthStatus.UNHEALTHY,
                         message=f"Unexpected status code: {status}",
-                        details={"url": self.url, "status": status, "expected": self.expected_status}
+                        details={
+                            "url": self.url,
+                            "status": status,
+                            "expected": self.expected_status,
+                        },
                     )
         except urllib.error.HTTPError as e:
             return HealthCheckResult(
@@ -339,14 +335,14 @@ class HTTPHealthCheck(HealthCheck):
                 check_type=self.check_type,
                 status=HealthStatus.UNHEALTHY,
                 message=f"HTTP error: {e.code}",
-                details={"url": self.url, "status": e.code}
+                details={"url": self.url, "status": e.code},
             )
         except Exception as e:
             return HealthCheckResult(
                 check_name=self.name,
                 check_type=self.check_type,
                 status=HealthStatus.UNHEALTHY,
-                error=str(e)
+                error=str(e),
             )
 
 
@@ -372,7 +368,7 @@ class TCPHealthCheck(HealthCheck):
                     check_type=self.check_type,
                     status=HealthStatus.HEALTHY,
                     message=f"TCP port {self.port} is open",
-                    details={"host": self.host, "port": self.port, "latency_ms": latency}
+                    details={"host": self.host, "port": self.port, "latency_ms": latency},
                 )
             else:
                 return HealthCheckResult(
@@ -380,23 +376,19 @@ class TCPHealthCheck(HealthCheck):
                     check_type=self.check_type,
                     status=HealthStatus.UNHEALTHY,
                     message=f"TCP port {self.port} is closed",
-                    details={"host": self.host, "port": self.port}
+                    details={"host": self.host, "port": self.port},
                 )
         except Exception as e:
             return HealthCheckResult(
                 check_name=self.name,
                 check_type=self.check_type,
                 status=HealthStatus.UNHEALTHY,
-                error=str(e)
+                error=str(e),
             )
 
 
 class CustomHealthCheck(HealthCheck):
-    def __init__(
-        self,
-        name: str,
-        check_func: Callable[[], tuple[bool, str, dict[str, Any]]]
-    ):
+    def __init__(self, name: str, check_func: Callable[[], tuple[bool, str, dict[str, Any]]]):
         super().__init__(name, CheckType.CUSTOM)
         self.check_func = check_func
 
@@ -408,14 +400,14 @@ class CustomHealthCheck(HealthCheck):
                 check_type=self.check_type,
                 status=HealthStatus.HEALTHY if is_healthy else HealthStatus.UNHEALTHY,
                 message=message,
-                details=details
+                details=details,
             )
         except Exception as e:
             return HealthCheckResult(
                 check_name=self.name,
                 check_type=self.check_type,
                 status=HealthStatus.UNHEALTHY,
-                error=str(e)
+                error=str(e),
             )
 
 
@@ -469,7 +461,7 @@ class HealthChecker:
             component_type=self.component_type,
             status=overall_status,
             checks=results,
-            uptime_seconds=time.time() - self._start_time
+            uptime_seconds=time.time() - self._start_time,
         )
 
     def is_healthy(self) -> bool:

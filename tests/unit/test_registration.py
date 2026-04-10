@@ -37,21 +37,13 @@ class TestRegistrationExceptions:
 
     def test_registration_error_with_details(self):
         """测试带详情的 RegistrationError"""
-        error = RegistrationError(
-            "注册失败",
-            code="CUSTOM_ERROR",
-            details={"field": "username"}
-        )
+        error = RegistrationError("注册失败", code="CUSTOM_ERROR", details={"field": "username"})
         assert error.code == "CUSTOM_ERROR"
         assert error.details["field"] == "username"
 
     def test_username_validation_error(self):
         """测试 UsernameValidationError"""
-        error = UsernameValidationError(
-            "用户名格式错误",
-            username="test@user",
-            field="username"
-        )
+        error = UsernameValidationError("用户名格式错误", username="test@user", field="username")
         assert error.code == "USERNAME_VALIDATION_ERROR"
         assert error.details["username"] == "test@user"
         assert error.details["field"] == "username"
@@ -59,9 +51,7 @@ class TestRegistrationExceptions:
     def test_storage_error(self):
         """测试 StorageError"""
         error = StorageError(
-            "磁盘空间不足",
-            path="/local_users",
-            original_error="No space left on device"
+            "磁盘空间不足", path="/local_users", original_error="No space left on device"
         )
         assert error.code == "STORAGE_ERROR"
         assert error.details["path"] == "/local_users"
@@ -70,9 +60,7 @@ class TestRegistrationExceptions:
     def test_registration_permission_error(self):
         """测试 RegistrationPermissionError"""
         error = RegistrationPermissionError(
-            "权限不足",
-            path="/local_users",
-            required_permission="write"
+            "权限不足", path="/local_users", required_permission="write"
         )
         assert error.code == "REGISTRATION_PERMISSION_ERROR"
         assert error.details["path"] == "/local_users"
@@ -81,9 +69,7 @@ class TestRegistrationExceptions:
     def test_user_data_conflict_error(self):
         """测试 UserDataConflictError"""
         error = UserDataConflictError(
-            "用户ID冲突",
-            user_id="local_abc123",
-            conflict_type="duplicate_id"
+            "用户ID冲突", user_id="local_abc123", conflict_type="duplicate_id"
         )
         assert error.code == "USER_DATA_CONFLICT_ERROR"
         assert error.details["user_id"] == "local_abc123"
@@ -109,10 +95,7 @@ class TestRegisterUseCaseWithAudit:
         self.mock_user.user_id = "local_test123"
         self.mock_user.username = "testuser"
         self.mock_repo.save.return_value = self.mock_user
-        self.use_case = RegisterUseCase(
-            self.mock_repo,
-            self.mock_audit_logger
-        )
+        self.use_case = RegisterUseCase(self.mock_repo, self.mock_audit_logger)
 
     def test_register_success_logs_audit(self):
         """测试注册成功时记录审计日志"""
@@ -171,11 +154,7 @@ class TestRegisterUseCaseWithAudit:
 
     def test_register_json_error_logs_audit(self):
         """测试JSON解析错误时记录审计日志"""
-        self.mock_repo.save.side_effect = json.JSONDecodeError(
-            "Expecting value",
-            "",
-            0
-        )
+        self.mock_repo.save.side_effect = json.JSONDecodeError("Expecting value", "", 0)
 
         request = RegisterRequest(username="testuser", folder_location="project")
         response = self.use_case.execute(request)
@@ -213,9 +192,7 @@ class TestRegisterResponse:
     def test_response_with_error_code(self):
         """测试带错误码的响应"""
         response = RegisterResponse(
-            success=False,
-            message="权限不足",
-            error_code="PERMISSION_ERROR"
+            success=False, message="权限不足", error_code="PERMISSION_ERROR"
         )
         assert response.success is False
         assert response.error_code == "PERMISSION_ERROR"
@@ -224,10 +201,7 @@ class TestRegisterResponse:
     def test_response_success(self):
         """测试成功响应"""
         response = RegisterResponse(
-            success=True,
-            user_id="local_abc123",
-            username="testuser",
-            message="注册成功"
+            success=True, user_id="local_abc123", username="testuser", message="注册成功"
         )
         assert response.success is True
         assert response.user_id == "local_abc123"

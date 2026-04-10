@@ -135,7 +135,7 @@ class DistributedLock:
         key: str,
         backend: "DistributedStorage",
         ttl: float = 30.0,
-        retry_interval: float = 0.1
+        retry_interval: float = 0.1,
     ):
         self.key = key
         self.backend = backend
@@ -150,12 +150,7 @@ class DistributedLock:
         while time.time() - start_time < timeout:
             lock_key = f"lock:{self.key}"
 
-            result = await self.backend._raw_put(
-                lock_key,
-                self._lock_id,
-                nx=True,
-                ttl=self.ttl
-            )
+            result = await self.backend._raw_put(lock_key, self._lock_id, nx=True, ttl=self.ttl)
 
             if result:
                 self._acquired = True
@@ -192,23 +187,18 @@ class DistributedStorage(ABC):
 
     def __init__(self, config: StorageConfig = None):
         self.config = config or StorageConfig()
-        self._cache = CacheLayer(
-            max_size=self.config.cache_max_size,
-            default_ttl=self.config.cache_ttl
-        ) if self.config.cache_enabled else None
+        self._cache = (
+            CacheLayer(max_size=self.config.cache_max_size, default_ttl=self.config.cache_ttl)
+            if self.config.cache_enabled
+            else None
+        )
 
     @abstractmethod
     async def _raw_get(self, key: str) -> Optional[Any]:
         pass
 
     @abstractmethod
-    async def _raw_put(
-        self,
-        key: str,
-        value: Any,
-        ttl: int = None,
-        nx: bool = False
-    ) -> bool:
+    async def _raw_put(self, key: str, value: Any, ttl: int = None, nx: bool = False) -> bool:
         pass
 
     @abstractmethod
@@ -232,13 +222,7 @@ class DistributedStorage(ABC):
 
         return value
 
-    async def put(
-        self,
-        key: str,
-        value: Any,
-        ttl: int = None,
-        nx: bool = False
-    ) -> bool:
+    async def put(self, key: str, value: Any, ttl: int = None, nx: bool = False) -> bool:
         result = await self._raw_put(key, value, ttl, nx)
 
         if result and self._cache:
@@ -259,11 +243,7 @@ class DistributedStorage(ABC):
         value = await self.get(key)
         return value is not None
 
-    def create_lock(
-        self,
-        key: str,
-        ttl: float = 30.0
-    ) -> DistributedLock:
+    def create_lock(self, key: str, ttl: float = 30.0) -> DistributedLock:
         return DistributedLock(key, self, ttl)
 
     def get_cache_stats(self) -> dict[str, Any]:
@@ -292,13 +272,7 @@ class MemoryDistributedStorage(DistributedStorage):
 
             return value
 
-    async def _raw_put(
-        self,
-        key: str,
-        value: Any,
-        ttl: int = None,
-        nx: bool = False
-    ) -> bool:
+    async def _raw_put(self, key: str, value: Any, ttl: int = None, nx: bool = False) -> bool:
         async with self._lock:
             if nx and key in self._data:
                 return False
@@ -319,6 +293,7 @@ class MemoryDistributedStorage(DistributedStorage):
 
             if pattern:
                 import fnmatch
+
                 keys = [k for k in keys if fnmatch.fnmatch(k, pattern)]
 
             return keys
@@ -335,11 +310,7 @@ class MemoryDistributedStorage(DistributedStorage):
 class RedisDistributedStorage(DistributedStorage):
     """Redis-based distributed storage with cluster support."""
 
-    def __init__(
-        self,
-        redis_url: str = "redis://localhost:6379/0",
-        config: StorageConfig = None
-    ):
+    def __init__(self, redis_url: str = "redis://localhost:6379/0", config: StorageConfig = None):
         super().__init__(config)
         self.redis_url = redis_url
         self._client = None
@@ -349,14 +320,11 @@ class RedisDistributedStorage(DistributedStorage):
         if self._client is None:
             try:
                 import redis.asyncio as redis
-                self._client = redis.from_url(
-                    self.redis_url,
-                    decode_responses=True
-                )
+
+                self._client = redis.from_url(self.redis_url, decode_responses=True)
             except ImportError as e:
                 raise ImportError(
-                    "Redis storage requires the redis package. "
-                    "Install with: pip install redis"
+                    "Redis storage requires the redis package. " "Install with: pip install redis"
                 ) from e
         return self._client
 
@@ -371,24 +339,13 @@ class RedisDistributedStorage(DistributedStorage):
                 return data
         return None
 
-    async def _raw_put(
-        self,
-        key: str,
-        value: Any,
-        ttl: int = None,
-        nx: bool = False
-    ) -> bool:
+    async def _raw_put(self, key: str, value: Any, ttl: int = None, nx: bool = False) -> bool:
         client = await self._get_client()
 
         serialized = json.dumps(value) if not isinstance(value, str) else value
 
         if nx:
-            result = await client.set(
-                key,
-                serialized,
-                ex=ttl or self.config.ttl,
-                nx=True
-            )
+            result = await client.set(key, serialized, ex=ttl or self.config.ttl, nx=True)
             return result is not None
         else:
             await client.set(key, serialized, ex=ttl or self.config.ttl)
@@ -431,11 +388,7 @@ class EtcdDistributedStorage(DistributedStorage):
     Reference: https://etcd.io/docs/v3.5/learning/api/
     """
 
-    def __init__(
-        self,
-        etcd_endpoints: list[str] = None,
-        config: StorageConfig = None
-    ):
+    def __init__(self, etcd_endpoints: list[str] = None, config: StorageConfig = None):
         super().__init__(config)
         self.etcd_endpoints = etcd_endpoints or ["http://localhost:2379"]
         self._client = None
@@ -444,14 +397,14 @@ class EtcdDistributedStorage(DistributedStorage):
         if self._client is None:
             try:
                 import etcd3
+
                 self._client = etcd3.client(
                     host=self.etcd_endpoints[0].split("://")[1].split(":")[0],
-                    port=int(self.etcd_endpoints[0].split(":")[-1])
+                    port=int(self.etcd_endpoints[0].split(":")[-1]),
                 )
             except ImportError as e:
                 raise ImportError(
-                    "etcd storage requires the etcd3 package. "
-                    "Install with: pip install etcd3"
+                    "etcd storage requires the etcd3 package. " "Install with: pip install etcd3"
                 ) from e
         return self._client
 
@@ -467,13 +420,7 @@ class EtcdDistributedStorage(DistributedStorage):
                 return value.decode()
         return None
 
-    async def _raw_put(
-        self,
-        key: str,
-        value: Any,
-        ttl: int = None,
-        nx: bool = False
-    ) -> bool:
+    async def _raw_put(self, key: str, value: Any, ttl: int = None, nx: bool = False) -> bool:
         client = await self._get_client()
 
         serialized = json.dumps(value) if not isinstance(value, str) else value
@@ -505,11 +452,7 @@ class EtcdDistributedStorage(DistributedStorage):
 
         return keys
 
-    async def watch(
-        self,
-        key: str,
-        callback: Callable[[str, Any], None]
-    ) -> None:
+    async def watch(self, key: str, callback: Callable[[str, Any], None]) -> None:
         client = await self._get_client()
 
         events_iterator, cancel = client.watch(key)
@@ -540,11 +483,7 @@ class ShardedStorage:
     Implements consistent hashing for key distribution.
     """
 
-    def __init__(
-        self,
-        shards: list[DistributedStorage],
-        replication_factor: int = 1
-    ):
+    def __init__(self, shards: list[DistributedStorage], replication_factor: int = 1):
         self.shards = shards
         self.replication_factor = min(replication_factor, len(shards))
         self._ring: dict[int, DistributedStorage] = {}
@@ -604,12 +543,7 @@ class ShardedStorage:
 
         return None
 
-    async def put(
-        self,
-        key: str,
-        value: Any,
-        ttl: int = None
-    ) -> bool:
+    async def put(self, key: str, value: Any, ttl: int = None) -> bool:
         shards = self._get_shards_for_key(key)
 
         tasks = []
@@ -648,9 +582,7 @@ class ShardedStorage:
 
 
 def create_distributed_storage(
-    backend: str = "memory",
-    config: StorageConfig = None,
-    **kwargs
+    backend: str = "memory", config: StorageConfig = None, **kwargs
 ) -> DistributedStorage:
     """Factory function to create distributed storage backend.
 
@@ -668,13 +600,11 @@ def create_distributed_storage(
         return MemoryDistributedStorage(config)
     elif backend == "redis":
         return RedisDistributedStorage(
-            redis_url=kwargs.get("redis_url", "redis://localhost:6379/0"),
-            config=config
+            redis_url=kwargs.get("redis_url", "redis://localhost:6379/0"), config=config
         )
     elif backend == "etcd":
         return EtcdDistributedStorage(
-            etcd_endpoints=kwargs.get("etcd_endpoints", ["http://localhost:2379"]),
-            config=config
+            etcd_endpoints=kwargs.get("etcd_endpoints", ["http://localhost:2379"]), config=config
         )
     else:
         raise ValueError(f"Unknown storage backend: {backend}")

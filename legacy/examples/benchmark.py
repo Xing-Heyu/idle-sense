@@ -3,6 +3,7 @@ examples/benchmark.py
 性能基准测试 - 测试系统计算能力
 """
 
+
 def benchmark_suite():
     """综合性能基准测试"""
     import random
@@ -23,7 +24,7 @@ def benchmark_suite():
         for i in range(max_iter):
             if abs(z) > 2:
                 return i
-            z = z*z + c
+            z = z * z + c
         return max_iter
 
     # 计算小区域
@@ -47,11 +48,7 @@ def benchmark_suite():
     print(f"  计算时间: {cpu_time:.3f} 秒")
     print(f"  CPU分数: {cpu_score:,.0f} 迭代/秒")
 
-    results['cpu_float'] = {
-        'time': cpu_time,
-        'iterations': iterations,
-        'score': cpu_score
-    }
+    results["cpu_float"] = {"time": cpu_time, "iterations": iterations, "score": cpu_score}
 
     # 2. 内存访问性能
     print("\n2. 内存访问性能...")
@@ -79,11 +76,11 @@ def benchmark_suite():
     print(f"  顺序+随机访问时间: {mem_time:.3f} 秒")
     print(f"  内存分数: {mem_score:,.0f} 访问/秒")
 
-    results['memory_access'] = {
-        'time': mem_time,
-        'size': size,
-        'score': mem_score,
-        'checksum': sum1 + sum2
+    results["memory_access"] = {
+        "time": mem_time,
+        "size": size,
+        "score": mem_score,
+        "checksum": sum1 + sum2,
     }
 
     # 3. 矩阵运算性能
@@ -109,11 +106,11 @@ def benchmark_suite():
     print(f"  计算时间: {matrix_time:.3f} 秒")
     print(f"  性能: {flops/1e6:.2f} MFLOPS")
 
-    results['matrix_multiply'] = {
-        'size': n,
-        'time': matrix_time,
-        'flops': flops,
-        'mflops': flops/1e6
+    results["matrix_multiply"] = {
+        "size": n,
+        "time": matrix_time,
+        "flops": flops,
+        "mflops": flops / 1e6,
     }
 
     # 4. 整数运算性能
@@ -127,7 +124,7 @@ def benchmark_suite():
 
     for i in range(2, int(limit**0.5) + 1):
         if is_prime[i]:
-            for j in range(i*i, limit+1, i):
+            for j in range(i * i, limit + 1, i):
                 is_prime[j] = False
 
     primes = [i for i, prime in enumerate(is_prime) if prime]
@@ -140,11 +137,11 @@ def benchmark_suite():
     print(f"  计算时间: {int_time:.3f} 秒")
     print(f"  整数分数: {int_score:,.0f} 质数/秒")
 
-    results['integer_ops'] = {
-        'limit': limit,
-        'primes_found': len(primes),
-        'time': int_time,
-        'score': int_score
+    results["integer_ops"] = {
+        "limit": limit,
+        "primes_found": len(primes),
+        "time": int_time,
+        "score": int_score,
     }
 
     # 综合评分
@@ -154,10 +151,10 @@ def benchmark_suite():
 
     # 归一化分数 (越高越好)
     normalized_scores = {
-        'CPU浮点': cpu_score / 1000,
-        '内存访问': mem_score / 10000,
-        '矩阵运算': flops / 1e6,
-        '整数运算': int_score / 100
+        "CPU浮点": cpu_score / 1000,
+        "内存访问": mem_score / 10000,
+        "矩阵运算": flops / 1e6,
+        "整数运算": int_score / 100,
     }
 
     total_score = sum(normalized_scores.values())
@@ -165,7 +162,7 @@ def benchmark_suite():
 
     print("\n各项得分:")
     for name, score in normalized_scores.items():
-        stars = '★' * min(int(score), 5)
+        stars = "★" * min(int(score), 5)
         print(f"  {name:10} {score:6.1f} {stars}")
 
     print(f"\n平均得分: {avg_score:.1f}")
@@ -184,13 +181,14 @@ def benchmark_suite():
 
     print("\n基准测试完成!")
 
-    results['summary'] = {
-        'normalized_scores': normalized_scores,
-        'total_score': total_score,
-        'average_score': avg_score
+    results["summary"] = {
+        "normalized_scores": normalized_scores,
+        "total_score": total_score,
+        "average_score": avg_score,
     }
 
     return results
+
 
 def compare_with_reference():
     """与参考性能比较"""
@@ -200,17 +198,17 @@ def compare_with_reference():
 
     # 参考性能 (基于现代CPU)
     reference = {
-        'CPU浮点': 500.0,  # 千迭代/秒
-        '内存访问': 80.0,   # 万访问/秒
-        '矩阵运算': 100.0,  # MFLOPS
-        '整数运算': 300.0   # 质数/秒
+        "CPU浮点": 500.0,  # 千迭代/秒
+        "内存访问": 80.0,  # 万访问/秒
+        "矩阵运算": 100.0,  # MFLOPS
+        "整数运算": 300.0,  # 质数/秒
     }
 
     # 获取当前性能
     current = benchmark_suite()
 
-    if 'summary' in current:
-        current_scores = current['summary']['normalized_scores']
+    if "summary" in current:
+        current_scores = current["summary"]["normalized_scores"]
 
         print("\n性能对比:")
         print(f"{'测试项目':10} {'当前':>8} {'参考':>8} {'比例':>8}")
@@ -223,11 +221,14 @@ def compare_with_reference():
 
             print(f"{test:10} {cur:8.1f} {ref:8.1f} {ratio:7.1f}%")
 
-       # 总体比例
-        avg_ratio = sum(current_scores.get(k, 0)/v for k, v in reference.items()) / len(reference) * 100
+        # 总体比例
+        avg_ratio = (
+            sum(current_scores.get(k, 0) / v for k, v in reference.items()) / len(reference) * 100
+        )
         print(f"\n总体性能: {avg_ratio:.1f}% 参考值")
 
     return current
+
 
 if __name__ == "__main__":
     print("闲置计算节点性能基准测试")

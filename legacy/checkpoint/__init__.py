@@ -8,6 +8,7 @@ Architecture Reference:
 - Spark Checkpointing: https://spark.apache.org/docs/latest/streaming-programming-guide.html#checkpointing
 - Ray Checkpointing: https://docs.ray.io/en/latest/ray-core/actors/actor-checkpointing.html
 """
+
 import hashlib
 import json
 import threading
@@ -22,6 +23,7 @@ T = TypeVar("T")
 @dataclass
 class CheckpointMetadata:
     """Metadata for a checkpoint."""
+
     checkpoint_id: str
     task_id: str
     stage: str
@@ -41,6 +43,7 @@ class CheckpointMetadata:
 @dataclass
 class CheckpointData(Generic[T]):
     """Checkpoint data container."""
+
     checkpoint_id: str
     task_id: str
     stage: str
@@ -201,7 +204,7 @@ class CheckpointManager:
         self,
         storage: Optional[CheckpointStorage] = None,
         auto_cleanup: bool = True,
-        keep_count: int = 5
+        keep_count: int = 5,
     ):
         self.storage = storage or CheckpointStorage()
         self.auto_cleanup = auto_cleanup
@@ -213,7 +216,7 @@ class CheckpointManager:
         stage: str,
         state: Any,
         variables: Optional[dict[str, Any]] = None,
-        checkpoint_id: Optional[str] = None
+        checkpoint_id: Optional[str] = None,
     ) -> CheckpointMetadata:
         """Create and save a checkpoint."""
         if checkpoint_id is None:
@@ -235,9 +238,7 @@ class CheckpointManager:
         return metadata
 
     def restore(
-        self,
-        task_id: str,
-        checkpoint_id: Optional[str] = None
+        self, task_id: str, checkpoint_id: Optional[str] = None
     ) -> Optional[CheckpointData]:
         """Restore from a checkpoint."""
         if checkpoint_id:
@@ -289,7 +290,7 @@ class CheckpointableTask:
         self,
         task_id: str,
         checkpoint_manager: Optional[CheckpointManager] = None,
-        checkpoint_interval: int = 10
+        checkpoint_interval: int = 10,
     ):
         self.task_id = task_id
         self.checkpoint_manager = checkpoint_manager or CheckpointManager()
@@ -302,18 +303,12 @@ class CheckpointableTask:
         return time.time() - self._last_checkpoint >= self.checkpoint_interval
 
     def checkpoint(
-        self,
-        stage: str,
-        state: Any,
-        variables: Optional[dict[str, Any]] = None
+        self, stage: str, state: Any, variables: Optional[dict[str, Any]] = None
     ) -> CheckpointMetadata:
         """Create a checkpoint."""
         self._last_checkpoint = time.time()
         return self.checkpoint_manager.create_checkpoint(
-            task_id=self.task_id,
-            stage=stage,
-            state=state,
-            variables=variables
+            task_id=self.task_id, stage=stage, state=state, variables=variables
         )
 
     def should_resume(self) -> bool:
@@ -348,10 +343,7 @@ class CheckpointableTask:
         raise NotImplementedError("Subclasses must implement execute()")
 
 
-def with_checkpoint(
-    stage: str,
-    interval: int = 10
-) -> Callable:
+def with_checkpoint(stage: str, interval: int = 10) -> Callable:
     """
     Decorator for automatic checkpointing.
 
@@ -361,6 +353,7 @@ def with_checkpoint(
             # ... process data ...
             return result
     """
+
     def decorator(func: Callable) -> Callable:
         last_checkpoint = [0.0]
 
@@ -370,9 +363,7 @@ def with_checkpoint(
 
             if checkpoint_manager and time.time() - last_checkpoint[0] >= interval:
                 checkpoint_manager.create_checkpoint(
-                    task_id=task_id,
-                    stage=stage,
-                    state={"args": args, "kwargs": kwargs}
+                    task_id=task_id, stage=stage, state={"args": args, "kwargs": kwargs}
                 )
                 last_checkpoint[0] = time.time()
 

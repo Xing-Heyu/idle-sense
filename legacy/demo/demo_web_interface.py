@@ -11,16 +11,19 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
+
 def print_header(title):
     """打印标题"""
     print("\n" + "=" * 60)
     print(f"  {title}")
     print("=" * 60)
 
+
 def print_step(step, description):
     """打印步骤"""
     print(f"\n[{step}] {description}")
     print("-" * 40)
+
 
 def check_prerequisites():
     """检查前置条件"""
@@ -38,6 +41,7 @@ def check_prerequisites():
         if req == "requests 库":
             try:
                 import requests
+
                 ok = True
                 version = requests.__version__
             except ImportError:
@@ -47,6 +51,7 @@ def check_prerequisites():
         elif req == "streamlit 库":
             try:
                 import streamlit
+
                 ok = True
                 version = streamlit.__version__
             except ImportError:
@@ -69,6 +74,7 @@ def check_prerequisites():
 
     return True
 
+
 def start_services():
     """启动所需服务"""
     print_step("2", "启动服务")
@@ -81,9 +87,9 @@ def start_services():
         [sys.executable, "scheduler/simple_server.py"],
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE,
-        text=True
+        text=True,
     )
-    processes['scheduler'] = scheduler_proc
+    processes["scheduler"] = scheduler_proc
     print(f"    PID: {scheduler_proc.pid}")
 
     # 等待调度中心启动
@@ -91,6 +97,7 @@ def start_services():
     for _ in range(30):
         try:
             import requests
+
             response = requests.get("http://localhost:8000/", timeout=1)
             if response.status_code == 200:
                 print(" ✓")
@@ -107,9 +114,9 @@ def start_services():
         [sys.executable, "node/simple_client.py", "--scheduler", "http://localhost:8000"],
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE,
-        text=True
+        text=True,
     )
-    processes['node'] = node_proc
+    processes["node"] = node_proc
     print(f"    PID: {node_proc.pid}")
 
     # 3. 启动网页界面
@@ -118,9 +125,9 @@ def start_services():
         [sys.executable, "-m", "streamlit", "run", "web_interface.py", "--server.port", "8501"],
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE,
-        text=True
+        text=True,
     )
-    processes['web'] = web_proc
+    processes["web"] = web_proc
     print(f"    PID: {web_proc.pid}")
 
     # 等待网页界面启动
@@ -128,6 +135,7 @@ def start_services():
     for _ in range(30):
         try:
             import requests
+
             response = requests.get("http://localhost:8501", timeout=1)
             if response.status_code == 200:
                 print(" ✓")
@@ -139,6 +147,7 @@ def start_services():
         print("\n  ⚠ 网页界面启动较慢")
 
     return processes
+
 
 def open_browser():
     """打开浏览器"""
@@ -157,12 +166,13 @@ def open_browser():
     print("\n  要打开浏览器吗？")
     choice = input("  打开网页控制台？(y/n) [y]: ").strip().lower()
 
-    if choice in ['y', 'yes', '']:
+    if choice in ["y", "yes", ""]:
         print("  正在打开浏览器...")
         webbrowser.open("http://localhost:8501")
         print("  ✅ 浏览器已打开")
 
     return True
+
 
 def run_demo_tasks():
     """运行演示任务"""
@@ -193,7 +203,7 @@ print(f"时间: {elapsed:.3f}秒")
 
 __result__ = f"计算完成: {result:.4f} ({elapsed:.3f}秒)"
 """,
-            "description": "简单的循环计算，展示基本功能"
+            "description": "简单的循环计算，展示基本功能",
         },
         {
             "name": "数据处理",
@@ -221,7 +231,7 @@ for key, value in stats.items():
 
 __result__ = stats
 """,
-            "description": "数据统计计算，展示分析能力"
+            "description": "数据统计计算，展示分析能力",
         },
         {
             "name": "数学计算",
@@ -254,8 +264,8 @@ for key, value in results.items():
 
 __result__ = results
 """,
-            "description": "数学函数计算，展示科学计算能力"
-        }
+            "description": "数学函数计算，展示科学计算能力",
+        },
     ]
 
     import requests
@@ -270,7 +280,7 @@ __result__ = results
             payload = {
                 "code": task["code"],
                 "timeout": 30,
-                "resources": {"cpu": 1.0, "memory": 256}
+                "resources": {"cpu": 1.0, "memory": 256},
             }
 
             response = requests.post("http://localhost:8000/submit", json=payload, timeout=10)
@@ -278,11 +288,7 @@ __result__ = results
             if response.status_code == 200:
                 data = response.json()
                 task_id = data.get("task_id")
-                submitted_tasks.append({
-                    "id": task_id,
-                    "name": task["name"],
-                    "status": "submitted"
-                })
+                submitted_tasks.append({"id": task_id, "name": task["name"], "status": "submitted"})
                 print(f"    ✅ 提交成功 (ID: {task_id})")
             else:
                 print(f"    ❌ 提交失败: HTTP {response.status_code}")
@@ -318,6 +324,7 @@ __result__ = results
         print(f"\n  任务完成: {completed}/{len(submitted_tasks)}")
 
     return submitted_tasks
+
 
 def show_system_status():
     """显示系统状态"""
@@ -366,6 +373,7 @@ def show_system_status():
     except Exception as e:
         print(f"  ❌ 状态检查出错: {e}")
 
+
 def interactive_demo():
     """交互式演示"""
     print_step("6", "交互式演示")
@@ -400,6 +408,7 @@ def interactive_demo():
     # 等待用户交互
     input("  按回车键继续...")
 
+
 def cleanup(processes):
     """清理进程"""
     print_step("7", "清理演示环境")
@@ -418,6 +427,7 @@ def cleanup(processes):
                 proc.kill()
 
     print("  演示环境清理完成")
+
 
 def run_web_demo():
     """运行网页界面演示"""
@@ -467,12 +477,14 @@ def run_web_demo():
     except Exception as e:
         print(f"\n演示出错: {e}")
         import traceback
+
         traceback.print_exc()
         return False
     finally:
         # 7. 清理
         if processes:
             cleanup(processes)
+
 
 def main():
     """主函数"""
@@ -493,6 +505,7 @@ def main():
         print("  3. 查看日志文件")
 
     sys.exit(0 if success else 1)
+
 
 if __name__ == "__main__":
     main()

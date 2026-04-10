@@ -99,9 +99,7 @@ def get_db_path(db_filename: Optional[str] = None) -> Path:
     if env_db_path:
         db_path = Path(env_db_path).resolve()
         logger.info(
-            "使用环境变量指定的数据库路径",
-            db_path=str(db_path),
-            source="IDLE_SENSE_DB_PATH"
+            "使用环境变量指定的数据库路径", db_path=str(db_path), source="IDLE_SENSE_DB_PATH"
         )
         return db_path
 
@@ -182,19 +180,10 @@ def ensure_data_dirs() -> dict[str, Path]:
             created_dirs[dir_name] = dir_path
             logger.info("数据目录就绪", directory=dir_name, path=str(dir_path))
         except PermissionError:
-            logger.error(
-                "权限不足，无法创建数据目录",
-                directory=dir_name,
-                path=str(dir_path)
-            )
+            logger.error("权限不足，无法创建数据目录", directory=dir_name, path=str(dir_path))
             raise
         except OSError as e:
-            logger.error(
-                "创建数据目录失败",
-                directory=dir_name,
-                path=str(dir_path),
-                error=str(e)
-            )
+            logger.error("创建数据目录失败", directory=dir_name, path=str(dir_path), error=str(e))
             raise
 
     logger.info("所有数据目录初始化完成", directories=list(created_dirs.keys()))

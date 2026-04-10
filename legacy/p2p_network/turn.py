@@ -44,6 +44,7 @@ class AllocationState(IntEnum):
 @dataclass
 class TURNAllocation:
     """Represents a TURN allocation."""
+
     allocation_id: str
     client_address: tuple[str, int]
     relayed_address: tuple[str, int]
@@ -88,6 +89,7 @@ class TURNAllocation:
 @dataclass
 class TURNMessage:
     """TURN message structure."""
+
     method: int
     message_class: int
     transaction_id: bytes
@@ -101,7 +103,7 @@ class TURNMessage:
         for attr_type, attr_value in self.attributes.items():
             length = len(attr_value)
             padding = (4 - (length % 4)) % 4
-            attr_bytes += struct.pack("!HH", attr_type, length) + attr_value + b'\x00' * padding
+            attr_bytes += struct.pack("!HH", attr_type, length) + attr_value + b"\x00" * padding
 
         header = struct.pack("!HHI", message_type, len(attr_bytes), self.magic_cookie)
         header += self.transaction_id
@@ -121,18 +123,22 @@ class TURNMessage:
                 return None
 
             message_class = message_type & 0x0111
-            method = (message_type & 0x3E00) >> 2 | (message_type & 0x00E0) >> 1 | (message_type & 0x000F)
+            method = (
+                (message_type & 0x3E00) >> 2
+                | (message_type & 0x00E0) >> 1
+                | (message_type & 0x000F)
+            )
 
             attributes = {}
             offset = 20
             while offset + 4 <= len(data) and offset < 20 + length:
-                attr_type, attr_length = struct.unpack("!HH", data[offset:offset + 4])
+                attr_type, attr_length = struct.unpack("!HH", data[offset : offset + 4])
                 offset += 4
 
                 if offset + attr_length > len(data):
                     break
 
-                attributes[attr_type] = data[offset:offset + attr_length]
+                attributes[attr_type] = data[offset : offset + attr_length]
 
                 padding = (4 - (attr_length % 4)) % 4
                 offset += attr_length + padding
@@ -142,7 +148,7 @@ class TURNMessage:
                 message_class=message_class,
                 transaction_id=transaction_id,
                 attributes=attributes,
-                magic_cookie=magic_cookie
+                magic_cookie=magic_cookie,
             )
         except Exception:
             return None
@@ -182,7 +188,9 @@ class TURNAttribute:
         return struct.unpack("!H", data[:2])[0]
 
     @staticmethod
-    def xor_address(ip: str, port: int, transaction_id: bytes, magic_cookie: int = 0x2112A442) -> bytes:
+    def xor_address(
+        ip: str, port: int, transaction_id: bytes, magic_cookie: int = 0x2112A442
+    ) -> bytes:
         """Create XOR-MAPPED-ADDRESS or XOR-PEER-ADDRESS attribute value."""
         try:
             ip_bytes = socket.inet_pton(socket.AF_INET, ip)
@@ -194,12 +202,14 @@ class TURNAttribute:
         xor_port = port ^ (magic_cookie >> 16)
 
         xor_key = struct.pack("!I", magic_cookie) + transaction_id
-        xor_ip = bytes(a ^ b for a, b in zip(ip_bytes, xor_key[:len(ip_bytes)]))
+        xor_ip = bytes(a ^ b for a, b in zip(ip_bytes, xor_key[: len(ip_bytes)]))
 
         return struct.pack("!BBH", 0, family, xor_port) + xor_ip
 
     @staticmethod
-    def parse_xor_address(data: bytes, transaction_id: bytes, magic_cookie: int = 0x2112A442) -> Optional[tuple[str, int]]:
+    def parse_xor_address(
+        data: bytes, transaction_id: bytes, magic_cookie: int = 0x2112A442
+    ) -> Optional[tuple[str, int]]:
         """Parse XOR address from attribute value."""
         if len(data) < 4:
             return None

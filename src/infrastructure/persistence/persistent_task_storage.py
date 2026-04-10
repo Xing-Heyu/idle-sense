@@ -16,6 +16,7 @@ from src.infrastructure.repositories.sqlite_task_repository import SQLiteTaskRep
 @dataclass
 class CachedTaskInfo:
     """缓存任务信息，兼容调度器 TaskInfo 结构"""
+
     task_id: int
     code: str
     status: str
@@ -93,6 +94,7 @@ class PersistentTaskStorage:
 
         if loop and loop.is_running():
             import concurrent.futures
+
             with concurrent.futures.ThreadPoolExecutor(max_workers=1) as pool:
                 future = pool.submit(asyncio.run, self.async_init())
                 return future.result()
@@ -112,14 +114,20 @@ class PersistentTaskStorage:
         for task in all_tasks:
             int_id = self._task_id_counter
             try:
-                resources = json.loads(json.dumps(task.resources)) if task.resources else {"cpu": 1.0, "memory": 512}
+                resources = (
+                    json.loads(json.dumps(task.resources))
+                    if task.resources
+                    else {"cpu": 1.0, "memory": 512}
+                )
             except Exception:
                 resources = {"cpu": 1.0, "memory": 512}
 
             cached = CachedTaskInfo(
                 task_id=int_id,
                 code=task.code or "",
-                status=task.status.value if isinstance(task.status, TaskStatus) else str(task.status),
+                status=(
+                    task.status.value if isinstance(task.status, TaskStatus) else str(task.status)
+                ),
                 created_at=task.created_at.timestamp() if task.created_at else time.time(),
                 assigned_at=task.started_at.timestamp() if task.started_at else None,
                 assigned_node=task.assigned_node,
@@ -191,7 +199,13 @@ class PersistentTaskStorage:
         """更新内存缓存"""
         self._cache[int_id] = cached
 
-    def add_task(self, code: str, timeout: int = 300, resources: Optional[dict] = None, user_id: Optional[str] = None) -> int:
+    def add_task(
+        self,
+        code: str,
+        timeout: int = 300,
+        resources: Optional[dict] = None,
+        user_id: Optional[str] = None,
+    ) -> int:
         """添加新任务，返回 int 类型 task_id（兼容调度器接口）"""
         with self._lock:
             int_id = self._task_id_counter
@@ -271,7 +285,9 @@ class PersistentTaskStorage:
 
             return best_task
 
-    async def _do_update_task_status(self, internal_id: str, status: str, node_id: Optional[str] = None):
+    async def _do_update_task_status(
+        self, internal_id: str, status: str, node_id: Optional[str] = None
+    ):
         """内部异步更新任务状态"""
         task = await self._repo.get_by_id(internal_id)
         if not task:
@@ -356,7 +372,9 @@ class PersistentTaskStorage:
         """将 Task 实体转换为状态字典"""
         return {
             "task_id": int_id,
-            "status": task.status.value if isinstance(task.status, TaskStatus) else str(task.status),
+            "status": (
+                task.status.value if isinstance(task.status, TaskStatus) else str(task.status)
+            ),
             "result": task.result,
             "created_at": task.created_at.timestamp() if task.created_at else time.time(),
             "assigned_at": task.started_at.timestamp() if task.started_at else None,
@@ -372,13 +390,15 @@ class PersistentTaskStorage:
             results = []
             for cached in self._cache.values():
                 if cached.status == "completed":
-                    results.append({
-                        "task_id": cached.task_id,
-                        "result": cached.result,
-                        "completed_at": cached.completed_at,
-                        "assigned_node": cached.assigned_node,
-                        "user_id": cached.user_id,
-                    })
+                    results.append(
+                        {
+                            "task_id": cached.task_id,
+                            "result": cached.result,
+                            "completed_at": cached.completed_at,
+                            "assigned_node": cached.assigned_node,
+                            "user_id": cached.user_id,
+                        }
+                    )
             return results
 
     def get_system_stats(self) -> dict[str, Any]:
@@ -409,7 +429,11 @@ class PersistentTaskStorage:
                     "initialized": self._initialized,
                     "cached_tasks": total,
                     "cache_hit_rate": (
-                        round(self._stats["cache_hits"] / max(1, self._stats["cache_hits"] + self._stats["cache_misses"]), 4)
+                        round(
+                            self._stats["cache_hits"]
+                            / max(1, self._stats["cache_hits"] + self._stats["cache_misses"]),
+                            4,
+                        )
                     ),
                 },
             }
@@ -462,7 +486,10 @@ class PersistentTaskStorage:
                 return {"success": False, "error": "任务不存在"}
 
             if cached.status not in ("pending", "assigned"):
-                return {"success": False, "error": f"只能删除 pending 或 assigned 状态的任务，当前状态: {cached.status}"}
+                return {
+                    "success": False,
+                    "error": f"只能删除 pending 或 assigned 状态的任务，当前状态: {cached.status}",
+                }
 
             if cached.status == "pending" and task_id in self._pending_tasks:
                 self._pending_tasks.remove(task_id)

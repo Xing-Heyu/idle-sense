@@ -276,7 +276,7 @@ class TestEncryptedMessage:
             sender_id="test-node",
             nonce=b"123456789012",
             ciphertext=b"encrypted-data-here",
-            signature=b"signature-bytes"
+            signature=b"signature-bytes",
         )
 
         data = msg.to_bytes()

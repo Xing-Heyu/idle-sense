@@ -31,7 +31,12 @@ def render(user_id: Optional[str] = None):
         with col1:
             st.metric("总任务数", tasks_info.get("total", 0))
         with col2:
-            st.metric("待处理", tasks_info.get("total", 0) - tasks_info.get("completed", 0) - tasks_info.get("failed", 0))
+            st.metric(
+                "待处理",
+                tasks_info.get("total", 0)
+                - tasks_info.get("completed", 0)
+                - tasks_info.get("failed", 0),
+            )
         with col3:
             st.metric("运行中", tasks_info.get("running", 0))
         with col4:
@@ -56,18 +61,19 @@ def render(user_id: Optional[str] = None):
             "数量": [
                 tasks_info.get("completed", 0),
                 tasks_info.get("failed", 0),
-                max(0, tasks_info.get("total", 0) - tasks_info.get("completed", 0) - tasks_info.get("failed", 0))
-            ]
+                max(
+                    0,
+                    tasks_info.get("total", 0)
+                    - tasks_info.get("completed", 0)
+                    - tasks_info.get("failed", 0),
+                ),
+            ],
         }
 
         fig_pie = px.pie(
-            task_status_data,
-            values="数量",
-            names="状态",
-            title="任务状态分布",
-            hole=0.4
+            task_status_data, values="数量", names="状态", title="任务状态分布", hole=0.4
         )
-        fig_pie.update_traces(textposition='inside', textinfo='percent+label')
+        fig_pie.update_traces(textposition="inside", textinfo="percent+label")
         st.plotly_chart(fig_pie, width="stretch")
 
         st.markdown("---")
@@ -79,8 +85,8 @@ def render(user_id: Optional[str] = None):
             "数量": [
                 nodes_info.get("idle", 0),
                 nodes_info.get("busy", 0),
-                nodes_info.get("offline", 0)
-            ]
+                nodes_info.get("offline", 0),
+            ],
         }
 
         fig_bar = px.bar(
@@ -89,7 +95,7 @@ def render(user_id: Optional[str] = None):
             y="数量",
             title="节点状态分布",
             color="状态",
-            color_discrete_map={"空闲": "#2ecc71", "忙碌": "#f1c40f", "离线": "#e74c3c"}
+            color_discrete_map={"空闲": "#2ecc71", "忙碌": "#f1c40f", "离线": "#e74c3c"},
         )
         st.plotly_chart(fig_bar, width="stretch")
 
@@ -106,12 +112,18 @@ def render(user_id: Optional[str] = None):
         user_results = []
         for result in results_list:
             if isinstance(result, dict) and result.get("assigned_node"):
-                user_results.append({
-                    "任务ID": result.get("task_id", "N/A"),
-                    "状态": result.get("status", "未知"),
-                    "执行节点": result.get("assigned_node", "未知"),
-                    "结果预览": (result.get("result", "") or "")[:50] + "..." if result.get("result") else "无结果"
-                })
+                user_results.append(
+                    {
+                        "任务ID": result.get("task_id", "N/A"),
+                        "状态": result.get("status", "未知"),
+                        "执行节点": result.get("assigned_node", "未知"),
+                        "结果预览": (
+                            (result.get("result", "") or "")[:50] + "..."
+                            if result.get("result")
+                            else "无结果"
+                        ),
+                    }
+                )
 
         if user_results:
             results_df = pd.DataFrame(user_results)

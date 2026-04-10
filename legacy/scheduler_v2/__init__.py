@@ -10,6 +10,7 @@ References:
 - DRF Paper: https://cs.stanford.edu/~matei/papers/2011/nsdi_drf.pdf
 - Kubernetes Scheduling: https://kubernetes.io/docs/concepts/scheduling-eviction/
 """
+
 import asyncio
 import time
 from abc import ABC, abstractmethod
@@ -20,6 +21,7 @@ from typing import Any, Optional
 
 class SchedulingPolicy(str, Enum):
     """Scheduling policy enumeration."""
+
     FIFO = "fifo"
     FAIR = "fair"
     PRIORITY = "priority"
@@ -29,6 +31,7 @@ class SchedulingPolicy(str, Enum):
 @dataclass
 class UserMetrics:
     """User resource consumption metrics."""
+
     user_id: str
     cpu_consumed: float = 0.0
     memory_consumed: float = 0.0
@@ -51,6 +54,7 @@ class UserMetrics:
 @dataclass
 class SchedulingContext:
     """Context for scheduling decision."""
+
     task_id: int
     user_id: Optional[str]
     resources: dict[str, float]
@@ -63,6 +67,7 @@ class SchedulingContext:
 @dataclass
 class NodeScore:
     """Node scoring result."""
+
     node_id: str
     score: float
     reasons: list[str] = field(default_factory=list)
@@ -98,9 +103,9 @@ class NodeAvailablePredicate(Predicate):
 
     def check(self, node: dict, task: dict) -> bool:
         return (
-            node.get("is_available", False) and
-            node.get("is_idle", False) and
-            node.get("status") != "offline"
+            node.get("is_available", False)
+            and node.get("is_idle", False)
+            and node.get("status") != "offline"
         )
 
 
@@ -203,7 +208,7 @@ class DRFPriority(PriorityPlugin):
         weight: float = 1.0,
         user_metrics: dict[str, UserMetrics] = None,
         total_cpu: float = 100.0,
-        total_memory: float = 100000.0
+        total_memory: float = 100000.0,
     ):
         self.weight = weight
         self.user_metrics = user_metrics or {}
@@ -253,7 +258,7 @@ class AdvancedScheduler:
         self,
         policy: SchedulingPolicy = SchedulingPolicy.FAIR,
         starvation_threshold: float = 300.0,
-        newcomer_bonus: int = 10
+        newcomer_bonus: int = 10,
     ):
         self.policy = policy
         self.starvation_threshold = starvation_threshold
@@ -324,19 +329,13 @@ class AdvancedScheduler:
                     total_score += 0.5
                     reasons.append("Newcomer bonus: 0.5")
 
-            scores.append(NodeScore(
-                node_id=node.get("node_id", ""),
-                score=total_score,
-                reasons=reasons
-            ))
+            scores.append(
+                NodeScore(node_id=node.get("node_id", ""), score=total_score, reasons=reasons)
+            )
 
         return scores
 
-    def schedule(
-        self,
-        task: dict,
-        nodes: list[dict]
-    ) -> Optional[str]:
+    def schedule(self, task: dict, nodes: list[dict]) -> Optional[str]:
         """
         Schedule a task to a node.
 
@@ -372,12 +371,7 @@ class AdvancedScheduler:
         user.cpu_consumed += resources.get("cpu", 0)
         user.memory_consumed += resources.get("memory", 0)
 
-    def record_task_completion(
-        self,
-        user_id: str,
-        success: bool,
-        contribution: float = 0.0
-    ):
+    def record_task_completion(self, user_id: str, success: bool, contribution: float = 0.0):
         """Record task completion for fair scheduling."""
         if user_id not in self.user_metrics:
             return
@@ -408,10 +402,10 @@ class AdvancedScheduler:
                     "tasks_submitted": user.tasks_submitted,
                     "tasks_completed": user.tasks_completed,
                     "contribution_score": user.contribution_score,
-                    "dominant_share": user.dominant_share(self.total_cpu, self.total_memory)
+                    "dominant_share": user.dominant_share(self.total_cpu, self.total_memory),
                 }
                 for user_id, user in self.user_metrics.items()
-            }
+            },
         }
 
 
@@ -419,7 +413,7 @@ def create_default_scheduler(
     policy: SchedulingPolicy = SchedulingPolicy.FAIR,
     user_metrics: dict[str, UserMetrics] = None,
     total_cpu: float = 100.0,
-    total_memory: float = 100000.0
+    total_memory: float = 100000.0,
 ) -> AdvancedScheduler:
     """
     Create a scheduler with default configuration.
@@ -439,11 +433,10 @@ def create_default_scheduler(
     scheduler.add_priority(ResourceBalancePriority(weight=0.35))
     scheduler.add_priority(LeastLoadedPriority(weight=0.25))
     scheduler.add_priority(AffinityPriority(weight=0.15))
-    scheduler.add_priority(DRFPriority(
-        weight=0.25,
-        user_metrics=user_metrics,
-        total_cpu=total_cpu,
-        total_memory=total_memory
-    ))
+    scheduler.add_priority(
+        DRFPriority(
+            weight=0.25, user_metrics=user_metrics, total_cpu=total_cpu, total_memory=total_memory
+        )
+    )
 
     return scheduler

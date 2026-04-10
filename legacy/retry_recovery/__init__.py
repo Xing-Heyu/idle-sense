@@ -8,6 +8,7 @@ Architecture Reference:
 - Celery Retry: https://docs.celeryq.dev/en/stable/userguide/tasks.html#retrying
 - Kubernetes Restart Policies: https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle/
 """
+
 import asyncio
 import logging
 import random
@@ -21,6 +22,7 @@ logger = logging.getLogger(__name__)
 
 class RetryPolicy(str, Enum):
     """Retry policy enumeration."""
+
     NEVER = "never"
     ON_FAILURE = "on_failure"
     ALWAYS = "always"
@@ -29,6 +31,7 @@ class RetryPolicy(str, Enum):
 
 class TaskRecoveryAction(str, Enum):
     """Recovery action enumeration."""
+
     RETRY = "retry"
     REASSIGN = "reassign"
     ABANDON = "abandon"
@@ -38,6 +41,7 @@ class TaskRecoveryAction(str, Enum):
 @dataclass
 class RetryConfig:
     """Configuration for task retry behavior."""
+
     max_retries: int = 3
     retry_delay: float = 1.0
     max_delay: float = 60.0
@@ -50,10 +54,7 @@ class RetryConfig:
     def calculate_delay(self, attempt: int) -> float:
         """Calculate delay for a given retry attempt."""
         if self.exponential_backoff:
-            delay = min(
-                self.retry_delay * (self.backoff_factor ** attempt),
-                self.max_delay
-            )
+            delay = min(self.retry_delay * (self.backoff_factor**attempt), self.max_delay)
         else:
             delay = self.retry_delay
 
@@ -62,11 +63,7 @@ class RetryConfig:
 
         return delay
 
-    def should_retry(
-        self,
-        exception: Exception,
-        attempt: int
-    ) -> bool:
+    def should_retry(self, exception: Exception, attempt: int) -> bool:
         """Determine if a task should be retried."""
         if attempt >= self.max_retries:
             return False
@@ -85,6 +82,7 @@ class RetryConfig:
 @dataclass
 class RetryState:
     """State tracking for retry attempts."""
+
     task_id: int
     attempt: int = 0
     last_error: Optional[str] = None
@@ -99,11 +97,13 @@ class RetryState:
         self.last_attempt_time = time.time()
         self.last_error = str(error) if error else None
 
-        self.history.append({
-            "attempt": self.attempt,
-            "time": self.last_attempt_time,
-            "error": self.last_error,
-        })
+        self.history.append(
+            {
+                "attempt": self.attempt,
+                "time": self.last_attempt_time,
+                "error": self.last_error,
+            }
+        )
 
     def can_retry(self, max_retries: int) -> bool:
         """Check if more retries are allowed."""
@@ -132,11 +132,7 @@ class RetryManager:
         self._states: dict[int, RetryState] = {}
         self._default_config = RetryConfig()
 
-    def configure(
-        self,
-        task_id: int,
-        config: Optional[RetryConfig] = None
-    ) -> None:
+    def configure(self, task_id: int, config: Optional[RetryConfig] = None) -> None:
         """Configure retry behavior for a task."""
         self._configs[task_id] = config or self._default_config
         self._states[task_id] = RetryState(task_id=task_id)
@@ -149,11 +145,7 @@ class RetryManager:
         """Get retry state for a task."""
         return self._states.get(task_id)
 
-    def should_retry(
-        self,
-        task_id: int,
-        exception: Exception
-    ) -> bool:
+    def should_retry(self, task_id: int, exception: Exception) -> bool:
         """Determine if a task should be retried."""
         config = self.get_config(task_id)
         state = self.get_state(task_id)
@@ -178,11 +170,7 @@ class RetryManager:
 
         return delay
 
-    def record_attempt(
-        self,
-        task_id: int,
-        exception: Optional[Exception] = None
-    ) -> None:
+    def record_attempt(self, task_id: int, exception: Optional[Exception] = None) -> None:
         """Record a retry attempt."""
         state = self.get_state(task_id)
 
@@ -193,9 +181,7 @@ class RetryManager:
         state.record_attempt(exception)
 
         if exception:
-            logger.warning(
-                f"Task {task_id} attempt {state.attempt} failed: {exception}"
-            )
+            logger.warning(f"Task {task_id} attempt {state.attempt} failed: {exception}")
         else:
             logger.info(f"Task {task_id} attempt {state.attempt} recorded")
 
@@ -209,7 +195,7 @@ def with_retry(
     max_retries: int = 3,
     retry_delay: float = 1.0,
     exponential_backoff: bool = True,
-    retry_exceptions: Optional[list[type[Exception]]] = None
+    retry_exceptions: Optional[list[type[Exception]]] = None,
 ) -> Callable:
     """
     Decorator for automatic retry on failure.
@@ -220,12 +206,13 @@ def with_retry(
             # ... task logic ...
             pass
     """
+
     def decorator(func: Callable) -> Callable:
         config = RetryConfig(
             max_retries=max_retries,
             retry_delay=retry_delay,
             exponential_backoff=exponential_backoff,
-            retry_exceptions=retry_exceptions or []
+            retry_exceptions=retry_exceptions or [],
         )
 
         async def async_wrapper(*args, **kwargs):
@@ -288,6 +275,7 @@ def with_retry(
 @dataclass
 class FaultRecoveryConfig:
     """Configuration for fault recovery."""
+
     enable_checkpoint: bool = True
     checkpoint_interval: int = 60
     max_reassign_count: int = 3
@@ -309,7 +297,7 @@ class FaultRecoveryManager:
     def __init__(
         self,
         config: Optional[FaultRecoveryConfig] = None,
-        retry_manager: Optional[RetryManager] = None
+        retry_manager: Optional[RetryManager] = None,
     ):
         self.config = config or FaultRecoveryConfig()
         self.retry_manager = retry_manager or RetryManager()
@@ -333,9 +321,7 @@ class FaultRecoveryManager:
         return self._task_assignments.get(task_id)
 
     def handle_node_failure(
-        self,
-        node_id: str,
-        get_running_tasks: Callable[[str], list[int]]
+        self, node_id: str, get_running_tasks: Callable[[str], list[int]]
     ) -> list[dict[str, Any]]:
         """
         Handle node failure by marking tasks for recovery.
@@ -356,20 +342,19 @@ class FaultRecoveryManager:
             if self._task_assignments.get(task_id) == node_id:
                 action = self._determine_recovery_action(task_id)
 
-                recovery_actions.append({
-                    "task_id": task_id,
-                    "action": action.value,
-                    "previous_node": node_id,
-                })
+                recovery_actions.append(
+                    {
+                        "task_id": task_id,
+                        "action": action.value,
+                        "previous_node": node_id,
+                    }
+                )
 
                 self._task_assignments.pop(task_id, None)
 
         return recovery_actions
 
-    def _determine_recovery_action(
-        self,
-        task_id: int
-    ) -> TaskRecoveryAction:
+    def _determine_recovery_action(self, task_id: int) -> TaskRecoveryAction:
         """Determine the appropriate recovery action for a task."""
         reassign_count = self._reassign_counts.get(task_id, 0)
 
@@ -386,11 +371,7 @@ class FaultRecoveryManager:
         self._reassign_counts[task_id] = self._reassign_counts.get(task_id, 0) + 1
         logger.info(f"Task {task_id} reassigned (count: {self._reassign_counts[task_id]})")
 
-    def save_checkpoint(
-        self,
-        task_id: int,
-        state: Any
-    ) -> None:
+    def save_checkpoint(self, task_id: int, state: Any) -> None:
         """Save a checkpoint for a task."""
         self._checkpoints[task_id] = {
             "state": state,
@@ -436,10 +417,7 @@ class CircuitBreaker:
         HALF_OPEN = "half_open"
 
     def __init__(
-        self,
-        failure_threshold: int = 5,
-        recovery_timeout: float = 30.0,
-        success_threshold: int = 3
+        self, failure_threshold: int = 5, recovery_timeout: float = 30.0, success_threshold: int = 3
     ):
         self.failure_threshold = failure_threshold
         self.recovery_timeout = recovery_timeout
@@ -453,7 +431,10 @@ class CircuitBreaker:
     @property
     def state(self) -> State:
         """Get current state."""
-        if self._state == self.State.OPEN and time.time() - self._last_failure_time >= self.recovery_timeout:
+        if (
+            self._state == self.State.OPEN
+            and time.time() - self._last_failure_time >= self.recovery_timeout
+        ):
             self._state = self.State.HALF_OPEN
             self._success_count = 0
 
@@ -484,9 +465,7 @@ class CircuitBreaker:
             logger.warning("Circuit breaker opened (half-open failure)")
         elif self._failure_count >= self.failure_threshold:
             self._state = self.State.OPEN
-            logger.warning(
-                f"Circuit breaker opened (failures: {self._failure_count})"
-            )
+            logger.warning(f"Circuit breaker opened (failures: {self._failure_count})")
 
 
 class RateLimiter:
@@ -496,11 +475,7 @@ class RateLimiter:
     Limits the rate of operations to prevent overload.
     """
 
-    def __init__(
-        self,
-        rate: float = 10.0,
-        burst: int = 20
-    ):
+    def __init__(self, rate: float = 10.0, burst: int = 20):
         self.rate = rate
         self.burst = burst
         self._tokens = float(burst)
@@ -510,10 +485,7 @@ class RateLimiter:
         """Refill tokens based on elapsed time."""
         now = time.time()
         elapsed = now - self._last_update
-        self._tokens = min(
-            self.burst,
-            self._tokens + elapsed * self.rate
-        )
+        self._tokens = min(self.burst, self._tokens + elapsed * self.rate)
         self._last_update = now
 
     def can_proceed(self) -> bool:

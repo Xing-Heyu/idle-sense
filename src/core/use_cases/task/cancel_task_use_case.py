@@ -25,6 +25,7 @@ from src.core.interfaces.services import ISchedulerService
 @dataclass
 class CancelTaskRequest:
     """取消任务请求"""
+
     task_id: str
     user_id: Optional[str] = None
 
@@ -32,6 +33,7 @@ class CancelTaskRequest:
 @dataclass
 class CancelTaskResponse:
     """取消任务响应"""
+
     success: bool
     message: str = ""
     task: Optional[Task] = None
@@ -40,11 +42,7 @@ class CancelTaskResponse:
 class CancelTaskUseCase:
     """取消任务用例"""
 
-    def __init__(
-        self,
-        task_repository: ITaskRepository,
-        scheduler_service: ISchedulerService
-    ):
+    def __init__(self, task_repository: ITaskRepository, scheduler_service: ISchedulerService):
         """
         初始化取消任务用例
 
@@ -69,31 +67,18 @@ class CancelTaskUseCase:
         task = self._task_repository.get_by_id(request.task_id)
 
         if not task:
-            return CancelTaskResponse(
-                success=False,
-                message=f"任务ID '{request.task_id}' 不存在"
-            )
+            return CancelTaskResponse(success=False, message=f"任务ID '{request.task_id}' 不存在")
 
         # 验证任务所有权
         if request.user_id and task.user_id != request.user_id:
-            return CancelTaskResponse(
-                success=False,
-                message="无权限取消此任务"
-            )
+            return CancelTaskResponse(success=False, message="无权限取消此任务")
 
         # 检查任务状态
         if task.is_completed or task.is_failed:
-            return CancelTaskResponse(
-                success=False,
-                message="任务已完成或失败，无法取消"
-            )
+            return CancelTaskResponse(success=False, message="任务已完成或失败，无法取消")
 
         if task.is_cancelled:
-            return CancelTaskResponse(
-                success=True,
-                task=task,
-                message="任务已处于取消状态"
-            )
+            return CancelTaskResponse(success=True, task=task, message="任务已处于取消状态")
 
         # 从调度器取消任务
         scheduler_result = self._scheduler_service.cancel_task(request.task_id)
@@ -101,18 +86,14 @@ class CancelTaskUseCase:
         if not scheduler_result[0]:
             return CancelTaskResponse(
                 success=False,
-                message=f"调度器取消任务失败: {scheduler_result[1].get('error', '未知错误')}"
+                message=f"调度器取消任务失败: {scheduler_result[1].get('error', '未知错误')}",
             )
 
         # 更新任务状态
         task.cancel()
         self._task_repository.update(task)
 
-        return CancelTaskResponse(
-            success=True,
-            task=task,
-            message="任务取消成功"
-        )
+        return CancelTaskResponse(success=True, task=task, message="任务取消成功")
 
 
 __all__ = ["CancelTaskUseCase", "CancelTaskRequest", "CancelTaskResponse"]

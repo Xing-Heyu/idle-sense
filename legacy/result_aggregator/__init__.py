@@ -182,11 +182,7 @@ class MergeAggregator(AggregationStrategy[dict[str, Any]]):
 
 
 class ReduceAggregator(AggregationStrategy[Any]):
-    def __init__(
-        self,
-        reducer: Callable[[Any, Any], Any],
-        initial: Any = None
-    ):
+    def __init__(self, reducer: Callable[[Any, Any], Any], initial: Any = None):
         self.reducer = reducer
         self.initial = initial
 
@@ -225,9 +221,7 @@ class GroupByAggregator(AggregationStrategy[dict[Any, list[Any]]]):
 
 class ResultAggregator(Generic[T]):
     def __init__(
-        self,
-        strategy: AggregationStrategy[T] | None = None,
-        partial_aggregation: bool = False
+        self, strategy: AggregationStrategy[T] | None = None, partial_aggregation: bool = False
     ):
         self.strategy = strategy or ListAggregator()
         self.partial_aggregation = partial_aggregation
@@ -235,15 +229,9 @@ class ResultAggregator(Generic[T]):
         self._results: dict[str, list[TaskResult]] = {}
         self._expected_counts: dict[str, int] = {}
 
-    def create_aggregation(
-        self,
-        aggregation_id: str,
-        total_tasks: int
-    ) -> AggregationResult[T]:
+    def create_aggregation(self, aggregation_id: str, total_tasks: int) -> AggregationResult[T]:
         result = AggregationResult[T](
-            aggregation_id=aggregation_id,
-            status=AggregationStatus.PENDING,
-            total_tasks=total_tasks
+            aggregation_id=aggregation_id, status=AggregationStatus.PENDING, total_tasks=total_tasks
         )
 
         self._aggregations[aggregation_id] = result
@@ -252,11 +240,7 @@ class ResultAggregator(Generic[T]):
 
         return result
 
-    def add_result(
-        self,
-        aggregation_id: str,
-        result: TaskResult
-    ) -> AggregationResult[T] | None:
+    def add_result(self, aggregation_id: str, result: TaskResult) -> AggregationResult[T] | None:
         if aggregation_id not in self._aggregations:
             return None
 
@@ -338,7 +322,7 @@ class ResultAggregator(Generic[T]):
             "success_count": len(success_results),
             "error_count": len(agg_result.errors),
             "duration_seconds": agg_result.duration_seconds,
-            "avg_task_duration_ms": sum(durations) / len(durations) if durations else 0
+            "avg_task_duration_ms": sum(durations) / len(durations) if durations else 0,
         }
 
     def clear_completed(self, max_age_seconds: int = 3600) -> int:
@@ -373,14 +357,10 @@ class DistributedResultCollector:
         value: Any,
         success: bool = True,
         error: str | None = None,
-        metadata: dict[str, Any] | None = None
+        metadata: dict[str, Any] | None = None,
     ) -> AggregationResult | None:
         result = TaskResult(
-            task_id=task_id,
-            value=value,
-            success=success,
-            error=error,
-            metadata=metadata or {}
+            task_id=task_id, value=value, success=success, error=error, metadata=metadata or {}
         )
 
         return self.aggregator.add_result(aggregation_id, result)
@@ -392,11 +372,7 @@ class DistributedResultCollector:
         except Exception:
             return ""
 
-    def verify_integrity(
-        self,
-        aggregation_id: str,
-        expected_checksum: str
-    ) -> bool:
+    def verify_integrity(self, aggregation_id: str, expected_checksum: str) -> bool:
         agg_result = self.aggregator.get_aggregation(aggregation_id)
         if not agg_result or not agg_result.result:
             return False

@@ -64,8 +64,11 @@ def _parse_uploaded_file(uploaded_file, file_type: str) -> tuple[bool, Any, str]
         elif file_type == "TXT (数字列表)":
             if isinstance(content, bytes):
                 content = content.decode("utf-8")
-            data = [float(x.strip()) if "." in x.strip() else int(x.strip())
-                   for x in content.replace("\n", ",").split(",") if x.strip()]
+            data = [
+                float(x.strip()) if "." in x.strip() else int(x.strip())
+                for x in content.replace("\n", ",").split(",")
+                if x.strip()
+            ]
             return True, data, ""
 
         else:
@@ -115,13 +118,17 @@ def _render_single_node_task(user_id: Optional[str]):
     with col2:
         memory_request = st.slider("内存需求 (MB)", 512, 65536, 4096, 512)
 
-    priority = st.slider("任务优先级", 0, 10, 0, 1, help="优先级越高，任务调度越快，但消耗更多代币（普通提交免费）")
+    priority = st.slider(
+        "任务优先级", 0, 10, 0, 1, help="优先级越高，任务调度越快，但消耗更多代币（普通提交免费）"
+    )
 
     if user_id and priority > 0:
         cost_info = container.token_economy_service().estimate_task_cost(
             cpu_request, memory_request, timeout, priority
         )
-        st.info(f"💵 预估费用: 基础 {cost_info['base_price']:.2f} CMP | 最终 {cost_info['final_price']:.2f} CMP | 优先级费 {cost_info['priority_fee']:.2f} CMP")
+        st.info(
+            f"💵 预估费用: 基础 {cost_info['base_price']:.2f} CMP | 最终 {cost_info['final_price']:.2f} CMP | 优先级费 {cost_info['priority_fee']:.2f} CMP"
+        )
     elif user_id:
         st.info("💵 普通提交: 免费")
 
@@ -129,7 +136,7 @@ def _render_single_node_task(user_id: Optional[str]):
         "Python代码",
         value="",
         height=250,
-        placeholder="# 在这里编写你的代码\nprint('你好, IdleSense!')"
+        placeholder="# 在这里编写你的代码\nprint('你好, IdleSense!')",
     )
 
     col_btn1, col_btn2 = st.columns(2)
@@ -151,19 +158,24 @@ def _render_single_node_task(user_id: Optional[str]):
                             cost_info = container.token_economy_service().estimate_task_cost(
                                 cpu_request, memory_request, timeout, priority
                             )
-                            st.toast(f"✅ 任务提交成功！ID: {task_id} | 预估费用: {cost_info['final_price']} CMP", icon="✅")
+                            st.toast(
+                                f"✅ 任务提交成功！ID: {task_id} | 预估费用: {cost_info['final_price']} CMP",
+                                icon="✅",
+                            )
                         else:
                             st.toast(f"✅ 任务提交成功！ID: {task_id} | 免费", icon="✅")
 
-                        if 'task_history' not in st.session_state:
+                        if "task_history" not in st.session_state:
                             st.session_state.task_history = []
 
-                        st.session_state.task_history.append({
-                            "task_id": task_id,
-                            "time": datetime.now().strftime("%H:%M:%S"),
-                            "status": "submitted",
-                            "type": "单节点任务"
-                        })
+                        st.session_state.task_history.append(
+                            {
+                                "task_id": task_id,
+                                "time": datetime.now().strftime("%H:%M:%S"),
+                                "status": "submitted",
+                                "type": "单节点任务",
+                            }
+                        )
                     else:
                         st.toast(f"❌ 提交失败: {result.get('error', '未知错误')}", icon="❌")
 
@@ -186,18 +198,23 @@ def _render_single_node_task(user_id: Optional[str]):
                             cpu_request, memory_request, timeout, high_priority
                         )
 
-                        st.toast(f"✅ 加速任务提交成功！ID: {task_id} | 预估费用: {cost_info['final_price']} CMP", icon="⚡")
+                        st.toast(
+                            f"✅ 加速任务提交成功！ID: {task_id} | 预估费用: {cost_info['final_price']} CMP",
+                            icon="⚡",
+                        )
 
-                        if 'task_history' not in st.session_state:
+                        if "task_history" not in st.session_state:
                             st.session_state.task_history = []
 
-                        st.session_state.task_history.append({
-                            "task_id": task_id,
-                            "time": datetime.now().strftime("%H:%M:%S"),
-                            "status": "submitted",
-                            "type": "单节点任务 (加速)",
-                            "priority": high_priority
-                        })
+                        st.session_state.task_history.append(
+                            {
+                                "task_id": task_id,
+                                "time": datetime.now().strftime("%H:%M:%S"),
+                                "status": "submitted",
+                                "type": "单节点任务 (加速)",
+                                "priority": high_priority,
+                            }
+                        )
                     else:
                         st.toast(f"❌ 提交失败: {result.get('error', '未知错误')}", icon="❌")
 
@@ -219,30 +236,26 @@ def _render_distributed_task(user_id: Optional[str]):
     with col1:
         task_name = st.text_input("任务名称", value=f"分布式任务_{int(datetime.now().timestamp())}")
         chunk_size = st.number_input(
-            "分片大小（每组数据数量）",
-            min_value=1,
-            max_value=1000,
-            value=10,
-            step=1
+            "分片大小（每组数据数量）", min_value=1, max_value=1000, value=10, step=1
         )
 
     with col2:
         task_description = st.text_input("任务描述", value="使用多节点协作处理大型任务")
         max_parallel_chunks = st.number_input(
-            "最大并行节点数",
-            min_value=1,
-            max_value=50,
-            value=5,
-            step=1
+            "最大并行节点数", min_value=1, max_value=50, value=5, step=1
         )
 
-    priority = st.slider("任务优先级", 0, 10, 0, 1, help="优先级越高，任务调度越快，但消耗更多代币（普通提交免费）")
+    priority = st.slider(
+        "任务优先级", 0, 10, 0, 1, help="优先级越高，任务调度越快，但消耗更多代币（普通提交免费）"
+    )
 
     if user_id and priority > 0:
         cost_info = container.token_economy_service().estimate_task_cost(
             max_parallel_chunks, 4096, 600, priority
         )
-        st.info(f"💵 预估费用: 基础 {cost_info['base_price']:.2f} CMP | 最终 {cost_info['final_price']:.2f} CMP | 优先级费 {cost_info['priority_fee']:.2f} CMP")
+        st.info(
+            f"💵 预估费用: 基础 {cost_info['base_price']:.2f} CMP | 最终 {cost_info['final_price']:.2f} CMP | 优先级费 {cost_info['priority_fee']:.2f} CMP"
+        )
     elif user_id:
         st.info("💵 普通提交: 免费")
 
@@ -255,16 +268,16 @@ def _render_distributed_task(user_id: Optional[str]):
 
         if data_type == "数字列表":
             data_input = st.text_area(
-                "输入数字列表，用逗号分隔",
-                value="1,2,3,4,5,6,7,8,9,10",
-                help="例如: 1,2,3,4,5"
+                "输入数字列表，用逗号分隔", value="1,2,3,4,5,6,7,8,9,10", help="例如: 1,2,3,4,5"
             )
             col1, col2 = st.columns([1, 3])
             with col1:
                 if st.button("✅ 确认数据", type="primary", key="confirm_number_list"):
                     try:
-                        st.session_state['manual_task_data'] = _parse_data_input("数字列表", data_input)
-                        st.session_state['manual_data_type'] = "数字列表"
+                        st.session_state["manual_task_data"] = _parse_data_input(
+                            "数字列表", data_input
+                        )
+                        st.session_state["manual_data_type"] = "数字列表"
                         st.success("✅ 数据已确认！")
                     except ValueError:
                         st.error("输入格式错误，请输入数字并用逗号分隔")
@@ -273,46 +286,46 @@ def _render_distributed_task(user_id: Optional[str]):
             data_input = st.text_area(
                 "输入文本列表，每行一项",
                 value="苹果\n香蕉\n橙子\n葡萄\n西瓜",
-                help="每行输入一个文本项"
+                help="每行输入一个文本项",
             )
             col1, col2 = st.columns([1, 3])
             with col1:
                 if st.button("✅ 确认数据", type="primary", key="confirm_text_list"):
-                    st.session_state['manual_task_data'] = _parse_data_input("文本列表", data_input)
-                    st.session_state['manual_data_type'] = "文本列表"
+                    st.session_state["manual_task_data"] = _parse_data_input("文本列表", data_input)
+                    st.session_state["manual_data_type"] = "文本列表"
                     st.success("✅ 数据已确认！")
 
         elif data_type == "键值对":
             data_input = st.text_area(
                 "输入键值对，每行一个，用冒号分隔",
                 value="名称:闲置计算加速器\n版本:2.0\n类型:分布式计算",
-                help="格式: 键:值，每行一个"
+                help="格式: 键:值，每行一个",
             )
             col1, col2 = st.columns([1, 3])
             with col1:
                 if st.button("✅ 确认数据", type="primary", key="confirm_key_value"):
-                    st.session_state['manual_task_data'] = _parse_data_input("键值对", data_input)
-                    st.session_state['manual_data_type'] = "键值对"
+                    st.session_state["manual_task_data"] = _parse_data_input("键值对", data_input)
+                    st.session_state["manual_data_type"] = "键值对"
                     st.success("✅ 数据已确认！")
 
         elif data_type == "JSON 数据":
             data_input = st.text_area(
                 "输入 JSON 数据",
                 value='{"name": "test", "values": [1, 2, 3]}',
-                help="输入有效的 JSON 格式数据"
+                help="输入有效的 JSON 格式数据",
             )
             col1, col2 = st.columns([1, 3])
             with col1:
                 if st.button("✅ 确认数据", type="primary", key="confirm_json_data"):
                     try:
-                        st.session_state['manual_task_data'] = json.loads(data_input)
-                        st.session_state['manual_data_type'] = "JSON"
+                        st.session_state["manual_task_data"] = json.loads(data_input)
+                        st.session_state["manual_data_type"] = "JSON"
                         st.success("✅ 数据已确认！")
                     except json.JSONDecodeError as e:
                         st.error(f"JSON 格式错误: {e}")
 
-        if 'manual_task_data' in st.session_state and st.session_state['manual_task_data']:
-            task_data = st.session_state['manual_task_data']
+        if "manual_task_data" in st.session_state and st.session_state["manual_task_data"]:
+            task_data = st.session_state["manual_task_data"]
             st.markdown("---")
             st.subheader("📊 数据预览")
             _render_data_preview(task_data)
@@ -320,8 +333,8 @@ def _render_distributed_task(user_id: Optional[str]):
             col1, col2 = st.columns([1, 3])
             with col1:
                 if st.button("🗑️ 清除数据", key="clear_manual_data"):
-                    st.session_state['manual_task_data'] = None
-                    st.session_state['manual_data_type'] = None
+                    st.session_state["manual_task_data"] = None
+                    st.session_state["manual_data_type"] = None
                     st.rerun()
 
     else:
@@ -331,14 +344,14 @@ def _render_distributed_task(user_id: Optional[str]):
             "选择文件类型",
             ["JSON", "CSV", "TXT (文本列表)", "TXT (数字列表)"],
             help="根据文件内容选择正确的类型",
-            key="file_type_selector"
+            key="file_type_selector",
         )
 
         uploaded_file = st.file_uploader(
             "选择文件",
             type=["json", "csv", "txt"],
             help=f"上传 {file_type} 格式的文件",
-            key="file_uploader_widget"
+            key="file_uploader_widget",
         )
 
         if uploaded_file:
@@ -352,23 +365,25 @@ def _render_distributed_task(user_id: Optional[str]):
                     if success:
                         task_data = data
                         st.success("✅ 文件解析成功！")
-                        st.session_state['uploaded_task_data'] = task_data
+                        st.session_state["uploaded_task_data"] = task_data
                     else:
                         st.error(f"❌ {error_msg}")
 
-        if 'uploaded_task_data' in st.session_state and st.session_state['uploaded_task_data']:
-            task_data = st.session_state['uploaded_task_data']
+        if "uploaded_task_data" in st.session_state and st.session_state["uploaded_task_data"]:
+            task_data = st.session_state["uploaded_task_data"]
             _render_data_preview(task_data)
 
             if st.button("🗑️ 清除已上传数据", key="clear_uploaded_data"):
-                st.session_state['uploaded_task_data'] = None
+                st.session_state["uploaded_task_data"] = None
                 st.rerun()
 
     st.markdown("---")
     st.subheader("🎯 通用任务处理")
     st.info("💡 **通用任务** 可以处理任何类型的计算任务，不限于预设模板")
 
-    use_custom_task = st.checkbox("使用通用任务（自定义处理逻辑）", help="不使用预设模板，完全自定义任务处理方式")
+    use_custom_task = st.checkbox(
+        "使用通用任务（自定义处理逻辑）", help="不使用预设模板，完全自定义任务处理方式"
+    )
 
     custom_map_code = ""
     custom_merge_code = ""
@@ -401,7 +416,7 @@ __result__ = {
 print(f"处理了 {len(results)} 项数据")
 """,
             height=200,
-            help="这段代码将在每个节点上运行，处理分配给该节点的数据片段"
+            help="这段代码将在每个节点上运行，处理分配给该节点的数据片段",
         )
 
         custom_merge_code = st.text_area(
@@ -427,7 +442,7 @@ __MERGED_RESULT__ = {
 print(f"合并完成，总共处理了 {total_count} 项数据")
 """,
             height=200,
-            help="这段代码将合并所有节点返回的结果"
+            help="这段代码将合并所有节点返回的结果",
         )
 
     col_btn1, col_btn2 = st.columns(2)
@@ -440,19 +455,27 @@ print(f"合并完成，总共处理了 {total_count} 项数据")
                 st.error("请输入或上传任务数据")
             else:
                 with st.spinner("提交分布式任务中..."):
-                    code_template = custom_map_code if use_custom_task else """
+                    code_template = (
+                        custom_map_code
+                        if use_custom_task
+                        else """
 results = []
 for item in __DATA__:
     results.append(item * 2)
 __result__ = {"data": results, "count": len(results)}
 """
-                    merge_code = custom_merge_code if use_custom_task else """
+                    )
+                    merge_code = (
+                        custom_merge_code
+                        if use_custom_task
+                        else """
 all_results = []
 for chunk_result in __CHUNK_RESULTS__:
     if isinstance(chunk_result, dict) and "data" in chunk_result:
         all_results.extend(chunk_result["data"])
 __MERGED_RESULT__ = {"all_data": all_results}
 """
+                    )
 
                     success, result = distributed_client.submit_task(
                         name=task_name,
@@ -461,7 +484,7 @@ __MERGED_RESULT__ = {"all_data": all_results}
                         data=task_data,
                         chunk_size=chunk_size,
                         max_parallel_chunks=max_parallel_chunks,
-                        merge_code=merge_code
+                        merge_code=merge_code,
                     )
 
                     if success:
@@ -471,21 +494,25 @@ __MERGED_RESULT__ = {"all_data": all_results}
                             cost_info = container.token_economy_service().estimate_task_cost(
                                 max_parallel_chunks, 4096, 600, priority
                             )
-                            st.success(f"✅ 分布式任务提交成功！任务ID: `{task_id}` | 预估费用: {cost_info['final_price']} CMP")
+                            st.success(
+                                f"✅ 分布式任务提交成功！任务ID: `{task_id}` | 预估费用: {cost_info['final_price']} CMP"
+                            )
                         else:
                             st.success(f"✅ 分布式任务提交成功！任务ID: `{task_id}` | 免费")
 
-                        if 'task_history' not in st.session_state:
+                        if "task_history" not in st.session_state:
                             st.session_state.task_history = []
 
-                        st.session_state.task_history.append({
-                            "task_id": task_id,
-                            "time": datetime.now().strftime("%H:%M:%S"),
-                            "status": "submitted",
-                            "code_preview": f"{task_name} (分布式任务)",
-                            "type": "分布式任务",
-                            "priority": priority
-                        })
+                        st.session_state.task_history.append(
+                            {
+                                "task_id": task_id,
+                                "time": datetime.now().strftime("%H:%M:%S"),
+                                "status": "submitted",
+                                "code_preview": f"{task_name} (分布式任务)",
+                                "type": "分布式任务",
+                                "priority": priority,
+                            }
+                        )
 
                         with st.expander("任务详情", expanded=True):
                             col1, col2, col3 = st.columns(3)
@@ -495,7 +522,10 @@ __MERGED_RESULT__ = {"all_data": all_results}
                                 st.metric("分片大小", chunk_size)
                             with col3:
                                 st.metric("最大并行分片", max_parallel_chunks)
-                            st.metric("数据项数量", len(task_data) if isinstance(task_data, (list, dict)) else 1)
+                            st.metric(
+                                "数据项数量",
+                                len(task_data) if isinstance(task_data, (list, dict)) else 1,
+                            )
                     else:
                         st.error(f"❌ 提交失败: {result.get('error', '未知错误')}")
 
@@ -507,19 +537,27 @@ __MERGED_RESULT__ = {"all_data": all_results}
                 st.error("请输入或上传任务数据")
             else:
                 with st.spinner("提交加速分布式任务中..."):
-                    code_template = custom_map_code if use_custom_task else """
+                    code_template = (
+                        custom_map_code
+                        if use_custom_task
+                        else """
 results = []
 for item in __DATA__:
     results.append(item * 2)
 __result__ = {"data": results, "count": len(results)}
 """
-                    merge_code = custom_merge_code if use_custom_task else """
+                    )
+                    merge_code = (
+                        custom_merge_code
+                        if use_custom_task
+                        else """
 all_results = []
 for chunk_result in __CHUNK_RESULTS__:
     if isinstance(chunk_result, dict) and "data" in chunk_result:
         all_results.extend(chunk_result["data"])
 __MERGED_RESULT__ = {"all_data": all_results}
 """
+                    )
 
                     success, result = distributed_client.submit_task(
                         name=task_name,
@@ -528,7 +566,7 @@ __MERGED_RESULT__ = {"all_data": all_results}
                         data=task_data,
                         chunk_size=chunk_size,
                         max_parallel_chunks=max_parallel_chunks,
-                        merge_code=merge_code
+                        merge_code=merge_code,
                     )
 
                     if success:
@@ -539,19 +577,23 @@ __MERGED_RESULT__ = {"all_data": all_results}
                             max_parallel_chunks, 4096, 600, high_priority
                         )
 
-                        st.success(f"✅ 加速分布式任务提交成功！任务ID: `{task_id}` | 预估费用: {cost_info['final_price']} CMP")
+                        st.success(
+                            f"✅ 加速分布式任务提交成功！任务ID: `{task_id}` | 预估费用: {cost_info['final_price']} CMP"
+                        )
 
-                        if 'task_history' not in st.session_state:
+                        if "task_history" not in st.session_state:
                             st.session_state.task_history = []
 
-                        st.session_state.task_history.append({
-                            "task_id": task_id,
-                            "time": datetime.now().strftime("%H:%M:%S"),
-                            "status": "submitted",
-                            "code_preview": f"{task_name} (分布式任务-加速)",
-                            "type": "分布式任务 (加速)",
-                            "priority": high_priority
-                        })
+                        st.session_state.task_history.append(
+                            {
+                                "task_id": task_id,
+                                "time": datetime.now().strftime("%H:%M:%S"),
+                                "status": "submitted",
+                                "code_preview": f"{task_name} (分布式任务-加速)",
+                                "type": "分布式任务 (加速)",
+                                "priority": high_priority,
+                            }
+                        )
 
                         with st.expander("任务详情", expanded=True):
                             col1, col2, col3 = st.columns(3)
@@ -561,7 +603,10 @@ __MERGED_RESULT__ = {"all_data": all_results}
                                 st.metric("分片大小", chunk_size)
                             with col3:
                                 st.metric("最大并行分片", max_parallel_chunks)
-                            st.metric("数据项数量", len(task_data) if isinstance(task_data, (list, dict)) else 1)
+                            st.metric(
+                                "数据项数量",
+                                len(task_data) if isinstance(task_data, (list, dict)) else 1,
+                            )
                     else:
                         st.error(f"❌ 提交失败: {result.get('error', '未知错误')}")
 
@@ -575,7 +620,7 @@ def render(user_id: Optional[str] = None):
         "选择任务类型",
         ["单节点任务", "分布式任务"],
         horizontal=True,
-        disabled=not distributed_client.is_available
+        disabled=not distributed_client.is_available,
     )
 
     if task_type == "单节点任务":

@@ -14,6 +14,7 @@ from ...interfaces.repositories.user_repository import IUserRepository
 @dataclass
 class LogoutRequest:
     """登出请求DTO"""
+
     user_id: str
     session_id: Optional[str] = None  # 可选的会话ID
 
@@ -21,6 +22,7 @@ class LogoutRequest:
 @dataclass
 class LogoutResponse:
     """登出响应DTO"""
+
     success: bool
     message: str = ""
     logout_time: Optional[datetime] = None
@@ -54,10 +56,7 @@ class LogoutUseCase:
         user = self._user_repository.get_by_id(request.user_id)
 
         if not user:
-            return LogoutResponse(
-                success=False,
-                message=f"用户ID '{request.user_id}' 不存在"
-            )
+            return LogoutResponse(success=False, message=f"用户ID '{request.user_id}' 不存在")
 
         # 更新用户登出时间（可选的审计功能）
         # 注意：这里可以扩展为记录登出历史
@@ -70,7 +69,5 @@ class LogoutUseCase:
         # - 通知其他服务用户已登出
 
         return LogoutResponse(
-            success=True,
-            message=f"用户 '{user.username}' 登出成功",
-            logout_time=logout_time
+            success=True, message=f"用户 '{user.username}' 登出成功", logout_time=logout_time
         )

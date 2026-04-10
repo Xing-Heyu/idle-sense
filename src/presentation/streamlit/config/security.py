@@ -113,6 +113,7 @@ def get_streamlit_config() -> dict:
 def generate_csp_nonce() -> str:
     """生成 CSP nonce 值"""
     import secrets
+
     return secrets.token_hex(16)
 
 
@@ -122,6 +123,7 @@ def sanitize_input(text: str) -> str:
         return ""
 
     import html
+
     return html.escape(text)
 
 

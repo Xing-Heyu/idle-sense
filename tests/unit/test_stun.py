@@ -58,9 +58,7 @@ class TestSTUNMessage:
         msg = STUNMessage(
             message_class=STUNMessageClass.REQUEST,
             method=0x0001,
-            attributes=[
-                STUNAttribute.software("TestClient")
-            ]
+            attributes=[STUNAttribute.software("TestClient")],
         )
 
         assert msg.message_class == STUNMessageClass.REQUEST
@@ -72,9 +70,7 @@ class TestSTUNMessage:
         msg = STUNMessage(
             message_class=STUNMessageClass.REQUEST,
             method=0x0001,
-            attributes=[
-                STUNAttribute.software("Test")
-            ]
+            attributes=[STUNAttribute.software("Test")],
         )
 
         data = msg.to_bytes()
@@ -87,9 +83,7 @@ class TestSTUNMessage:
         original = STUNMessage(
             message_class=STUNMessageClass.REQUEST,
             method=0x0001,
-            attributes=[
-                STUNAttribute.software("Test")
-            ]
+            attributes=[STUNAttribute.software("Test")],
         )
 
         data = original.to_bytes()
@@ -112,9 +106,7 @@ class TestSTUNMessage:
         msg = STUNMessage(
             message_class=STUNMessageClass.SUCCESS_RESPONSE,
             method=0x0001,
-            attributes=[
-                STUNAttribute.mapped_address("192.168.1.1", 12345)
-            ]
+            attributes=[STUNAttribute.mapped_address("192.168.1.1", 12345)],
         )
 
         addr = msg.get_mapped_address()
@@ -126,10 +118,7 @@ class TestSTUNMessage:
     def test_get_attribute(self):
         """Test getting attribute by type."""
         attr = STUNAttribute.software("TestClient")
-        msg = STUNMessage(
-            message_class=STUNMessageClass.REQUEST,
-            attributes=[attr]
-        )
+        msg = STUNMessage(message_class=STUNMessageClass.REQUEST, attributes=[attr])
 
         found = msg.get_attribute(STUNAttributeType.SOFTWARE)
 

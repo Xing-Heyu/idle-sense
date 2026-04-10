@@ -192,17 +192,14 @@ class PricingEngine:
             self._congestion_level = max(0.5, min(5.0, ratio))
 
     def calculate_price(
-        self,
-        resources: ResourceMetrics,
-        priority: int = 0,
-        urgency_multiplier: float = 1.0
+        self, resources: ResourceMetrics, priority: int = 0, urgency_multiplier: float = 1.0
     ) -> float:
         base_cost = (
-            resources.cpu_seconds * self.BASE_CPU_PRICE +
-            resources.memory_gb_seconds * self.BASE_MEMORY_PRICE +
-            resources.storage_gb * self.BASE_STORAGE_PRICE +
-            resources.network_gb * self.BASE_NETWORK_PRICE +
-            resources.gpu_seconds * self.BASE_GPU_PRICE
+            resources.cpu_seconds * self.BASE_CPU_PRICE
+            + resources.memory_gb_seconds * self.BASE_MEMORY_PRICE
+            + resources.storage_gb * self.BASE_STORAGE_PRICE
+            + resources.network_gb * self.BASE_NETWORK_PRICE
+            + resources.gpu_seconds * self.BASE_GPU_PRICE
         )
 
         congestion_cost = base_cost * self._congestion_level
@@ -220,7 +217,7 @@ class PricingEngine:
         memory_requirement: float = 1.0,
         storage_requirement: float = 0.1,
         network_requirement: float = 0.01,
-        gpu_required: bool = False
+        gpu_required: bool = False,
     ) -> ResourceMetrics:
         complexity_multipliers = {
             "low": 0.5,
@@ -249,8 +246,12 @@ class PricingEngine:
                 "network_per_gb": self.BASE_NETWORK_PRICE,
                 "gpu_per_second": self.BASE_GPU_PRICE,
             },
-            "demand_avg": sum(self._demand_history) / len(self._demand_history) if self._demand_history else 0,
-            "supply_avg": sum(self._supply_history) / len(self._supply_history) if self._supply_history else 0,
+            "demand_avg": (
+                sum(self._demand_history) / len(self._demand_history) if self._demand_history else 0
+            ),
+            "supply_avg": (
+                sum(self._supply_history) / len(self._supply_history) if self._supply_history else 0
+            ),
         }
 
 
@@ -283,10 +284,7 @@ class ReputationSystem:
         self._reputation_history: dict[str, list[tuple[float, ReputationAction]]] = {}
 
     def update_reputation(
-        self,
-        account: Account,
-        action: ReputationAction,
-        weight: float = 1.0
+        self, account: Account, action: ReputationAction, weight: float = 1.0
     ) -> float:
         base_score = self.ACTION_SCORES.get(action, 0.0)
 
@@ -317,8 +315,8 @@ class ReputationSystem:
     def decay_reputation(self, account: Account) -> float:
         if account.reputation > self.DEFAULT_REPUTATION:
             account.reputation = (
-                self.DEFAULT_REPUTATION +
-                (account.reputation - self.DEFAULT_REPUTATION) * self.REPUTATION_DECAY
+                self.DEFAULT_REPUTATION
+                + (account.reputation - self.DEFAULT_REPUTATION) * self.REPUTATION_DECAY
             )
         return account.reputation
 
@@ -348,7 +346,9 @@ class ReputationSystem:
         history = self._reputation_history.get(address, [])
         return [(ts, action.value) for ts, action in history[-limit:]]
 
-    def get_reputation(self, address: str, accounts: Optional[dict[str, 'Account']] = None) -> float:
+    def get_reputation(
+        self, address: str, accounts: Optional[dict[str, "Account"]] = None
+    ) -> float:
         """Get reputation score for an address."""
         if accounts and address in accounts:
             return accounts[address].reputation
@@ -402,7 +402,9 @@ class StakingManager:
             if time.time() < stake["unlock_at"]:
                 continue
 
-            unstake_amount = stake["amount"] if amount is None else min(amount - unstaked, stake["amount"])
+            unstake_amount = (
+                stake["amount"] if amount is None else min(amount - unstaked, stake["amount"])
+            )
 
             if unstake_amount <= 0:
                 continue
@@ -431,12 +433,14 @@ class StakingManager:
 
         account.staked -= slash_amount
 
-        self._slash_events.append({
-            "address": account.address,
-            "amount": slash_amount,
-            "reason": reason,
-            "timestamp": time.time(),
-        })
+        self._slash_events.append(
+            {
+                "address": account.address,
+                "amount": slash_amount,
+                "reason": reason,
+                "timestamp": time.time(),
+            }
+        )
 
         return slash_amount
 
@@ -447,13 +451,15 @@ class StakingManager:
         for stake_id, stake in self._stakes.items():
             if stake["address"] == address:
                 total_staked += stake["amount"]
-                active_stakes.append({
-                    "stake_id": stake_id,
-                    "amount": stake["amount"],
-                    "staked_at": stake["staked_at"],
-                    "unlock_at": stake["unlock_at"],
-                    "status": stake["status"],
-                })
+                active_stakes.append(
+                    {
+                        "stake_id": stake_id,
+                        "amount": stake["amount"],
+                        "staked_at": stake["staked_at"],
+                        "unlock_at": stake["unlock_at"],
+                        "status": stake["status"],
+                    }
+                )
 
         return {
             "total_staked": total_staked,
@@ -462,7 +468,11 @@ class StakingManager:
         }
 
 
-_PERSISTENCE_ENABLED = os.getenv("TOKEN_ECONOMY_PERSISTENCE", "true").lower() in ("true", "1", "yes")
+_PERSISTENCE_ENABLED = os.getenv("TOKEN_ECONOMY_PERSISTENCE", "true").lower() in (
+    "true",
+    "1",
+    "yes",
+)
 
 
 class TokenEconomyPersistenceAdapter:
@@ -494,6 +504,7 @@ class TokenEconomyPersistenceAdapter:
             loop = self._get_loop()
             if loop.is_running():
                 import concurrent.futures
+
                 with concurrent.futures.ThreadPoolExecutor(max_workers=1) as pool:
                     future = pool.submit(asyncio.run, coro)
                     return future.result(timeout=30)
@@ -509,8 +520,13 @@ class TokenEconomyPersistenceAdapter:
     def ensure_account(self, address: str) -> Optional[Any]:
         return self._run_async(self._repo.get_or_create_account(address))
 
-    def persist_reward(self, to_address: str, amount: float, from_address: str = "treasury",
-                       reward_type: str = "reward") -> Optional[Any]:
+    def persist_reward(
+        self,
+        to_address: str,
+        amount: float,
+        from_address: str = "treasury",
+        reward_type: str = "reward",
+    ) -> Optional[Any]:
         return self._run_async(
             self._repo.add_transaction(
                 to_user_id=to_address,
@@ -521,8 +537,9 @@ class TokenEconomyPersistenceAdapter:
             )
         )
 
-    def persist_transfer(self, from_address: str, to_address: str,
-                         amount: float, tx_type: str = "transfer") -> Optional[Any]:
+    def persist_transfer(
+        self, from_address: str, to_address: str, amount: float, tx_type: str = "transfer"
+    ) -> Optional[Any]:
         return self._run_async(
             self._repo.transfer(
                 from_user_id=from_address,
@@ -554,7 +571,7 @@ class TokenEconomyPersistenceAdapter:
 
     def persist_stake(self, address: str, amount: float) -> Optional[Any]:
         result = self._run_async(self._repo.stake(address, amount))
-        if result and hasattr(result, 'id'):
+        if result and hasattr(result, "id"):
             self._stake_id_map[address] = result.id
         return result
 
@@ -635,7 +652,7 @@ class TokenEconomy:
         from_address: str,
         to_address: str,
         amount: float,
-        metadata: Optional[dict[str, Any]] = None
+        metadata: Optional[dict[str, Any]] = None,
     ) -> Transaction:
         from_account = self._accounts.get(from_address)
         to_account = self._create_account(to_address)
@@ -729,7 +746,9 @@ class TokenEconomy:
             self._persistence.persist_stake(address, amount)
         return True, tx
 
-    def unstake(self, address: str, amount: Optional[float] = None) -> tuple[float, Optional[Transaction]]:
+    def unstake(
+        self, address: str, amount: Optional[float] = None
+    ) -> tuple[float, Optional[Transaction]]:
         account = self.get_account(address)
         if not account:
             return 0.0, None
@@ -757,7 +776,7 @@ class TokenEconomy:
         requester: str,
         total_budget: float,
         resources: ResourceMetrics,
-        priority: int = 0
+        priority: int = 0,
     ) -> dict[str, Any]:
         estimated_price = self.pricing.calculate_price(resources, priority)
 
@@ -804,7 +823,7 @@ class TokenEconomy:
         task_id: str,
         worker_address: str,
         actual_resources: ResourceMetrics,
-        quality_score: float = 1.0
+        quality_score: float = 1.0,
     ) -> tuple[float, Optional[Transaction]]:
         payment_info = self._task_payments.get(task_id)
         if not payment_info:
@@ -825,22 +844,22 @@ class TokenEconomy:
         worker_account.total_earned += actual_reward
 
         payment_info["total_paid"] += actual_reward
-        payment_info["workers"].append({
-            "address": worker_address,
-            "reward": actual_reward,
-            "resources": actual_resources.to_dict(),
-            "quality_score": quality_score,
-            "timestamp": time.time(),
-        })
+        payment_info["workers"].append(
+            {
+                "address": worker_address,
+                "reward": actual_reward,
+                "resources": actual_resources.to_dict(),
+                "quality_score": quality_score,
+                "timestamp": time.time(),
+            }
+        )
 
         requester_account = self._accounts.get(payment_info["requester"])
         if requester_account:
             requester_account.locked -= actual_reward
 
         self.reputation.update_reputation(
-            worker_account,
-            ReputationAction.TASK_COMPLETED,
-            weight=quality_score
+            worker_account, ReputationAction.TASK_COMPLETED, weight=quality_score
         )
 
         tx = Transaction(
@@ -865,11 +884,7 @@ class TokenEconomy:
         return actual_reward, tx
 
     def penalize_worker(
-        self,
-        task_id: str,
-        worker_address: str,
-        reason: str,
-        penalty_percentage: float = 0.1
+        self, task_id: str, worker_address: str, reason: str, penalty_percentage: float = 0.1
     ) -> tuple[float, Optional[Transaction]]:
         worker_account = self.get_account(worker_address)
         if not worker_account:
@@ -878,7 +893,11 @@ class TokenEconomy:
         slash_amount = self.staking.slash(worker_account, reason, penalty_percentage)
 
         if slash_amount > 0:
-            action = ReputationAction.MALICIOUS_BEHAVIOR if "malicious" in reason.lower() else ReputationAction.TASK_FAILED
+            action = (
+                ReputationAction.MALICIOUS_BEHAVIOR
+                if "malicious" in reason.lower()
+                else ReputationAction.TASK_FAILED
+            )
             self.reputation.update_reputation(worker_account, action)
 
         tx = Transaction(
@@ -916,13 +935,12 @@ class TokenEconomy:
         return account.balance if account else 0.0
 
     def get_transaction_history(
-        self,
-        address: Optional[str] = None,
-        limit: int = 100
+        self, address: Optional[str] = None, limit: int = 100
     ) -> list[Transaction]:
         if address:
             transactions = [
-                tx for tx in self._transactions
+                tx
+                for tx in self._transactions
                 if tx.from_address == address or tx.to_address == address
             ]
         else:
@@ -944,15 +962,14 @@ class TokenEconomy:
             "total_locked": total_locked,
             "total_accounts": len(self._accounts),
             "total_transactions": len(self._transactions),
-            "active_tasks": sum(1 for p in self._task_payments.values() if p["status"] == "pending"),
+            "active_tasks": sum(
+                1 for p in self._task_payments.values() if p["status"] == "pending"
+            ),
             "pricing": self.pricing.get_market_stats(),
         }
 
     def calculate_uptime_reward(
-        self,
-        node_id: str,
-        uptime_seconds: float,
-        capacity: Optional[dict[str, Any]] = None
+        self, node_id: str, uptime_seconds: float, capacity: Optional[dict[str, Any]] = None
     ) -> float:
         """
         Calculate uptime reward for a node.
@@ -988,8 +1005,7 @@ class TokenEconomy:
         base_reward = BASE_REWARD_PER_MINUTE * uptime_minutes
 
         capacity_bonus = (
-            cpu_cores * CPU_MULTIPLIER +
-            memory_mb * MEMORY_MULTIPLIER
+            cpu_cores * CPU_MULTIPLIER + memory_mb * MEMORY_MULTIPLIER
         ) * uptime_minutes
 
         congestion_factor = float(self.pricing._congestion_level)
@@ -999,10 +1015,7 @@ class TokenEconomy:
         return float(round(total_reward, 4))
 
     def reward_node_uptime(
-        self,
-        node_id: str,
-        uptime_seconds: float,
-        capacity: Optional[dict[str, Any]] = None
+        self, node_id: str, uptime_seconds: float, capacity: Optional[dict[str, Any]] = None
     ) -> tuple[bool, dict[str, Any]]:
         """
         Reward a node for uptime.
@@ -1031,8 +1044,8 @@ class TokenEconomy:
             metadata={
                 "reward_type": "uptime",
                 "uptime_seconds": uptime_seconds,
-                "capacity": capacity
-            }
+                "capacity": capacity,
+            },
         )
 
         node_account.balance += reward_amount
@@ -1052,16 +1065,13 @@ class TokenEconomy:
                 reward_type="uptime",
             )
 
-        self.reputation.update_reputation(
-            node_account,
-            ReputationAction.UPTIME_GOOD
-        )
+        self.reputation.update_reputation(node_account, ReputationAction.UPTIME_GOOD)
 
         return True, {
             "tx_id": tx.tx_id,
             "amount": reward_amount,
             "uptime_seconds": uptime_seconds,
-            "new_balance": node_account.balance
+            "new_balance": node_account.balance,
         }
 
     def get_node_earnings(self, node_id: str) -> dict[str, Any]:
@@ -1079,17 +1089,19 @@ class TokenEconomy:
             return {"error": "Node account not found"}
 
         uptime_rewards = sum(
-            tx.amount for tx in self._transactions
-            if tx.to_address == node_id and
-               tx.tx_type == TransactionType.REWARD and
-               tx.metadata.get("reward_type") == "uptime"
+            tx.amount
+            for tx in self._transactions
+            if tx.to_address == node_id
+            and tx.tx_type == TransactionType.REWARD
+            and tx.metadata.get("reward_type") == "uptime"
         )
 
         task_rewards = sum(
-            tx.amount for tx in self._transactions
-            if tx.to_address == node_id and
-               tx.tx_type == TransactionType.REWARD and
-               tx.metadata.get("reward_type") != "uptime"
+            tx.amount
+            for tx in self._transactions
+            if tx.to_address == node_id
+            and tx.tx_type == TransactionType.REWARD
+            and tx.metadata.get("reward_type") != "uptime"
         )
 
         return {
@@ -1099,7 +1111,7 @@ class TokenEconomy:
             "uptime_rewards": uptime_rewards,
             "task_rewards": task_rewards,
             "staked": account.staked,
-            "reputation": account.reputation
+            "reputation": account.reputation,
         }
 
 

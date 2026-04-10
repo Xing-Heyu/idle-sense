@@ -192,9 +192,7 @@ class ITokenRepository:
         """获取质押记录"""
         ...
 
-    async def get_user_stakes(
-        self, user_id: str, status: Optional[str] = None
-    ) -> list[Stake]:
+    async def get_user_stakes(self, user_id: str, status: Optional[str] = None) -> list[Stake]:
         """获取用户的质押列表，可按状态过滤"""
         ...
 
@@ -319,6 +317,7 @@ class SQLiteTokenRepository(ITokenRepository):
     @staticmethod
     def _generate_tx_hash() -> str:
         import os as _os
+
         raw = f"{datetime.utcnow().isoformat()}:{_os.urandom(16).hex()}"
         return hashlib.sha256(raw.encode()).hexdigest()[:32]
 
@@ -419,9 +418,7 @@ class SQLiteTokenRepository(ITokenRepository):
         account = await self.get_account(user_id)
         return account.balance if account else 0.0
 
-    async def update_balance(
-        self, user_id: str, delta: float, is_earning: bool = True
-    ) -> Account:
+    async def update_balance(self, user_id: str, delta: float, is_earning: bool = True) -> Account:
         """
         更新用户余额（内部方法）
 
@@ -651,9 +648,7 @@ class SQLiteTokenRepository(ITokenRepository):
                     from_row = await cursor.fetchone()
 
                 if not from_row or from_row["balance"] < amount:
-                    raise InsufficientBalanceError(
-                        f"转出方 {from_user_id} 余额不足"
-                    )
+                    raise InsufficientBalanceError(f"转出方 {from_user_id} 余额不足")
 
                 await conn.execute(
                     """
@@ -848,9 +843,7 @@ class SQLiteTokenRepository(ITokenRepository):
                 raise StakeNotFoundError(f"该质押已被提取: stake_id={stake_id}")
 
             if stake.status != "unlocked":
-                raise StakeNotUnlockedError(
-                    f"质押尚未解锁，当前状态: {stake.status}"
-                )
+                raise StakeNotUnlockedError(f"质押尚未解锁，当前状态: {stake.status}")
 
             interest = await self.calculate_stake_interest(stake_id)
             total_return = stake.amount + interest
@@ -898,9 +891,7 @@ class SQLiteTokenRepository(ITokenRepository):
         finally:
             await pool.release_connection(conn)
 
-    async def get_user_stakes(
-        self, user_id: str, status: Optional[str] = None
-    ) -> list[Stake]:
+    async def get_user_stakes(self, user_id: str, status: Optional[str] = None) -> list[Stake]:
         """
         获取用户的质押列表
 

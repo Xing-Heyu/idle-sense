@@ -8,6 +8,7 @@ Usage:
     python -m benchmark run --suite all
     python -m benchmark compare --baseline v1.0.0
 """
+
 import asyncio
 import gc
 import json
@@ -23,6 +24,7 @@ from typing import Any, Optional
 @dataclass
 class BenchmarkResult:
     """Result of a single benchmark run."""
+
     name: str
     iterations: int
     total_time: float
@@ -64,6 +66,7 @@ class BenchmarkResult:
 @dataclass
 class BenchmarkSuite:
     """A suite of benchmarks."""
+
     name: str
     description: str
     benchmarks: list[BenchmarkResult] = field(default_factory=list)
@@ -87,11 +90,7 @@ class Benchmark:
     """Base class for benchmarks."""
 
     def __init__(
-        self,
-        name: str,
-        iterations: int = 100,
-        warmup: int = 10,
-        measure_memory: bool = True
+        self, name: str, iterations: int = 100, warmup: int = 10, measure_memory: bool = True
     ):
         self.name = name
         self.iterations = iterations
@@ -185,18 +184,9 @@ class BenchmarkRunner:
         self.output_dir = output_dir
         os.makedirs(output_dir, exist_ok=True)
 
-    def run_suite(
-        self,
-        name: str,
-        description: str,
-        benchmarks: list[Benchmark]
-    ) -> BenchmarkSuite:
+    def run_suite(self, name: str, description: str, benchmarks: list[Benchmark]) -> BenchmarkSuite:
         """Run a suite of benchmarks."""
-        suite = BenchmarkSuite(
-            name=name,
-            description=description,
-            started_at=time.time()
-        )
+        suite = BenchmarkSuite(name=name, description=description, started_at=time.time())
 
         print(f"\n{'='*60}")
         print(f"Running benchmark suite: {name}")
@@ -229,17 +219,9 @@ class BenchmarkRunner:
 
         print(f"\nResults saved to: {filepath}")
 
-    def compare_suites(
-        self,
-        baseline: BenchmarkSuite,
-        current: BenchmarkSuite
-    ) -> dict[str, Any]:
+    def compare_suites(self, baseline: BenchmarkSuite, current: BenchmarkSuite) -> dict[str, Any]:
         """Compare two benchmark suites."""
-        comparison = {
-            "baseline": baseline.name,
-            "current": current.name,
-            "comparisons": []
-        }
+        comparison = {"baseline": baseline.name, "current": current.name, "comparisons": []}
 
         baseline_results = {b.name: b for b in baseline.benchmarks}
         current_results = {b.name: b for b in current.benchmarks}
@@ -249,35 +231,39 @@ class BenchmarkRunner:
                 baseline_result = baseline_results[name]
 
                 if baseline_result.avg_time > 0:
-                    change = (current_result.avg_time - baseline_result.avg_time) / baseline_result.avg_time * 100
+                    change = (
+                        (current_result.avg_time - baseline_result.avg_time)
+                        / baseline_result.avg_time
+                        * 100
+                    )
                 else:
                     change = 0
 
-                comparison["comparisons"].append({
-                    "name": name,
-                    "baseline_avg_ms": baseline_result.avg_time * 1000,
-                    "current_avg_ms": current_result.avg_time * 1000,
-                    "change_percent": change,
-                    "improved": change < 0,
-                })
+                comparison["comparisons"].append(
+                    {
+                        "name": name,
+                        "baseline_avg_ms": baseline_result.avg_time * 1000,
+                        "current_avg_ms": current_result.avg_time * 1000,
+                        "change_percent": change,
+                        "improved": change < 0,
+                    }
+                )
 
         return comparison
 
 
 # Predefined Benchmarks
 
+
 class IdleDetectionBenchmark(Benchmark):
     """Benchmark for idle detection."""
 
     def __init__(self, iterations: int = 1000):
-        super().__init__(
-            name="idle_detection",
-            iterations=iterations,
-            warmup=100
-        )
+        super().__init__(name="idle_detection", iterations=iterations, warmup=100)
 
     def setup(self):
         from idle_sense import get_system_status, is_idle
+
         self.is_idle = is_idle
         self.get_status = get_system_status
 
@@ -290,23 +276,17 @@ class TaskSubmissionBenchmark(Benchmark):
     """Benchmark for task submission."""
 
     def __init__(self, iterations: int = 100):
-        super().__init__(
-            name="task_submission",
-            iterations=iterations,
-            warmup=10
-        )
+        super().__init__(name="task_submission", iterations=iterations, warmup=10)
 
     def setup(self):
         from storage import MemoryStorage, TaskInfo
+
         self.storage = MemoryStorage()
         self.TaskInfo = TaskInfo
         self.task_count = 0
 
     def run_iteration(self):
-        task = self.TaskInfo(
-            task_id=0,
-            code="result = 1 + 1"
-        )
+        task = self.TaskInfo(task_id=0, code="result = 1 + 1")
         asyncio.run(self.storage.store_task(task))
         self.task_count += 1
 
@@ -316,14 +296,12 @@ class SandboxExecutionBenchmark(Benchmark):
 
     def __init__(self, iterations: int = 50):
         super().__init__(
-            name="sandbox_execution",
-            iterations=iterations,
-            warmup=5,
-            measure_memory=True
+            name="sandbox_execution", iterations=iterations, warmup=5, measure_memory=True
         )
 
     def setup(self):
         from sandbox_v2 import SandboxLevel, SecureSandbox
+
         self.sandbox = SecureSandbox(level=SandboxLevel.BASIC)
         self.code = """
 data = list(range(1000))
@@ -339,14 +317,11 @@ class SchedulerBenchmark(Benchmark):
     """Benchmark for scheduler decision making."""
 
     def __init__(self, iterations: int = 100):
-        super().__init__(
-            name="scheduler_decision",
-            iterations=iterations,
-            warmup=20
-        )
+        super().__init__(name="scheduler_decision", iterations=iterations, warmup=20)
 
     def setup(self):
         from src.infrastructure.scheduler.scheduler import SimpleScheduler
+
         self.scheduler = SimpleScheduler()
 
         self.nodes = [
@@ -385,7 +360,7 @@ def run_all_benchmarks(output_dir: str = "benchmark_results") -> BenchmarkSuite:
     suite = runner.run_suite(
         name="idle_accelerator_full",
         description="Full benchmark suite for idle-accelerator",
-        benchmarks=benchmarks
+        benchmarks=benchmarks,
     )
 
     runner.save_results(suite)

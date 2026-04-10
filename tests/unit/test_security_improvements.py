@@ -180,7 +180,7 @@ class TestQuotaEnforcement:
             daily_tasks_limit=50,
             concurrent_tasks_limit=3,
             cpu_quota=2.0,
-            memory_quota=2048
+            memory_quota=2048,
         )
 
         assert quota.daily_tasks_limit == 50

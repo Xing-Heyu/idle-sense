@@ -9,6 +9,7 @@ Architecture Reference:
 - MapReduce: https://research.google/pubs/pub62/
 - Ray: https://docs.ray.io/en/latest/ray-core/tasks.html
 """
+
 import hashlib
 import time
 from abc import ABC, abstractmethod
@@ -47,12 +48,14 @@ R = TypeVar("R")
 
 class DependencyType(str, Enum):
     """Task dependency type."""
+
     NARROW = "narrow"
     WIDE = "wide"
 
 
 class PartitionStrategy(str, Enum):
     """Partition strategy enumeration."""
+
     HASH = "hash"
     RANGE = "range"
     SIZE = "size"
@@ -62,6 +65,7 @@ class PartitionStrategy(str, Enum):
 
 class TaskStageStatus(str, Enum):
     """Task stage status."""
+
     PENDING = "pending"
     RUNNING = "running"
     COMPLETED = "completed"
@@ -72,6 +76,7 @@ class TaskStageStatus(str, Enum):
 @dataclass
 class TaskChunk:
     """A chunk of a distributed task."""
+
     chunk_id: str
     parent_task_id: str
     stage_id: str
@@ -107,6 +112,7 @@ class TaskChunk:
 @dataclass
 class TaskStage:
     """A stage in the task DAG."""
+
     stage_id: str
     name: str
     code_template: str
@@ -139,6 +145,7 @@ class TaskStage:
 @dataclass
 class DistributedTask:
     """A distributed task with multiple stages."""
+
     task_id: str
     name: str
     description: str = ""
@@ -154,9 +161,9 @@ class DistributedTask:
     def get_ready_stages(self, completed_stages: set) -> list[TaskStage]:
         """Get stages that are ready to execute."""
         return [
-            stage for stage in self.stages
-            if stage.status == TaskStageStatus.PENDING
-            and stage.is_ready(completed_stages)
+            stage
+            for stage in self.stages
+            if stage.status == TaskStageStatus.PENDING and stage.is_ready(completed_stages)
         ]
 
     def to_dict(self) -> dict[str, Any]:
@@ -316,10 +323,7 @@ PARTITIONERS: dict[PartitionStrategy, type] = {
 }
 
 
-def create_partitioner(
-    strategy: PartitionStrategy,
-    **kwargs
-) -> Partitioner:
+def create_partitioner(strategy: PartitionStrategy, **kwargs) -> Partitioner:
     """Factory function to create a partitioner."""
     partitioner_class = PARTITIONERS.get(strategy)
 
@@ -356,7 +360,7 @@ class DistributedTaskBuilder:
         dependencies: Optional[list[str]] = None,
         dependency_type: DependencyType = DependencyType.NARROW,
         partition_strategy: PartitionStrategy = PartitionStrategy.HASH,
-        partition_count: int = 4
+        partition_count: int = 4,
     ) -> "DistributedTaskBuilder":
         """Add a stage to the task."""
         stage = TaskStage(
@@ -389,11 +393,7 @@ class DistributedTaskBuilder:
         return self
 
     def add_map_stage(
-        self,
-        stage_id: str,
-        code_template: str,
-        data: list[Any],
-        partition_count: int = 4
+        self, stage_id: str, code_template: str, data: list[Any], partition_count: int = 4
     ) -> "DistributedTaskBuilder":
         """Add a map stage (first stage, no dependencies)."""
         return self.add_stage(
@@ -404,15 +404,11 @@ class DistributedTaskBuilder:
             dependencies=[],
             dependency_type=DependencyType.NARROW,
             partition_strategy=PartitionStrategy.HASH,
-            partition_count=partition_count
+            partition_count=partition_count,
         )
 
     def add_reduce_stage(
-        self,
-        stage_id: str,
-        code_template: str,
-        dependencies: list[str],
-        partition_count: int = 1
+        self, stage_id: str, code_template: str, dependencies: list[str], partition_count: int = 1
     ) -> "DistributedTaskBuilder":
         """Add a reduce stage (depends on previous stages)."""
         return self.add_stage(
@@ -423,7 +419,7 @@ class DistributedTaskBuilder:
             dependencies=dependencies,
             dependency_type=DependencyType.WIDE,
             partition_strategy=PartitionStrategy.HASH,
-            partition_count=partition_count
+            partition_count=partition_count,
         )
 
     def build(self) -> DistributedTask:
@@ -443,19 +439,11 @@ DISTRIBUTED_TASK_TEMPLATES = {
             {
                 "name": "Map",
                 "type": "map",
-                "description": "Apply function to each item in parallel"
+                "description": "Apply function to each item in parallel",
             },
-            {
-                "name": "Shuffle",
-                "type": "shuffle",
-                "description": "Group items by key"
-            },
-            {
-                "name": "Reduce",
-                "type": "reduce",
-                "description": "Aggregate grouped items"
-            }
-        ]
+            {"name": "Shuffle", "type": "shuffle", "description": "Group items by key"},
+            {"name": "Reduce", "type": "reduce", "description": "Aggregate grouped items"},
+        ],
     },
     "parallel_search": {
         "description": "Parallel search pattern",
@@ -463,50 +451,26 @@ DISTRIBUTED_TASK_TEMPLATES = {
             {
                 "name": "Search",
                 "type": "map",
-                "description": "Search in parallel across partitions"
+                "description": "Search in parallel across partitions",
             },
-            {
-                "name": "Merge",
-                "type": "reduce",
-                "description": "Merge search results"
-            }
-        ]
+            {"name": "Merge", "type": "reduce", "description": "Merge search results"},
+        ],
     },
     "data_processing": {
         "description": "Data processing pipeline",
         "stages": [
-            {
-                "name": "Extract",
-                "type": "map",
-                "description": "Extract data from sources"
-            },
-            {
-                "name": "Transform",
-                "type": "map",
-                "description": "Transform data"
-            },
-            {
-                "name": "Load",
-                "type": "reduce",
-                "description": "Load processed data"
-            }
-        ]
+            {"name": "Extract", "type": "map", "description": "Extract data from sources"},
+            {"name": "Transform", "type": "map", "description": "Transform data"},
+            {"name": "Load", "type": "reduce", "description": "Load processed data"},
+        ],
     },
     "monte_carlo": {
         "description": "Monte Carlo simulation pattern",
         "stages": [
-            {
-                "name": "Simulate",
-                "type": "map",
-                "description": "Run simulations in parallel"
-            },
-            {
-                "name": "Aggregate",
-                "type": "reduce",
-                "description": "Aggregate simulation results"
-            }
-        ]
-    }
+            {"name": "Simulate", "type": "map", "description": "Run simulations in parallel"},
+            {"name": "Aggregate", "type": "reduce", "description": "Aggregate simulation results"},
+        ],
+    },
 }
 
 
@@ -515,7 +479,7 @@ def create_task_from_template(
     task_id: str,
     data: list[Any],
     code_templates: dict[str, str],
-    partition_count: int = 4
+    partition_count: int = 4,
 ) -> DistributedTask:
     """
     Create a distributed task from a predefined template.
@@ -545,13 +509,13 @@ def create_task_from_template(
                 stage_id=stage_id,
                 code_template=code_templates.get(stage_config["name"], "# Map stage"),
                 data=data,
-                partition_count=partition_count
+                partition_count=partition_count,
             )
         elif stage_type == "reduce":
             builder.add_reduce_stage(
                 stage_id=stage_id,
                 code_template=code_templates.get(stage_config["name"], "# Reduce stage"),
-                dependencies=[f"stage-{i-1}"]
+                dependencies=[f"stage-{i-1}"],
             )
         elif stage_type == "shuffle":
             builder.add_stage(
@@ -562,7 +526,7 @@ def create_task_from_template(
                 dependencies=[f"stage-{i-1}"],
                 dependency_type=DependencyType.WIDE,
                 partition_strategy=PartitionStrategy.KEY,
-                partition_count=partition_count
+                partition_count=partition_count,
             )
 
     return builder.build()

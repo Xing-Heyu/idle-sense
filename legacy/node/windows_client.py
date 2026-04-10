@@ -12,8 +12,9 @@ if SILENT_MODE:
     import atexit
     import os
     import sys
-    stdout_file = open(os.devnull, 'w')  # noqa: SIM115
-    stderr_file = open(os.devnull, 'w')  # noqa: SIM115
+
+    stdout_file = open(os.devnull, "w")  # noqa: SIM115
+    stderr_file = open(os.devnull, "w")  # noqa: SIM115
     sys.stdout = stdout_file
     sys.stderr = stderr_file
 
@@ -23,13 +24,13 @@ if SILENT_MODE:
             stderr_file.close()
         except Exception:
             pass
+
     atexit.register(_close_files)
-    if sys.platform == 'win32':
+    if sys.platform == "win32":
         try:
             import ctypes
-            ctypes.windll.user32.ShowWindow(
-                ctypes.windll.kernel32.GetConsoleWindow(), 0
-            )
+
+            ctypes.windll.user32.ShowWindow(ctypes.windll.kernel32.GetConsoleWindow(), 0)
         except (AttributeError, OSError):
             pass
 
@@ -47,22 +48,22 @@ def log(msg):
     if not SILENT_MODE:
         print(msg)
 
+
 # 尝试导入idle_sense库
 try:
     from idle_sense import get_idle_info
     from idle_sense import is_idle as check_is_idle
+
     IDLE_SENSE_AVAILABLE = True
 except ImportError:
     IDLE_SENSE_AVAILABLE = False
     log("[WARNING] idle_sense library not available")
 
 # 节点配置
-NODE_CAPACITY = {
-    "cpu": 8.0,
-    "memory": 16384
-}
+NODE_CAPACITY = {"cpu": 8.0, "memory": 16384}
 
 SERVER_URL = "http://localhost:8000"
+
 
 class WindowsNodeClient:
     """Windows兼容的节点客户端"""
@@ -77,14 +78,15 @@ class WindowsNodeClient:
 
         signal.signal(signal.SIGINT, self._signal_handler)
         signal.signal(signal.SIGTERM, self._signal_handler)
-        if not SILENT_MODE and sys.platform == 'win32':
+        if not SILENT_MODE and sys.platform == "win32":
             try:
                 import ctypes
+
                 ctypes.windll.user32.MessageBoxW(
                     0,
                     f"闲置计算节点已启动\n节点ID: {self.node_id[:20]}...",
                     "闲置计算加速器",
-                    0x00000040
+                    0x00000040,
                 )
             except (AttributeError, OSError):
                 pass
@@ -93,10 +95,10 @@ class WindowsNodeClient:
 
         import os
 
-    # 用户目录，永远可写
+        # 用户目录，永远可写
         id_file = os.path.join(os.path.expanduser("~"), ".idle_sense_node_id")
 
-    # 如果已经有保存的ID，直接使用
+        # 如果已经有保存的ID，直接使用
         if os.path.exists(id_file):
             try:
                 with open(id_file) as f:
@@ -107,15 +109,15 @@ class WindowsNodeClient:
             except OSError:
                 pass
 
-    # 第一次运行，生成新ID并保存
-        hostname = platform.node() if hasattr(platform, 'node') else "unknown"
+        # 第一次运行，生成新ID并保存
+        hostname = platform.node() if hasattr(platform, "node") else "unknown"
         timestamp = int(time.time())
         random_suffix = os.urandom(4).hex()
         node_id = f"{hostname}-{timestamp}-{random_suffix}"
 
         # 保存到用户目录
         try:
-            with open(id_file, 'w') as f:
+            with open(id_file, "w") as f:
                 f.write(node_id)
             log(f"[节点ID] 生成并保存新ID: {node_id}")
         except Exception as e:
@@ -129,11 +131,11 @@ class WindowsNodeClient:
 
     def _get_system_info(self) -> dict[str, Any]:
         system_info = {
-            "hostname": platform.node() if hasattr(platform, 'node') else "unknown",
+            "hostname": platform.node() if hasattr(platform, "node") else "unknown",
             "platform": sys.platform,
             "python_version": sys.version.split()[0],
             "idle_sense_available": IDLE_SENSE_AVAILABLE,
-            "capacity": NODE_CAPACITY.copy()
+            "capacity": NODE_CAPACITY.copy(),
         }
         return system_info
 
@@ -146,26 +148,16 @@ class WindowsNodeClient:
             except Exception as e:
                 log(f"[ERROR] Idle detection failed: {e}")
 
-        idle_info = {
-            "cpu_percent": 10.0,
-            "memory_percent": 20.0,
-            "idle_time": 0
-        }
+        idle_info = {"cpu_percent": 10.0, "memory_percent": 20.0, "idle_time": 0}
         return False, idle_info
 
     def _calculate_available_resources(self) -> dict[str, float]:
         is_idle_state, idle_info = self._check_idle()
 
         if is_idle_state:
-            return {
-                "cpu": NODE_CAPACITY["cpu"] * 0.8,
-                "memory": NODE_CAPACITY["memory"] * 0.9
-            }
+            return {"cpu": NODE_CAPACITY["cpu"] * 0.8, "memory": NODE_CAPACITY["memory"] * 0.9}
         else:
-            return {
-                "cpu": NODE_CAPACITY["cpu"] * 0.2,
-                "memory": NODE_CAPACITY["memory"] * 0.3
-            }
+            return {"cpu": NODE_CAPACITY["cpu"] * 0.2, "memory": NODE_CAPACITY["memory"] * 0.3}
 
     def register_node(self) -> bool:
         try:
@@ -174,13 +166,11 @@ class WindowsNodeClient:
             registration_data = {
                 "node_id": self.node_id,
                 "system_info": system_info,
-                "available_resources": self._calculate_available_resources()
+                "available_resources": self._calculate_available_resources(),
             }
 
             response = requests.post(
-                f"{self.server_url}/api/nodes/register",
-                json=registration_data,
-                timeout=10
+                f"{self.server_url}/api/nodes/register", json=registration_data, timeout=10
             )
 
             if response.status_code == 200:
@@ -204,16 +194,18 @@ class WindowsNodeClient:
                 "node_id": self.node_id,
                 "current_load": {
                     "cpu_usage": idle_info.get("cpu_percent", 0) / 100.0 * NODE_CAPACITY["cpu"],
-                    "memory_usage": int(idle_info.get("memory_percent", 0) / 100.0 * NODE_CAPACITY["memory"])
+                    "memory_usage": int(
+                        idle_info.get("memory_percent", 0) / 100.0 * NODE_CAPACITY["memory"]
+                    ),
                 },
                 "is_idle": is_idle_state,
-                "available_resources": available_resources
+                "available_resources": available_resources,
             }
 
             response = requests.post(
                 f"{self.server_url}/api/nodes/{self.node_id}/heartbeat",
                 json=heartbeat_data,
-                timeout=5
+                timeout=5,
             )
 
             return response.status_code == 200
@@ -228,9 +220,9 @@ class WindowsNodeClient:
                 f"{self.server_url}/api/tasks/claim",
                 json={
                     "node_id": self.node_id,
-                    "available_resources": self._calculate_available_resources()
+                    "available_resources": self._calculate_available_resources(),
                 },
-                timeout=10
+                timeout=10,
             )
 
             if response.status_code == 200:
@@ -248,12 +240,13 @@ class WindowsNodeClient:
     def execute_task(self, task_id: str, code: str) -> str:
         try:
             from src.infrastructure.sandbox.security import CodeValidator
+
             validator = CodeValidator()
             is_valid, errors = validator.validate(code)
             if not is_valid:
                 return f"代码安全检查失败: {'; '.join(errors)}"
 
-        # ===== 自动包装用户代码 =====
+            # ===== 自动包装用户代码 =====
             wrapper = f"""
 # ===== 系统环境初始化 =====
 import json, time
@@ -302,11 +295,8 @@ __result__ = f"[{{__node_id__}}] {{__result__}}"
         try:
             response = requests.post(
                 f"{self.server_url}/api/tasks/{task_id}/complete",
-                json={
-                    "node_id": self.node_id,
-                    "result": result
-                },
-                timeout=10
+                json={"node_id": self.node_id, "result": result},
+                timeout=10,
             )
             return response.status_code == 200
         except Exception as e:
@@ -325,7 +315,9 @@ __result__ = f"[{{__node_id__}}] {{__result__}}"
         log(f"Hostname: {system_info['hostname']}")
         log(f"Platform: {system_info['platform']}")
         log(f"Python: {system_info['python_version']}")
-        log(f"Idle Sense: {'Available' if system_info['idle_sense_available'] else 'Not Available'}")
+        log(
+            f"Idle Sense: {'Available' if system_info['idle_sense_available'] else 'Not Available'}"
+        )
         log("-" * 60)
 
         if not self.register_node():
@@ -387,9 +379,11 @@ __result__ = f"[{{__node_id__}}] {{__result__}}"
 
         log("[INFO] Node client stopped")
 
+
 def main():
     client = WindowsNodeClient()
     client.run()
+
 
 if __name__ == "__main__":
     main()

@@ -12,6 +12,7 @@ from typing import Any, Optional
 
 class TaskStatus(Enum):
     """任务状态枚举"""
+
     PENDING = "pending"
     ASSIGNED = "assigned"
     RUNNING = "running"
@@ -22,6 +23,7 @@ class TaskStatus(Enum):
 
 class NodeStatus(Enum):
     """节点状态枚举"""
+
     OFFLINE = "offline"
     ONLINE_IDLE = "online_idle"
     ONLINE_BUSY = "online_busy"
@@ -31,6 +33,7 @@ class NodeStatus(Enum):
 @dataclass
 class Task:
     """任务数据模型"""
+
     task_id: str
     code: str
     status: TaskStatus = TaskStatus.PENDING
@@ -66,12 +69,15 @@ class Task:
 @dataclass
 class Node:
     """节点数据模型"""
+
     node_id: str
     capacity: dict[str, Any] = field(default_factory=dict)
     tags: dict[str, Any] = field(default_factory=dict)
     registered_at: float = field(default_factory=lambda: datetime.now().timestamp())
     last_heartbeat: float = field(default_factory=lambda: datetime.now().timestamp())
-    current_load: dict[str, Any] = field(default_factory=lambda: {"cpu_usage": 0.0, "memory_usage": 0})
+    current_load: dict[str, Any] = field(
+        default_factory=lambda: {"cpu_usage": 0.0, "memory_usage": 0}
+    )
     available_resources: dict[str, Any] = field(default_factory=dict)
     is_idle: bool = True
     is_available: bool = True
@@ -94,6 +100,7 @@ class Node:
     def update_status(self) -> None:
         """根据当前状态更新节点状态枚举"""
         import time
+
         current_time = time.time()
 
         if current_time - self.last_heartbeat > 180:

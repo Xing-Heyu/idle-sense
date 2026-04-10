@@ -55,9 +55,7 @@ class TestFolderService:
         system_dir = tmp_path / "system"
         os.makedirs(system_dir)
 
-        folders = {
-            "user_system_dir": str(system_dir)
-        }
+        folders = {"user_system_dir": str(system_dir)}
 
         system_file = FolderService.create_system_files(folders, "user123", "testuser")
 
@@ -94,13 +92,11 @@ class TestCreateFoldersUseCase:
             "user_data_dir": "/tmp/test/data",
             "temp_data_dir": "/tmp/test/temp",
             "docs_dir": "/tmp/test/docs",
-            "system_file": "/tmp/test/system/system_info.json"
+            "system_file": "/tmp/test/system/system_info.json",
         }
 
         request = CreateFoldersRequest(
-            user_id="user123",
-            username="testuser",
-            folder_location="project"
+            user_id="user123", username="testuser", folder_location="project"
         )
         response = self.use_case.execute(request)
 
@@ -112,10 +108,7 @@ class TestCreateFoldersUseCase:
         """测试权限不足"""
         self.mock_service.create_user_folders.side_effect = PermissionError()
 
-        request = CreateFoldersRequest(
-            user_id="user123",
-            username="testuser"
-        )
+        request = CreateFoldersRequest(user_id="user123", username="testuser")
         response = self.use_case.execute(request)
 
         assert response.success is False
@@ -125,10 +118,7 @@ class TestCreateFoldersUseCase:
         """测试一般错误"""
         self.mock_service.create_user_folders.side_effect = OSError("磁盘已满")
 
-        request = CreateFoldersRequest(
-            user_id="user123",
-            username="testuser"
-        )
+        request = CreateFoldersRequest(user_id="user123", username="testuser")
         response = self.use_case.execute(request)
 
         assert response.success is False

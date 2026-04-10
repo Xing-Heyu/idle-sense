@@ -31,6 +31,7 @@ class TestFileUserRepository:
     def test_save_and_get_user(self):
         """测试保存和获取用户"""
         from src.core.entities import User
+
         user = User(user_id="test_001", username="testuser")
 
         saved = self.repo.save(user)
@@ -42,6 +43,7 @@ class TestFileUserRepository:
     def test_get_by_username(self):
         """测试按用户名获取"""
         from src.core.entities import User
+
         user = User(user_id="test_001", username="testuser")
         self.repo.save(user)
 
@@ -52,6 +54,7 @@ class TestFileUserRepository:
     def test_list_users(self):
         """测试列出所有用户"""
         from src.core.entities import User
+
         self.repo.save(User(user_id="u1", username="user1"))
         self.repo.save(User(user_id="u2", username="user2"))
 
@@ -61,6 +64,7 @@ class TestFileUserRepository:
     def test_delete_user(self):
         """测试删除用户"""
         from src.core.entities import User
+
         user = User(user_id="test_001", username="testuser")
         self.repo.save(user)
 

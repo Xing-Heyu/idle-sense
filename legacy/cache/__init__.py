@@ -103,8 +103,8 @@ class MemoryCacheBackend(CacheBackend[str, Any]):
             entry.size_bytes = self._estimate_size(entry.value)
 
             while (
-                len(self._cache) >= self.max_size or
-                self._current_memory + entry.size_bytes > self.max_memory_bytes
+                len(self._cache) >= self.max_size
+                or self._current_memory + entry.size_bytes > self.max_memory_bytes
             ):
                 if not self._evict_lru():
                     break
@@ -153,7 +153,7 @@ class MemoryCacheBackend(CacheBackend[str, Any]):
                 "max_memory_bytes": self.max_memory_bytes,
                 "hits": self._hits,
                 "misses": self._misses,
-                "hit_rate": hit_rate
+                "hit_rate": hit_rate,
             }
 
     def _evict(self, key: str) -> bool:
@@ -183,7 +183,7 @@ class RedisCacheBackend(CacheBackend[str, Any]):
         port: int = 6379,
         db: int = 0,
         password: str | None = None,
-        prefix: str = "idle_sense:"
+        prefix: str = "idle_sense:",
     ):
         self.host = host
         self.port = port
@@ -197,12 +197,13 @@ class RedisCacheBackend(CacheBackend[str, Any]):
         if self._client is None:
             try:
                 import redis
+
                 self._client = redis.Redis(
                     host=self.host,
                     port=self.port,
                     db=self.db,
                     password=self.password,
-                    decode_responses=False
+                    decode_responses=False,
                 )
             except ImportError as e:
                 raise ImportError("Redis support requires redis package") from e
@@ -225,7 +226,7 @@ class RedisCacheBackend(CacheBackend[str, Any]):
                 expires_at=entry_dict.get("expires_at"),
                 access_count=entry_dict.get("access_count", 0),
                 last_accessed=entry_dict.get("last_accessed", time.time()),
-                tags=entry_dict.get("tags", [])
+                tags=entry_dict.get("tags", []),
             )
         except Exception:
             return None
@@ -238,7 +239,7 @@ class RedisCacheBackend(CacheBackend[str, Any]):
             "expires_at": entry.expires_at,
             "access_count": entry.access_count,
             "last_accessed": entry.last_accessed,
-            "tags": entry.tags
+            "tags": entry.tags,
         }
 
         ttl = None
@@ -247,11 +248,7 @@ class RedisCacheBackend(CacheBackend[str, Any]):
             if ttl <= 0:
                 return False
 
-        self.client.set(
-            self._make_key(key),
-            json.dumps(entry_dict),
-            ex=ttl
-        )
+        self.client.set(self._make_key(key), json.dumps(entry_dict), ex=ttl)
         return True
 
     def delete(self, key: str) -> bool:
@@ -276,11 +273,7 @@ class RedisCacheBackend(CacheBackend[str, Any]):
 
 
 class Cache:
-    def __init__(
-        self,
-        backend: CacheBackend | None = None,
-        default_ttl: int | None = 3600
-    ):
+    def __init__(self, backend: CacheBackend | None = None, default_ttl: int | None = 3600):
         self.backend = backend or MemoryCacheBackend()
         self.default_ttl = default_ttl
         self._tag_index: dict[str, set] = {}
@@ -292,11 +285,7 @@ class Cache:
         return entry.value
 
     def set(
-        self,
-        key: str,
-        value: Any,
-        ttl: int | None = None,
-        tags: list[str] | None = None
+        self, key: str, value: Any, ttl: int | None = None, tags: list[str] | None = None
     ) -> bool:
         ttl = ttl if ttl is not None else self.default_ttl
 
@@ -304,11 +293,7 @@ class Cache:
         expires_at = created_at + ttl if ttl else None
 
         entry = CacheEntry(
-            key=key,
-            value=value,
-            created_at=created_at,
-            expires_at=expires_at,
-            tags=tags or []
+            key=key, value=value, created_at=created_at, expires_at=expires_at, tags=tags or []
         )
 
         result = self.backend.set(key, entry)
@@ -356,7 +341,7 @@ class Cache:
         key: str,
         factory: Callable[[], Any],
         ttl: int | None = None,
-        tags: list[str] | None = None
+        tags: list[str] | None = None,
     ) -> Any:
         entry = self.backend.get(key)
         if entry is not None:
@@ -387,10 +372,7 @@ class Cache:
         return self.increment(key, -amount)
 
     def stats(self) -> dict[str, Any]:
-        stats = {
-            "size": self.backend.size(),
-            "tags": len(self._tag_index)
-        }
+        stats = {"size": self.backend.size(), "tags": len(self._tag_index)}
 
         if isinstance(self.backend, MemoryCacheBackend):
             stats.update(self.backend.stats())
@@ -402,7 +384,7 @@ def cached(
     key: str | None = None,
     ttl: int | None = None,
     tags: list[str] | None = None,
-    cache: Cache | None = None
+    cache: Cache | None = None,
 ):
     _cache = cache or Cache()
 
@@ -414,16 +396,13 @@ def cached(
             cache_key = _key
             if args or kwargs:
                 arg_hash = hashlib.md5(
-                    json.dumps((args, sorted(kwargs.items())), sort_keys=True, ensure_ascii=True).encode("utf-8")
+                    json.dumps(
+                        (args, sorted(kwargs.items())), sort_keys=True, ensure_ascii=True
+                    ).encode("utf-8")
                 ).hexdigest()[:8]
                 cache_key = f"{_key}:{arg_hash}"
 
-            return _cache.get_or_set(
-                cache_key,
-                lambda: func(*args, **kwargs),
-                ttl=ttl,
-                tags=tags
-            )
+            return _cache.get_or_set(cache_key, lambda: func(*args, **kwargs), ttl=ttl, tags=tags)
 
         wrapper.cache_clear = lambda: _cache.delete(_key)
         wrapper.cache_key = _key
@@ -448,10 +427,7 @@ class CacheManager:
         return self._caches[name]
 
     def create_cache(
-        self,
-        name: str,
-        backend: CacheBackend,
-        default_ttl: int | None = None
+        self, name: str, backend: CacheBackend, default_ttl: int | None = None
     ) -> Cache:
         cache = Cache(backend=backend, default_ttl=default_ttl)
         self._caches[name] = cache

@@ -30,21 +30,17 @@ def render_login():
         else:
             with st.spinner("登录中..."):
                 use_case = container.login_use_case()
-                response = use_case.execute(LoginRequest(
-                    username_or_id=username_or_id
-                ))
+                response = use_case.execute(LoginRequest(username_or_id=username_or_id))
 
                 if response.success:
                     st.success(f"✅ {response.message}")
                     st.session_state.user_session = {
                         "user_id": response.user_id,
                         "username": response.username,
-                        "is_local": True
+                        "is_local": True,
                     }
                     SessionManager.save_to_localstorage(
-                        response.user_id,
-                        response.username,
-                        is_local=True
+                        response.user_id, response.username, is_local=True
                     )
                     st.query_params["user_id"] = response.user_id
                     st.query_params["username"] = response.username
@@ -60,9 +56,7 @@ def render_register():
     st.caption("注册后可直接使用本地登录")
 
     username = st.text_input(
-        "用户名",
-        key="reg_username",
-        help="用户名只能包含中文、英文和数字，长度不超过20个字符"
+        "用户名", key="reg_username", help="用户名只能包含中文、英文和数字，长度不超过20个字符"
     )
 
     if username:
@@ -81,11 +75,9 @@ def render_register():
             "文件夹位置",
             ["项目目录", "C盘", "D盘"],
             index=0,
-            format_func=lambda x: {
-                "项目目录": "项目目录 (推荐)",
-                "C盘": "C盘",
-                "D盘": "D盘"
-            }.get(x, x)
+            format_func=lambda x: {"项目目录": "项目目录 (推荐)", "C盘": "C盘", "D盘": "D盘"}.get(
+                x, x
+            ),
         )
 
     with col2:
@@ -216,10 +208,7 @@ def render_register():
         st.warning("⚠️ 请勾选所有选项以完成注册")
 
     if st.button(
-        "🚀 注册",
-        type="primary",
-        disabled=not (username and agree_all),
-        key="register_btn"
+        "🚀 注册", type="primary", disabled=not (username and agree_all), key="register_btn"
     ):
         if not username:
             st.error("请输入用户名")
@@ -238,10 +227,9 @@ def render_register():
                 progress_bar.progress(30)
 
                 use_case = container.register_use_case()
-                response = use_case.execute(RegisterRequest(
-                    username=username,
-                    folder_location=folder_value
-                ))
+                response = use_case.execute(
+                    RegisterRequest(username=username, folder_location=folder_value)
+                )
 
                 if response.success:
                     status_text.text("完成注册...")
@@ -250,12 +238,10 @@ def render_register():
                     st.session_state.user_session = {
                         "user_id": response.user_id,
                         "username": response.username,
-                        "is_local": True
+                        "is_local": True,
                     }
                     SessionManager.save_to_localstorage(
-                        response.user_id,
-                        response.username,
-                        is_local=True
+                        response.user_id, response.username, is_local=True
                     )
                     st.query_params["user_id"] = response.user_id
                     st.query_params["username"] = response.username
@@ -280,34 +266,34 @@ def render_register():
 
 def _display_registration_error(response):
     """根据错误码展示不同的错误提示"""
-    error_code = getattr(response, 'error_code', 'UNKNOWN_ERROR')
+    error_code = getattr(response, "error_code", "UNKNOWN_ERROR")
     message = response.message
 
     error_suggestions = {
         "PERMISSION_ERROR": {
             "icon": "🔒",
-            "suggestion": "💡 建议：请尝试以管理员身份运行程序，或检查目标文件夹的写入权限。"
+            "suggestion": "💡 建议：请尝试以管理员身份运行程序，或检查目标文件夹的写入权限。",
         },
         "DISK_FULL": {
             "icon": "💾",
-            "suggestion": "💡 建议：请清理磁盘空间后重试，或选择其他磁盘作为存储位置。"
+            "suggestion": "💡 建议：请清理磁盘空间后重试，或选择其他磁盘作为存储位置。",
         },
         "SYSTEM_ERROR": {
             "icon": "⚠️",
-            "suggestion": "💡 建议：请稍后重试，如问题持续请联系技术支持。"
+            "suggestion": "💡 建议：请稍后重试，如问题持续请联系技术支持。",
         },
         "DATA_CORRUPTION": {
             "icon": "📂",
-            "suggestion": "💡 建议：用户数据可能已损坏，请尝试删除 local_users 目录后重试。"
+            "suggestion": "💡 建议：用户数据可能已损坏，请尝试删除 local_users 目录后重试。",
         },
         "USERNAME_VALIDATION_ERROR": {
             "icon": "✏️",
-            "suggestion": "💡 建议：请使用中文、英文或数字，长度不超过20个字符。"
+            "suggestion": "💡 建议：请使用中文、英文或数字，长度不超过20个字符。",
         },
         "UNKNOWN_ERROR": {
             "icon": "❓",
-            "suggestion": "💡 建议：请稍后重试，如问题持续请联系技术支持。"
-        }
+            "suggestion": "💡 建议：请稍后重试，如问题持续请联系技术支持。",
+        },
     }
 
     error_info = error_suggestions.get(error_code, error_suggestions["UNKNOWN_ERROR"])

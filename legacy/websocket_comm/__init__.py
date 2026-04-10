@@ -8,6 +8,7 @@ Architecture Reference:
 - WebSocket Protocol (RFC 6455)
 - FastAPI WebSocket support
 """
+
 import asyncio
 import json
 import time
@@ -17,6 +18,7 @@ from typing import Any, Callable, Optional
 
 try:
     from fastapi import WebSocket, WebSocketDisconnect
+
     FASTAPI_AVAILABLE = True
 except ImportError:
     FASTAPI_AVAILABLE = False
@@ -26,6 +28,7 @@ except ImportError:
 
 class MessageType(str, Enum):
     """WebSocket message types."""
+
     HEARTBEAT = "heartbeat"
     HEARTBEAT_ACK = "heartbeat_ack"
     TASK_ASSIGNED = "task_assigned"
@@ -39,6 +42,7 @@ class MessageType(str, Enum):
 @dataclass
 class WebSocketMessage:
     """WebSocket message structure."""
+
     type: MessageType
     payload: dict[str, Any] = field(default_factory=dict)
     timestamp: float = field(default_factory=time.time)
@@ -46,12 +50,14 @@ class WebSocketMessage:
 
     def to_json(self) -> str:
         """Serialize to JSON string."""
-        return json.dumps({
-            "type": self.type.value if isinstance(self.type, MessageType) else self.type,
-            "payload": self.payload,
-            "timestamp": self.timestamp,
-            "message_id": self.message_id,
-        })
+        return json.dumps(
+            {
+                "type": self.type.value if isinstance(self.type, MessageType) else self.type,
+                "payload": self.payload,
+                "timestamp": self.timestamp,
+                "message_id": self.message_id,
+            }
+        )
 
     @classmethod
     def from_json(cls, data: str) -> "WebSocketMessage":
@@ -84,10 +90,7 @@ class ConnectionManager:
     """
 
     def __init__(
-        self,
-        heartbeat_interval: int = 30,
-        heartbeat_timeout: int = 90,
-        max_connections: int = 1000
+        self, heartbeat_interval: int = 30, heartbeat_timeout: int = 90, max_connections: int = 1000
     ):
         self.active_connections: dict[str, WebSocket] = {}
         self.connection_metadata: dict[str, dict[str, Any]] = {}
@@ -125,11 +128,7 @@ class ConnectionManager:
         self.active_connections.pop(node_id, None)
         self.connection_metadata.pop(node_id, None)
 
-    async def send_message(
-        self,
-        node_id: str,
-        message: WebSocketMessage
-    ) -> bool:
+    async def send_message(self, node_id: str, message: WebSocketMessage) -> bool:
         """
         Send a message to a specific node.
 
@@ -151,11 +150,7 @@ class ConnectionManager:
             self.disconnect(node_id)
             return False
 
-    async def broadcast(
-        self,
-        message: WebSocketMessage,
-        exclude: Optional[set[str]] = None
-    ):
+    async def broadcast(self, message: WebSocketMessage, exclude: Optional[set[str]] = None):
         """Broadcast a message to all connected nodes."""
         exclude = exclude or set()
 
@@ -172,19 +167,11 @@ class ConnectionManager:
         for node_id in disconnected:
             self.disconnect(node_id)
 
-    def register_handler(
-        self,
-        message_type: MessageType,
-        handler: Callable
-    ):
+    def register_handler(self, message_type: MessageType, handler: Callable):
         """Register a handler for a specific message type."""
         self._message_handlers[message_type] = handler
 
-    async def handle_message(
-        self,
-        node_id: str,
-        data: str
-    ) -> Optional[WebSocketMessage]:
+    async def handle_message(self, node_id: str, data: str) -> Optional[WebSocketMessage]:
         """
         Handle an incoming message from a node.
 
@@ -200,15 +187,11 @@ class ConnectionManager:
 
             if message.type == MessageType.HEARTBEAT:
                 return WebSocketMessage(
-                    type=MessageType.HEARTBEAT_ACK,
-                    payload={"server_time": time.time()}
+                    type=MessageType.HEARTBEAT_ACK, payload={"server_time": time.time()}
                 )
 
             if message.type == MessageType.PING:
-                return WebSocketMessage(
-                    type=MessageType.PONG,
-                    payload={"server_time": time.time()}
-                )
+                return WebSocketMessage(type=MessageType.PONG, payload={"server_time": time.time()})
 
             handler = self._message_handlers.get(message.type)
             if handler:
@@ -217,15 +200,9 @@ class ConnectionManager:
             return None
 
         except json.JSONDecodeError:
-            return WebSocketMessage(
-                type=MessageType.ERROR,
-                payload={"error": "Invalid JSON"}
-            )
+            return WebSocketMessage(type=MessageType.ERROR, payload={"error": "Invalid JSON"})
         except Exception as e:
-            return WebSocketMessage(
-                type=MessageType.ERROR,
-                payload={"error": str(e)}
-            )
+            return WebSocketMessage(type=MessageType.ERROR, payload={"error": str(e)})
 
     def get_connection_stats(self) -> dict[str, Any]:
         """Get connection statistics."""
@@ -239,7 +216,7 @@ class ConnectionManager:
                     "messages_sent": meta["messages_sent"],
                 }
                 for node_id, meta in self.connection_metadata.items()
-            }
+            },
         }
 
     async def check_timeouts(self) -> list[str]:
@@ -285,7 +262,7 @@ class NodeWebSocketClient:
         node_id: str,
         heartbeat_interval: int = 30,
         reconnect_delay: int = 5,
-        max_reconnect_attempts: int = 10
+        max_reconnect_attempts: int = 10,
     ):
         self.scheduler_url = scheduler_url
         self.node_id = node_id
@@ -309,6 +286,7 @@ class NodeWebSocketClient:
         """
         try:
             import websockets
+
             ws_url = f"{self.scheduler_url}/ws/node/{self.node_id}"
             self._ws = await websockets.connect(ws_url)
             self._connected = True
@@ -356,7 +334,7 @@ class NodeWebSocketClient:
         is_idle: bool = True,
         cpu_usage: float = 0.0,
         memory_usage: float = 0.0,
-        available_resources: Optional[dict] = None
+        available_resources: Optional[dict] = None,
     ) -> bool:
         """Send a heartbeat message to the scheduler."""
         message = WebSocketMessage(
@@ -368,16 +346,12 @@ class NodeWebSocketClient:
                 "memory_usage": memory_usage,
                 "available_resources": available_resources or {},
                 "timestamp": time.time(),
-            }
+            },
         )
         return await self.send_message(message)
 
     async def send_task_result(
-        self,
-        task_id: int,
-        result: Any,
-        success: bool = True,
-        error: Optional[str] = None
+        self, task_id: int, result: Any, success: bool = True, error: Optional[str] = None
     ) -> bool:
         """Send task execution result to the scheduler."""
         message = WebSocketMessage(
@@ -389,7 +363,7 @@ class NodeWebSocketClient:
                 "success": success,
                 "error": error,
                 "timestamp": time.time(),
-            }
+            },
         )
         return await self.send_message(message)
 
@@ -463,21 +437,16 @@ def setup_websocket_routes(app, manager: ConnectionManager, storage):
         error = payload.get("error")
 
         if success:
-            await storage.update_task(task_id, {
-                "status": "completed",
-                "result": result,
-                "completed_at": time.time()
-            })
+            await storage.update_task(
+                task_id, {"status": "completed", "result": result, "completed_at": time.time()}
+            )
         else:
-            await storage.update_task(task_id, {
-                "status": "failed",
-                "error": error,
-                "completed_at": time.time()
-            })
+            await storage.update_task(
+                task_id, {"status": "failed", "error": error, "completed_at": time.time()}
+            )
 
         return WebSocketMessage(
-            type=MessageType.HEARTBEAT_ACK,
-            payload={"received": True, "task_id": task_id}
+            type=MessageType.HEARTBEAT_ACK, payload={"received": True, "task_id": task_id}
         )
 
     manager.register_handler(MessageType.TASK_RESULT, handle_task_result)
@@ -485,13 +454,16 @@ def setup_websocket_routes(app, manager: ConnectionManager, storage):
     async def handle_heartbeat(node_id: str, message: WebSocketMessage):
         payload = message.payload
 
-        await storage.update_node(node_id, {
-            "last_heartbeat": time.time(),
-            "is_idle": payload.get("is_idle", False),
-            "cpu_usage": payload.get("cpu_usage", 0),
-            "memory_usage": payload.get("memory_usage", 0),
-            "available_resources": payload.get("available_resources", {}),
-        })
+        await storage.update_node(
+            node_id,
+            {
+                "last_heartbeat": time.time(),
+                "is_idle": payload.get("is_idle", False),
+                "cpu_usage": payload.get("cpu_usage", 0),
+                "memory_usage": payload.get("memory_usage", 0),
+                "available_resources": payload.get("available_resources", {}),
+            },
+        )
 
         pending_task = await storage.get_pending_task_for_node(node_id)
         if pending_task:
@@ -502,12 +474,11 @@ def setup_websocket_routes(app, manager: ConnectionManager, storage):
                     "code": pending_task.code,
                     "timeout": pending_task.timeout,
                     "resources": pending_task.resources,
-                }
+                },
             )
 
         return WebSocketMessage(
-            type=MessageType.HEARTBEAT_ACK,
-            payload={"server_time": time.time()}
+            type=MessageType.HEARTBEAT_ACK, payload={"server_time": time.time()}
         )
 
     manager.register_handler(MessageType.HEARTBEAT, handle_heartbeat)

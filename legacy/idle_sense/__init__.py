@@ -13,10 +13,10 @@ from .core import (
 
 __version__ = "1.0.0"
 __all__ = [
-    'is_idle',
-    'get_system_status',
-    'get_platform',
-    'check_platform_module',
-    'get_version',
-    'get_idle_info'
+    "is_idle",
+    "get_system_status",
+    "get_platform",
+    "check_platform_module",
+    "get_version",
+    "get_idle_info",
 ]

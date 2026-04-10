@@ -17,9 +17,7 @@ class TestProgressUpdate:
     def test_create_update(self):
         """Test creating a progress update."""
         update = ProgressUpdate(
-            task_id="task-001",
-            message_type=MessageType.TASK_STATUS,
-            data={"progress": 0.5}
+            task_id="task-001", message_type=MessageType.TASK_STATUS, data={"progress": 0.5}
         )
 
         assert update.task_id == "task-001"
@@ -29,9 +27,7 @@ class TestProgressUpdate:
     def test_to_json(self):
         """Test JSON serialization."""
         update = ProgressUpdate(
-            task_id="task-001",
-            message_type=MessageType.TASK_STATUS,
-            data={"status": "running"}
+            task_id="task-001", message_type=MessageType.TASK_STATUS, data={"status": "running"}
         )
 
         json_str = update.to_json()
@@ -56,11 +52,7 @@ class TestTaskProgress:
     def test_create_task_progress(self):
         """Test creating task progress."""
         progress = TaskProgress(
-            task_id="task-001",
-            status="running",
-            progress=0.5,
-            total_stages=3,
-            completed_stages=1
+            task_id="task-001", status="running", progress=0.5, total_stages=3, completed_stages=1
         )
 
         assert progress.task_id == "task-001"
@@ -70,11 +62,7 @@ class TestTaskProgress:
     def test_to_dict(self):
         """Test task progress serialization."""
         progress = TaskProgress(
-            task_id="task-001",
-            status="running",
-            progress=0.5,
-            total_stages=3,
-            completed_stages=1
+            task_id="task-001", status="running", progress=0.5, total_stages=3, completed_stages=1
         )
 
         data = progress.to_dict()
@@ -95,7 +83,7 @@ class TestStageProgress:
             status="running",
             progress=0.3,
             total_chunks=10,
-            completed_chunks=3
+            completed_chunks=3,
         )
 
         assert progress.stage_id == "stage-1"
@@ -111,7 +99,7 @@ class TestStageProgress:
             progress=0.3,
             total_chunks=10,
             completed_chunks=3,
-            failed_chunks=1
+            failed_chunks=1,
         )
 
         data = progress.to_dict()

@@ -56,17 +56,11 @@ class ValidationResult:
                     "level": e.level.value,
                     "value": str(e.value) if e.value is not None else None,
                     "expected": e.expected,
-                    "suggestion": e.suggestion
+                    "suggestion": e.suggestion,
                 }
                 for e in self.errors
             ],
-            "warnings": [
-                {
-                    "path": w.path,
-                    "message": w.message
-                }
-                for w in self.warnings
-            ]
+            "warnings": [{"path": w.path, "message": w.message} for w in self.warnings],
         }
 
 
@@ -83,12 +77,14 @@ class TypeValidator(Validator):
     def validate(self, value: Any, path: str = "") -> ValidationResult:
         result = ValidationResult(valid=True)
         if not isinstance(value, self.expected_type):
-            result.add_error(ValidationError(
-                path=path,
-                message=f"Expected type {self.expected_type}, got {type(value).__name__}",
-                value=value,
-                expected=str(self.expected_type)
-            ))
+            result.add_error(
+                ValidationError(
+                    path=path,
+                    message=f"Expected type {self.expected_type}, got {type(value).__name__}",
+                    value=value,
+                    expected=str(self.expected_type),
+                )
+            )
         return result
 
 
@@ -97,7 +93,7 @@ class RangeValidator(Validator):
         self,
         min_val: int | float | None = None,
         max_val: int | float | None = None,
-        inclusive: bool = True
+        inclusive: bool = True,
     ):
         self.min_val = min_val
         self.max_val = max_val
@@ -107,54 +103,56 @@ class RangeValidator(Validator):
         result = ValidationResult(valid=True)
 
         if not isinstance(value, (int, float)):
-            result.add_error(ValidationError(
-                path=path,
-                message="Value must be numeric",
-                value=value
-            ))
+            result.add_error(
+                ValidationError(path=path, message="Value must be numeric", value=value)
+            )
             return result
 
         if self.min_val is not None:
             if self.inclusive and value < self.min_val:
-                result.add_error(ValidationError(
-                    path=path,
-                    message=f"Value {value} is below minimum {self.min_val}",
-                    value=value,
-                    expected=f">= {self.min_val}"
-                ))
+                result.add_error(
+                    ValidationError(
+                        path=path,
+                        message=f"Value {value} is below minimum {self.min_val}",
+                        value=value,
+                        expected=f">= {self.min_val}",
+                    )
+                )
             elif not self.inclusive and value <= self.min_val:
-                result.add_error(ValidationError(
-                    path=path,
-                    message=f"Value {value} must be greater than {self.min_val}",
-                    value=value,
-                    expected=f"> {self.min_val}"
-                ))
+                result.add_error(
+                    ValidationError(
+                        path=path,
+                        message=f"Value {value} must be greater than {self.min_val}",
+                        value=value,
+                        expected=f"> {self.min_val}",
+                    )
+                )
 
         if self.max_val is not None:
             if self.inclusive and value > self.max_val:
-                result.add_error(ValidationError(
-                    path=path,
-                    message=f"Value {value} exceeds maximum {self.max_val}",
-                    value=value,
-                    expected=f"<= {self.max_val}"
-                ))
+                result.add_error(
+                    ValidationError(
+                        path=path,
+                        message=f"Value {value} exceeds maximum {self.max_val}",
+                        value=value,
+                        expected=f"<= {self.max_val}",
+                    )
+                )
             elif not self.inclusive and value >= self.max_val:
-                result.add_error(ValidationError(
-                    path=path,
-                    message=f"Value {value} must be less than {self.max_val}",
-                    value=value,
-                    expected=f"< {self.max_val}"
-                ))
+                result.add_error(
+                    ValidationError(
+                        path=path,
+                        message=f"Value {value} must be less than {self.max_val}",
+                        value=value,
+                        expected=f"< {self.max_val}",
+                    )
+                )
 
         return result
 
 
 class LengthValidator(Validator):
-    def __init__(
-        self,
-        min_length: int | None = None,
-        max_length: int | None = None
-    ):
+    def __init__(self, min_length: int | None = None, max_length: int | None = None):
         self.min_length = min_length
         self.max_length = max_length
 
@@ -164,28 +162,28 @@ class LengthValidator(Validator):
         try:
             length = len(value)
         except TypeError:
-            result.add_error(ValidationError(
-                path=path,
-                message="Value has no length",
-                value=value
-            ))
+            result.add_error(ValidationError(path=path, message="Value has no length", value=value))
             return result
 
         if self.min_length is not None and length < self.min_length:
-            result.add_error(ValidationError(
-                path=path,
-                message=f"Length {length} is below minimum {self.min_length}",
-                value=value,
-                expected=f">= {self.min_length}"
-            ))
+            result.add_error(
+                ValidationError(
+                    path=path,
+                    message=f"Length {length} is below minimum {self.min_length}",
+                    value=value,
+                    expected=f">= {self.min_length}",
+                )
+            )
 
         if self.max_length is not None and length > self.max_length:
-            result.add_error(ValidationError(
-                path=path,
-                message=f"Length {length} exceeds maximum {self.max_length}",
-                value=value,
-                expected=f"<= {self.max_length}"
-            ))
+            result.add_error(
+                ValidationError(
+                    path=path,
+                    message=f"Length {length} exceeds maximum {self.max_length}",
+                    value=value,
+                    expected=f"<= {self.max_length}",
+                )
+            )
 
         return result
 
@@ -199,20 +197,20 @@ class PatternValidator(Validator):
         result = ValidationResult(valid=True)
 
         if not isinstance(value, str):
-            result.add_error(ValidationError(
-                path=path,
-                message="Value must be a string",
-                value=value
-            ))
+            result.add_error(
+                ValidationError(path=path, message="Value must be a string", value=value)
+            )
             return result
 
         if not self.pattern.match(value):
-            result.add_error(ValidationError(
-                path=path,
-                message=f"Value does not match pattern {self.pattern_str}",
-                value=value,
-                expected=self.pattern_str
-            ))
+            result.add_error(
+                ValidationError(
+                    path=path,
+                    message=f"Value does not match pattern {self.pattern_str}",
+                    value=value,
+                    expected=self.pattern_str,
+                )
+            )
 
         return result
 
@@ -225,12 +223,14 @@ class EnumValidator(Validator):
         result = ValidationResult(valid=True)
 
         if value not in self.allowed_values:
-            result.add_error(ValidationError(
-                path=path,
-                message=f"Value must be one of {self.allowed_values}",
-                value=value,
-                expected=str(self.allowed_values)
-            ))
+            result.add_error(
+                ValidationError(
+                    path=path,
+                    message=f"Value must be one of {self.allowed_values}",
+                    value=value,
+                    expected=str(self.allowed_values),
+                )
+            )
 
         return result
 
@@ -243,53 +243,47 @@ class URLValidator(Validator):
         r"\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})"
         r"(?::\d+)?"
         r"(?:/?|[/?]\S+)$",
-        re.IGNORECASE
+        re.IGNORECASE,
     )
 
     def validate(self, value: Any, path: str = "") -> ValidationResult:
         result = ValidationResult(valid=True)
 
         if not isinstance(value, str):
-            result.add_error(ValidationError(
-                path=path,
-                message="URL must be a string",
-                value=value
-            ))
+            result.add_error(
+                ValidationError(path=path, message="URL must be a string", value=value)
+            )
             return result
 
         if not self.URL_PATTERN.match(value):
-            result.add_error(ValidationError(
-                path=path,
-                message="Invalid URL format",
-                value=value,
-                suggestion="Use format: http(s)://host[:port]/path"
-            ))
+            result.add_error(
+                ValidationError(
+                    path=path,
+                    message="Invalid URL format",
+                    value=value,
+                    suggestion="Use format: http(s)://host[:port]/path",
+                )
+            )
 
         return result
 
 
 class EmailValidator(Validator):
-    EMAIL_PATTERN = re.compile(
-        r"^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$"
-    )
+    EMAIL_PATTERN = re.compile(r"^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$")
 
     def validate(self, value: Any, path: str = "") -> ValidationResult:
         result = ValidationResult(valid=True)
 
         if not isinstance(value, str):
-            result.add_error(ValidationError(
-                path=path,
-                message="Email must be a string",
-                value=value
-            ))
+            result.add_error(
+                ValidationError(path=path, message="Email must be a string", value=value)
+            )
             return result
 
         if not self.EMAIL_PATTERN.match(value):
-            result.add_error(ValidationError(
-                path=path,
-                message="Invalid email format",
-                value=value
-            ))
+            result.add_error(
+                ValidationError(path=path, message="Invalid email format", value=value)
+            )
 
         return result
 
@@ -300,7 +294,7 @@ class PathValidator(Validator):
         must_exist: bool = False,
         must_be_file: bool = False,
         must_be_dir: bool = False,
-        allow_relative: bool = True
+        allow_relative: bool = True,
     ):
         self.must_exist = must_exist
         self.must_be_file = must_be_file
@@ -311,42 +305,28 @@ class PathValidator(Validator):
         result = ValidationResult(valid=True)
 
         if not isinstance(value, str):
-            result.add_error(ValidationError(
-                path=path,
-                message="Path must be a string",
-                value=value
-            ))
+            result.add_error(
+                ValidationError(path=path, message="Path must be a string", value=value)
+            )
             return result
 
         p = Path(value)
 
         if not self.allow_relative and not p.is_absolute():
-            result.add_error(ValidationError(
-                path=path,
-                message="Path must be absolute",
-                value=value
-            ))
+            result.add_error(
+                ValidationError(path=path, message="Path must be absolute", value=value)
+            )
 
         if self.must_exist and not p.exists():
-            result.add_error(ValidationError(
-                path=path,
-                message="Path does not exist",
-                value=value
-            ))
+            result.add_error(ValidationError(path=path, message="Path does not exist", value=value))
 
         if self.must_be_file and p.exists() and not p.is_file():
-            result.add_error(ValidationError(
-                path=path,
-                message="Path must be a file",
-                value=value
-            ))
+            result.add_error(ValidationError(path=path, message="Path must be a file", value=value))
 
         if self.must_be_dir and p.exists() and not p.is_dir():
-            result.add_error(ValidationError(
-                path=path,
-                message="Path must be a directory",
-                value=value
-            ))
+            result.add_error(
+                ValidationError(path=path, message="Path must be a directory", value=value)
+            )
 
         return result
 
@@ -367,16 +347,17 @@ class SchemaValidator(Validator):
                     validators.append(TypeValidator(field_type))
 
                 if "min" in field_def or "max" in field_def:
-                    validators.append(RangeValidator(
-                        min_val=field_def.get("min"),
-                        max_val=field_def.get("max")
-                    ))
+                    validators.append(
+                        RangeValidator(min_val=field_def.get("min"), max_val=field_def.get("max"))
+                    )
 
                 if "min_length" in field_def or "max_length" in field_def:
-                    validators.append(LengthValidator(
-                        min_length=field_def.get("min_length"),
-                        max_length=field_def.get("max_length")
-                    ))
+                    validators.append(
+                        LengthValidator(
+                            min_length=field_def.get("min_length"),
+                            max_length=field_def.get("max_length"),
+                        )
+                    )
 
                 if "pattern" in field_def:
                     validators.append(PatternValidator(field_def["pattern"]))
@@ -389,9 +370,7 @@ class SchemaValidator(Validator):
                 elif field_def.get("format") == "email":
                     validators.append(EmailValidator())
                 elif field_def.get("format") == "path":
-                    validators.append(PathValidator(
-                        must_exist=field_def.get("must_exist", False)
-                    ))
+                    validators.append(PathValidator(must_exist=field_def.get("must_exist", False)))
 
             elif isinstance(field_def, type):
                 validators.append(TypeValidator(field_def))
@@ -402,11 +381,9 @@ class SchemaValidator(Validator):
         result = ValidationResult(valid=True)
 
         if not isinstance(value, dict):
-            result.add_error(ValidationError(
-                path=path,
-                message="Value must be a dictionary",
-                value=value
-            ))
+            result.add_error(
+                ValidationError(path=path, message="Value must be a dictionary", value=value)
+            )
             return result
 
         for field_name, field_def in self.schema.items():
@@ -418,10 +395,11 @@ class SchemaValidator(Validator):
 
             if field_name not in value:
                 if required:
-                    result.add_error(ValidationError(
-                        path=field_path,
-                        message=f"Required field '{field_name}' is missing"
-                    ))
+                    result.add_error(
+                        ValidationError(
+                            path=field_path, message=f"Required field '{field_name}' is missing"
+                        )
+                    )
                 continue
 
             field_value = value[field_name]
@@ -449,9 +427,7 @@ class ConfigValidator:
         self.custom_validators[name] = validator
 
     def validate_config(
-        self,
-        config: dict[str, Any],
-        schema_name: str | None = None
+        self, config: dict[str, Any], schema_name: str | None = None
     ) -> ValidationResult:
         result = ValidationResult(valid=True)
 
@@ -465,15 +441,13 @@ class ConfigValidator:
                 if isinstance(validator_result, ValidationResult):
                     result.merge(validator_result)
                 elif validator_result is False:
-                    result.add_error(ValidationError(
-                        path="",
-                        message=f"Custom validator '{name}' failed"
-                    ))
+                    result.add_error(
+                        ValidationError(path="", message=f"Custom validator '{name}' failed")
+                    )
             except Exception as e:
-                result.add_error(ValidationError(
-                    path="",
-                    message=f"Validator '{name}' raised exception: {e}"
-                ))
+                result.add_error(
+                    ValidationError(path="", message=f"Validator '{name}' raised exception: {e}")
+                )
 
         return result
 
@@ -487,11 +461,13 @@ class ConfigValidator:
             path = f"env.{key}"
 
             if not value:
-                result.add_error(ValidationError(
-                    path=path,
-                    message=f"Environment variable {key} is empty",
-                    level=ValidationLevel.WARNING
-                ))
+                result.add_error(
+                    ValidationError(
+                        path=path,
+                        message=f"Environment variable {key} is empty",
+                        level=ValidationLevel.WARNING,
+                    )
+                )
 
         return result
 
@@ -500,10 +476,11 @@ class ConfigValidator:
 
         path = Path(file_path)
         if not path.exists():
-            result.add_error(ValidationError(
-                path=file_path,
-                message=f"Configuration file does not exist: {file_path}"
-            ))
+            result.add_error(
+                ValidationError(
+                    path=file_path, message=f"Configuration file does not exist: {file_path}"
+                )
+            )
             return result
 
         try:
@@ -513,90 +490,49 @@ class ConfigValidator:
             elif path.suffix in (".yaml", ".yml"):
                 try:
                     import yaml
+
                     with open(path, encoding="utf-8") as f:
                         config = yaml.safe_load(f)
                 except ImportError:
-                    result.add_error(ValidationError(
-                        path=file_path,
-                        message="YAML support requires PyYAML package"
-                    ))
+                    result.add_error(
+                        ValidationError(
+                            path=file_path, message="YAML support requires PyYAML package"
+                        )
+                    )
                     return result
             else:
-                result.add_error(ValidationError(
-                    path=file_path,
-                    message=f"Unsupported config file format: {path.suffix}"
-                ))
+                result.add_error(
+                    ValidationError(
+                        path=file_path, message=f"Unsupported config file format: {path.suffix}"
+                    )
+                )
                 return result
 
             result.data = config
 
         except json.JSONDecodeError as e:
-            result.add_error(ValidationError(
-                path=file_path,
-                message=f"Invalid JSON: {e}"
-            ))
+            result.add_error(ValidationError(path=file_path, message=f"Invalid JSON: {e}"))
         except Exception as e:
-            result.add_error(ValidationError(
-                path=file_path,
-                message=f"Failed to read config file: {e}"
-            ))
+            result.add_error(
+                ValidationError(path=file_path, message=f"Failed to read config file: {e}")
+            )
 
         return result
 
 
 IDLE_SENSE_SCHEMA = {
-    "scheduler": {
-        "type": dict,
-        "required": True
-    },
-    "scheduler.host": {
-        "type": str,
-        "required": True,
-        "format": "url"
-    },
-    "scheduler.port": {
-        "type": int,
-        "required": True,
-        "min": 1,
-        "max": 65535
-    },
-    "node": {
-        "type": dict,
-        "required": True
-    },
-    "node.id": {
-        "type": str,
-        "required": True,
-        "min_length": 1
-    },
-    "node.max_cpu_percent": {
-        "type": (int, float),
-        "min": 0,
-        "max": 100
-    },
-    "node.max_memory_percent": {
-        "type": (int, float),
-        "min": 0,
-        "max": 100
-    },
-    "sandbox": {
-        "type": dict
-    },
-    "sandbox.enabled": {
-        "type": bool
-    },
-    "sandbox.timeout_seconds": {
-        "type": int,
-        "min": 1,
-        "max": 3600
-    },
-    "logging": {
-        "type": dict
-    },
-    "logging.level": {
-        "type": str,
-        "enum": ["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"]
-    }
+    "scheduler": {"type": dict, "required": True},
+    "scheduler.host": {"type": str, "required": True, "format": "url"},
+    "scheduler.port": {"type": int, "required": True, "min": 1, "max": 65535},
+    "node": {"type": dict, "required": True},
+    "node.id": {"type": str, "required": True, "min_length": 1},
+    "node.max_cpu_percent": {"type": (int, float), "min": 0, "max": 100},
+    "node.max_memory_percent": {"type": (int, float), "min": 0, "max": 100},
+    "sandbox": {"type": dict},
+    "sandbox.enabled": {"type": bool},
+    "sandbox.timeout_seconds": {"type": int, "min": 1, "max": 3600},
+    "logging": {"type": dict},
+    "logging.level": {"type": str, "enum": ["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"]},
 }
 
 

@@ -17,6 +17,7 @@ from typing import Any, Optional
 
 class SchedulingPolicy(Enum):
     """调度策略枚举"""
+
     FIFO = "fifo"
     FAIR = "fair"
     PRIORITY = "priority"
@@ -26,6 +27,7 @@ class SchedulingPolicy(Enum):
 @dataclass
 class TaskInfo:
     """任务信息（兼容旧接口）"""
+
     task_id: int
     code: str
     status: str = "pending"
@@ -42,12 +44,15 @@ class TaskInfo:
 @dataclass
 class NodeInfo:
     """节点信息（兼容旧接口）"""
+
     node_id: str
     capacity: dict[str, Any] = field(default_factory=dict)
     tags: dict[str, Any] = field(default_factory=dict)
     registered_at: float = field(default_factory=time.time)
     last_heartbeat: float = field(default_factory=time.time)
-    current_load: dict[str, Any] = field(default_factory=lambda: {"cpu_usage": 0.0, "memory_usage": 0})
+    current_load: dict[str, Any] = field(
+        default_factory=lambda: {"cpu_usage": 0.0, "memory_usage": 0}
+    )
     available_resources: dict[str, Any] = field(default_factory=dict)
     is_idle: bool = True
     is_available: bool = True
@@ -72,7 +77,11 @@ class ResourcePredicate(Predicate):
         if "cpu" in required and "cpu" in available and required["cpu"] > available.get("cpu", 0):
             return False
 
-        return not ("memory" in required and "memory" in available and required["memory"] > available.get("memory", 0))
+        return not (
+            "memory" in required
+            and "memory" in available
+            and required["memory"] > available.get("memory", 0)
+        )
 
 
 class TagPredicate(Predicate):
@@ -259,7 +268,9 @@ class SimpleScheduler(BaseScheduler):
             node_info.last_heartbeat = time.time()
             node_info.current_load = heartbeat_data.get("current_load", node_info.current_load)
             node_info.is_idle = heartbeat_data.get("is_idle", node_info.is_idle)
-            node_info.available_resources = heartbeat_data.get("available_resources", node_info.available_resources)
+            node_info.available_resources = heartbeat_data.get(
+                "available_resources", node_info.available_resources
+            )
             node_info.is_available = heartbeat_data.get("is_available", True)
 
             self.node_heartbeats[node_id] = time.time()
@@ -369,8 +380,12 @@ class SimpleScheduler(BaseScheduler):
             node_info.current_load["cpu_usage"] += cpu_needed
             node_info.current_load["memory_usage"] += memory_needed
         elif operation == "remove":
-            node_info.current_load["cpu_usage"] = max(0, node_info.current_load["cpu_usage"] - cpu_needed)
-            node_info.current_load["memory_usage"] = max(0, node_info.current_load["memory_usage"] - memory_needed)
+            node_info.current_load["cpu_usage"] = max(
+                0, node_info.current_load["cpu_usage"] - cpu_needed
+            )
+            node_info.current_load["memory_usage"] = max(
+                0, node_info.current_load["memory_usage"] - memory_needed
+            )
 
     def _schedule_tasks(self):
         if not self.pending_tasks:
@@ -411,7 +426,9 @@ class AdvancedScheduler(SimpleScheduler):
         super().__init__()
         self.policy = policy
         self.user_task_counts: dict[str, int] = defaultdict(int)
-        self.user_resource_usage: dict[str, dict[str, float]] = defaultdict(lambda: {"cpu": 0.0, "memory": 0})
+        self.user_resource_usage: dict[str, dict[str, float]] = defaultdict(
+            lambda: {"cpu": 0.0, "memory": 0}
+        )
         self.total_resources: dict[str, float] = {"cpu": 0.0, "memory": 0}
 
     def register_node(self, node: NodeInfo) -> bool:
@@ -476,10 +493,7 @@ class AdvancedScheduler(SimpleScheduler):
                     user_id = task.user_id or "default"
                     user_queues[user_id].append(task)
 
-            sorted_users = sorted(
-                user_queues.keys(),
-                key=lambda u: self.user_task_counts.get(u, 0)
-            )
+            sorted_users = sorted(user_queues.keys(), key=lambda u: self.user_task_counts.get(u, 0))
 
             for user_id in sorted_users:
                 for task in user_queues[user_id]:
@@ -502,7 +516,7 @@ class AdvancedScheduler(SimpleScheduler):
             sorted_tasks = sorted(
                 [self.tasks.get(tid) for tid in self.pending_tasks],
                 key=lambda t: t.priority if t else -1,
-                reverse=True
+                reverse=True,
             )
 
             for task in sorted_tasks:
@@ -523,7 +537,7 @@ class AdvancedScheduler(SimpleScheduler):
                 return None
 
             best_task = None
-            best_drf_score = float('inf')
+            best_drf_score = float("inf")
 
             for task_id in self.pending_tasks:
                 task = self.tasks.get(task_id)

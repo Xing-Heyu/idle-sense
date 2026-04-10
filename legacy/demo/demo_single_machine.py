@@ -11,16 +11,19 @@ from pathlib import Path
 # 添加项目根目录到路径
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
+
 def print_header(title):
     """打印标题"""
     print("\n" + "=" * 60)
     print(f"  {title}")
     print("=" * 60)
 
+
 def print_step(step, description):
     """打印步骤"""
     print(f"\n[{step}] {description}")
     print("-" * 40)
+
 
 def start_scheduler():
     """启动调度中心"""
@@ -29,6 +32,7 @@ def start_scheduler():
     # 检查调度中心是否已在运行
     try:
         import requests
+
         response = requests.get("http://localhost:8000/", timeout=2)
         if response.status_code == 200:
             print("  调度中心已在运行")
@@ -41,7 +45,7 @@ def start_scheduler():
         [sys.executable, "scheduler/simple_server.py"],
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE,
-        text=True
+        text=True,
     )
 
     print(f"  调度中心已启动 (PID: {scheduler_proc.pid})")
@@ -51,6 +55,7 @@ def start_scheduler():
     for _ in range(30):  # 最多等待30秒
         try:
             import requests
+
             response = requests.get("http://localhost:8000/", timeout=1)
             if response.status_code == 200:
                 print(" ✓")
@@ -63,6 +68,7 @@ def start_scheduler():
     print("\n  ✗ 调度中心启动超时")
     return None
 
+
 def start_node():
     """启动计算节点"""
     print_step("2", "启动计算节点...")
@@ -71,7 +77,7 @@ def start_node():
         [sys.executable, "node/simple_client.py", "--scheduler", "http://localhost:8000"],
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE,
-        text=True
+        text=True,
     )
 
     print(f"  计算节点已启动 (PID: {node_proc.pid})")
@@ -81,6 +87,7 @@ def start_node():
     for _ in range(15):
         try:
             import requests
+
             response = requests.get("http://localhost:8000/nodes", timeout=1)
             if response.status_code == 200:
                 data = response.json()
@@ -96,6 +103,7 @@ def start_node():
 
     print("\n  ⚠ 节点注册较慢，继续演示...")
     return node_proc
+
 
 def submit_demo_task():
     """提交演示任务"""
@@ -178,14 +186,7 @@ __result__ = {
     try:
         import requests
 
-        payload = {
-            "code": demo_code,
-            "timeout": 60,
-            "resources": {
-                "cpu": 1.0,
-                "memory": 512
-            }
-        }
+        payload = {"code": demo_code, "timeout": 60, "resources": {"cpu": 1.0, "memory": 512}}
 
         response = requests.post("http://localhost:8000/submit", json=payload, timeout=10)
 
@@ -203,6 +204,7 @@ __result__ = {
     except Exception as e:
         print(f"  ✗ 提交任务时出错: {e}")
         return None
+
 
 def monitor_task(task_id):
     """监控任务进度"""
@@ -241,10 +243,10 @@ def monitor_task(task_id):
 
                     # 解析并显示重要结果
                     if result:
-                        lines = result.split('\n')
+                        lines = result.split("\n")
                         print("  重要输出:")
                         for line in lines[:10]:  # 显示前10行
-                            if line.strip() and not line.startswith('  '):
+                            if line.strip() and not line.startswith("  "):
                                 print(f"    {line}")
 
                     return True
@@ -262,6 +264,7 @@ def monitor_task(task_id):
     except Exception as e:
         print(f"  ✗ 监控任务时出错: {e}")
         return False
+
 
 def check_system_status():
     """检查系统状态"""
@@ -302,6 +305,7 @@ def check_system_status():
         print(f"  ⚠ 获取系统状态时出错: {e}")
         return False
 
+
 def cleanup(processes):
     """清理进程"""
     print_step("6", "清理演示环境...")
@@ -319,6 +323,7 @@ def cleanup(processes):
 
     print("  演示环境清理完成")
 
+
 def run_single_machine_demo():
     """运行单机演示"""
     print_header("闲置计算加速器 - 单机演示")
@@ -334,11 +339,11 @@ def run_single_machine_demo():
             print("  ✗ 无法启动或连接到调度中心，演示中止")
             return False
 
-        processes['scheduler'] = scheduler_proc
+        processes["scheduler"] = scheduler_proc
 
         # 2. 启动计算节点
         node_proc = start_node()
-        processes['node'] = node_proc
+        processes["node"] = node_proc
 
         # 3. 提交演示任务
         task_id = submit_demo_task()
@@ -375,20 +380,24 @@ def run_single_machine_demo():
     except Exception as e:
         print(f"\n演示出错: {e}")
         import traceback
+
         traceback.print_exc()
         return False
     finally:
         # 清理
         cleanup(processes)
 
+
 def check_scheduler_exists():
     """检查调度中心是否已存在"""
     try:
         import requests
+
         response = requests.get("http://localhost:8000/", timeout=2)
         return response.status_code == 200
     except requests.RequestException:
         return False
+
 
 if __name__ == "__main__":
     # 运行单机演示

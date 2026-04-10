@@ -291,8 +291,7 @@ class TestShardedStorage(unittest.TestCase):
 
     def setUp(self):
         self.shards = [
-            MemoryDistributedStorage(StorageConfig(cache_enabled=False))
-            for _ in range(3)
+            MemoryDistributedStorage(StorageConfig(cache_enabled=False)) for _ in range(3)
         ]
         self.sharded = ShardedStorage(self.shards, replication_factor=2)
 
@@ -355,10 +354,7 @@ class TestStorageWithCache(unittest.TestCase):
 
     def setUp(self):
         self.config = StorageConfig(
-            backend="memory",
-            cache_enabled=True,
-            cache_max_size=100,
-            cache_ttl=60
+            backend="memory", cache_enabled=True, cache_max_size=100, cache_ttl=60
         )
         self.storage = MemoryDistributedStorage(self.config)
 

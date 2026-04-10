@@ -18,6 +18,7 @@ Usage:
     # Publish events
     await bus.publish(Event("task_completed", {"task_id": 123}))
 """
+
 import asyncio
 import logging
 import threading
@@ -33,6 +34,7 @@ logger = logging.getLogger(__name__)
 
 class EventPriority(int, Enum):
     """Event handler priority."""
+
     LOWEST = 0
     LOW = 25
     NORMAL = 50
@@ -43,6 +45,7 @@ class EventPriority(int, Enum):
 @dataclass
 class Event:
     """Base event class."""
+
     event_type: str
     data: dict[str, Any] = field(default_factory=dict)
     source: Optional[str] = None
@@ -64,6 +67,7 @@ class Event:
 @dataclass
 class EventHandler:
     """Registered event handler."""
+
     handler: Callable
     event_type: str
     priority: int = EventPriority.NORMAL
@@ -86,11 +90,7 @@ class EventBus:
     - Event history
     """
 
-    def __init__(
-        self,
-        history_size: int = 100,
-        debug: bool = False
-    ):
+    def __init__(self, history_size: int = 100, debug: bool = False):
         self._handlers: dict[str, list[EventHandler]] = defaultdict(list)
         self._wildcard_handlers: list[EventHandler] = []
         self._history: list[Event] = []
@@ -99,10 +99,7 @@ class EventBus:
         self._lock = threading.Lock()
 
     def on(
-        self,
-        event_type: str,
-        priority: int = EventPriority.NORMAL,
-        once: bool = False
+        self, event_type: str, priority: int = EventPriority.NORMAL, once: bool = False
     ) -> Callable:
         """
         Decorator to register an event handler.
@@ -112,14 +109,11 @@ class EventBus:
             def handle(event):
                 print(event.data)
         """
+
         def decorator(func: Callable) -> Callable:
-            self.subscribe(
-                event_type=event_type,
-                handler=func,
-                priority=priority,
-                once=once
-            )
+            self.subscribe(event_type=event_type, handler=func, priority=priority, once=once)
             return func
+
         return decorator
 
     def subscribe(
@@ -127,7 +121,7 @@ class EventBus:
         event_type: str,
         handler: Callable,
         priority: int = EventPriority.NORMAL,
-        once: bool = False
+        once: bool = False,
     ) -> None:
         """Subscribe a handler to an event type."""
         import asyncio
@@ -139,7 +133,7 @@ class EventBus:
             event_type=event_type,
             priority=priority,
             once=once,
-            async_handler=async_handler
+            async_handler=async_handler,
         )
 
         with self._lock:
@@ -151,11 +145,7 @@ class EventBus:
 
         logger.debug(f"Subscribed handler to event '{event_type}'")
 
-    def unsubscribe(
-        self,
-        event_type: str,
-        handler: Callable
-    ) -> bool:
+    def unsubscribe(self, event_type: str, handler: Callable) -> bool:
         """Unsubscribe a handler from an event type."""
         with self._lock:
             handlers = self._handlers.get(event_type, [])
@@ -166,11 +156,7 @@ class EventBus:
                     return True
         return False
 
-    def publish(
-        self,
-        event: Union[Event, str],
-        data: Optional[dict[str, Any]] = None
-    ) -> None:
+    def publish(self, event: Union[Event, str], data: Optional[dict[str, Any]] = None) -> None:
         """
         Publish an event synchronously.
 
@@ -200,17 +186,13 @@ class EventBus:
                     self._remove_handler(event_handler)
 
             except Exception as e:
-                logger.error(
-                    f"Error in event handler for '{event.event_type}': {e}"
-                )
+                logger.error(f"Error in event handler for '{event.event_type}': {e}")
 
         if self._debug:
             logger.debug(f"Published event '{event.event_type}' to {len(handlers)} handlers")
 
     async def publish_async(
-        self,
-        event: Union[Event, str],
-        data: Optional[dict[str, Any]] = None
+        self, event: Union[Event, str], data: Optional[dict[str, Any]] = None
     ) -> None:
         """Publish an event asynchronously."""
         if isinstance(event, str):
@@ -231,9 +213,7 @@ class EventBus:
                     self._remove_handler(event_handler)
 
             except Exception as e:
-                logger.error(
-                    f"Error in async event handler for '{event.event_type}': {e}"
-                )
+                logger.error(f"Error in async event handler for '{event.event_type}': {e}")
 
     def _get_handlers(self, event_type: str) -> list[EventHandler]:
         """Get all handlers for an event type."""
@@ -260,11 +240,7 @@ class EventBus:
             if len(self._history) > self._history_size:
                 self._history.pop(0)
 
-    def get_history(
-        self,
-        event_type: Optional[str] = None,
-        limit: int = 10
-    ) -> list[Event]:
+    def get_history(self, event_type: Optional[str] = None, limit: int = 10) -> list[Event]:
         """Get event history."""
         with self._lock:
             events = list(self._history)

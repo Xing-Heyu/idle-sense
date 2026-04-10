@@ -22,6 +22,7 @@ from typing import Any, Optional
 @dataclass
 class ResourceMetrics:
     """资源使用度量"""
+
     cpu_seconds: float = 0.0
     memory_gb_seconds: float = 0.0
     storage_gb: float = 0.0
@@ -32,7 +33,7 @@ class ResourceMetrics:
             "cpu_seconds": self.cpu_seconds,
             "memory_gb_seconds": self.memory_gb_seconds,
             "storage_gb": self.storage_gb,
-            "network_gb": self.network_gb
+            "network_gb": self.network_gb,
         }
 
     @classmethod
@@ -41,13 +42,14 @@ class ResourceMetrics:
             cpu_seconds=data.get("cpu_seconds", 0.0),
             memory_gb_seconds=data.get("memory_gb_seconds", 0.0),
             storage_gb=data.get("storage_gb", 0.0),
-            network_gb=data.get("network_gb", 0.0)
+            network_gb=data.get("network_gb", 0.0),
         )
 
 
 @dataclass
 class ContributionProof:
     """贡献证明数据结构"""
+
     proof_id: str
     node_address: str
     task_id: str
@@ -74,7 +76,7 @@ class ContributionProof:
             "timestamp": self.timestamp,
             "verifier_address": self.verifier_address,
             "verified": self.verified,
-            "signature": self.signature
+            "signature": self.signature,
         }
 
     @classmethod
@@ -91,7 +93,7 @@ class ContributionProof:
             timestamp=data["timestamp"],
             verifier_address=data.get("verifier_address"),
             verified=data.get("verified", False),
-            signature=data.get("signature")
+            signature=data.get("signature"),
         )
 
 
@@ -123,7 +125,7 @@ class ContributionProofService:
         code_length: int = 0,
         dependencies: int = 0,
         cpu_seconds: float = 0.0,
-        memory_mb: float = 0.0
+        memory_mb: float = 0.0,
     ) -> float:
         """
         计算任务复杂度系数
@@ -153,7 +155,7 @@ class ContributionProofService:
         resource_metrics: ResourceMetrics,
         quality_score: float = 1.0,
         complexity_coefficient: float = 1.0,
-        reputation: float = 50.0
+        reputation: float = 50.0,
     ) -> float:
         """
         计算贡献分
@@ -163,12 +165,7 @@ class ContributionProofService:
         base_score = resource_metrics.cpu_seconds + resource_metrics.memory_gb_seconds
         reputation_bonus = self._calculate_reputation_bonus(reputation)
 
-        contribution_score = (
-            base_score *
-            complexity_coefficient *
-            quality_score *
-            reputation_bonus
-        )
+        contribution_score = base_score * complexity_coefficient * quality_score * reputation_bonus
 
         return contribution_score
 
@@ -180,7 +177,7 @@ class ContributionProofService:
         quality_score: float = 1.0,
         code_length: int = 0,
         dependencies: int = 0,
-        reputation: float = 50.0
+        reputation: float = 50.0,
     ) -> ContributionProof:
         """
         生成贡献证明
@@ -201,7 +198,7 @@ class ContributionProofService:
             code_length=code_length,
             dependencies=dependencies,
             cpu_seconds=resource_metrics.cpu_seconds,
-            memory_mb=resource_metrics.memory_gb_seconds * 1024
+            memory_mb=resource_metrics.memory_gb_seconds * 1024,
         )
 
         reputation_bonus = self._calculate_reputation_bonus(reputation)
@@ -210,7 +207,7 @@ class ContributionProofService:
             resource_metrics=resource_metrics,
             quality_score=quality_score,
             complexity_coefficient=complexity_coefficient,
-            reputation=reputation
+            reputation=reputation,
         )
 
         proof = ContributionProof(
@@ -222,7 +219,7 @@ class ContributionProofService:
             complexity_coefficient=complexity_coefficient,
             reputation_bonus=reputation_bonus,
             contribution_score=contribution_score,
-            timestamp=time.time()
+            timestamp=time.time(),
         )
 
         proof.signature = self._sign_proof(proof)
@@ -241,14 +238,10 @@ class ContributionProofService:
             "node_address": proof.node_address,
             "task_id": proof.task_id,
             "contribution_score": proof.contribution_score,
-            "timestamp": proof.timestamp
+            "timestamp": proof.timestamp,
         }
         proof_json = json.dumps(proof_data, sort_keys=True).encode()
-        signature = hmac.new(
-            self._secret_key.encode(),
-            proof_json,
-            hashlib.sha256
-        ).hexdigest()
+        signature = hmac.new(self._secret_key.encode(), proof_json, hashlib.sha256).hexdigest()
         return signature
 
     def verify_proof(self, proof: ContributionProof) -> bool:
@@ -265,11 +258,7 @@ class ContributionProofService:
             return False
         return self.verify_proof(self._proofs[proof_id])
 
-    def add_verification(
-        self,
-        proof_id: str,
-        verifier_address: str
-    ) -> bool:
+    def add_verification(self, proof_id: str, verifier_address: str) -> bool:
         """
         添加验证
 
@@ -292,16 +281,9 @@ class ContributionProofService:
         """获取贡献证明"""
         return self._proofs.get(proof_id)
 
-    def get_node_proofs(
-        self,
-        node_address: str,
-        limit: int = 100
-    ) -> list[ContributionProof]:
+    def get_node_proofs(self, node_address: str, limit: int = 100) -> list[ContributionProof]:
         """获取节点的贡献证明列表"""
-        proofs = [
-            p for p in self._proofs.values()
-            if p.node_address == node_address
-        ]
+        proofs = [p for p in self._proofs.values() if p.node_address == node_address]
         return sorted(proofs, key=lambda p: p.timestamp, reverse=True)[:limit]
 
     def get_node_total_contribution(self, node_address: str) -> float:
@@ -314,9 +296,7 @@ class ContributionProofService:
         verified_proofs = sum(1 for p in self._proofs.values() if p.verified)
         total_contribution = sum(self._node_contributions.values())
         avg_contribution = (
-            total_contribution / len(self._node_contributions)
-            if self._node_contributions
-            else 0.0
+            total_contribution / len(self._node_contributions) if self._node_contributions else 0.0
         )
 
         return {
@@ -325,12 +305,8 @@ class ContributionProofService:
             "unverified_proofs": total_proofs - verified_proofs,
             "total_nodes": len(self._node_contributions),
             "total_contribution": total_contribution,
-            "avg_contribution_per_node": avg_contribution
+            "avg_contribution_per_node": avg_contribution,
         }
 
 
-__all__ = [
-    "ContributionProofService",
-    "ContributionProof",
-    "ResourceMetrics"
-]
+__all__ = ["ContributionProofService", "ContributionProof", "ResourceMetrics"]

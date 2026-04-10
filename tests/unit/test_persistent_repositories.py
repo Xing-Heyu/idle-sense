@@ -4,7 +4,6 @@
 测试 SQLite 和 Redis 仓储实现
 """
 
-
 import pytest
 
 from src.core.entities import Node, NodeStatus, Task, TaskStatus
@@ -34,7 +33,7 @@ class TestSQLiteNodeRepository:
             status=NodeStatus.ONLINE,
             capacity={"cpu": 4, "memory": 8192},
             tags={"gpu": "true"},
-            owner="user1"
+            owner="user1",
         )
 
         saved = await repo.save(node)
@@ -125,7 +124,7 @@ class TestSQLiteTaskRepository:
             user_id="user1",
             timeout=300,
             cpu_request=2.0,
-            memory_request=1024
+            memory_request=1024,
         )
 
         saved = await repo.save(task)

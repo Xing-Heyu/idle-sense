@@ -16,7 +16,9 @@ class SchedulerAPI:
     提供调度器操作的统一接口
     """
 
-    def __init__(self, client: Optional[SchedulerClient] = None, base_url: str = "http://localhost:8000"):
+    def __init__(
+        self, client: Optional[SchedulerClient] = None, base_url: str = "http://localhost:8000"
+    ):
         self._client = client or SchedulerClient(base_url=base_url)
 
     def check_health(self) -> dict[str, Any]:

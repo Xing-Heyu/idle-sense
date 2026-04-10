@@ -47,6 +47,7 @@ class DependencyType(Enum):
 @dataclass
 class TaskChunk:
     """A chunk of work in a stage."""
+
     chunk_id: str
     stage_id: str
     task_id: str
@@ -82,6 +83,7 @@ class TaskChunk:
 @dataclass
 class Stage:
     """A stage in the DAG."""
+
     stage_id: str
     name: str
     code_template: str
@@ -130,6 +132,7 @@ class Stage:
 @dataclass
 class DAGTask:
     """A distributed task represented as a DAG."""
+
     task_id: str
     name: str
     description: str = ""
@@ -144,7 +147,8 @@ class DAGTask:
     def get_ready_stages(self, completed_stages: set[str]) -> list[Stage]:
         """Get stages that are ready to execute."""
         return [
-            stage for stage in self.stages
+            stage
+            for stage in self.stages
             if stage.status == StageStatus.PENDING and stage.is_ready(completed_stages)
         ]
 
@@ -176,6 +180,7 @@ class DAGTask:
 @dataclass
 class Checkpoint:
     """Checkpoint for fault tolerance."""
+
     task_id: str
     stage_id: str
     chunk_id: str
@@ -211,7 +216,7 @@ class DAGExecutionEngine:
         self,
         submit_func: Callable = None,
         check_status_func: Callable = None,
-        max_concurrent_chunks: int = None
+        max_concurrent_chunks: int = None,
     ):
         self.submit_func = submit_func
         self.check_status_func = check_status_func
@@ -315,8 +320,7 @@ class DAGExecutionEngine:
                     return await self._execute_chunk(task, stage, chunk)
 
             results = await asyncio.gather(
-                *[execute_chunk(c) for c in pending_chunks],
-                return_exceptions=True
+                *[execute_chunk(c) for c in pending_chunks], return_exceptions=True
             )
 
             failed_count = sum(1 for r in results if isinstance(r, Exception) or r is False)
@@ -381,7 +385,7 @@ class DAGExecutionEngine:
                     self._stats["chunks_failed"] += 1
                     return False
 
-                await asyncio.sleep(2 ** attempt)
+                await asyncio.sleep(2**attempt)
 
         return False
 
@@ -416,7 +420,7 @@ class DAGExecutionEngine:
                                         task_id=task_id,
                                         stage_id=stage.stage_id,
                                         chunk_id=chunk.chunk_id,
-                                        data=chunk.result
+                                        data=chunk.result,
                                     )
 
     async def recover_from_checkpoint(self, task_id: str) -> bool:
@@ -499,7 +503,7 @@ class DAGBuilder:
         data: Any = None,
         dependencies: list[str] = None,
         dependency_type: DependencyType = DependencyType.NARROW,
-        partition_count: int = 4
+        partition_count: int = 4,
     ) -> "DAGBuilder":
         """Add a stage to the DAG."""
         stage = Stage(
@@ -521,11 +525,7 @@ class DAGBuilder:
         return self
 
     def add_map_stage(
-        self,
-        stage_id: str,
-        code_template: str,
-        data: list[Any],
-        partition_count: int = 4
+        self, stage_id: str, code_template: str, data: list[Any], partition_count: int = 4
     ) -> "DAGBuilder":
         """Add a map stage (no dependencies)."""
         return self.add_stage(
@@ -535,15 +535,11 @@ class DAGBuilder:
             data=data,
             dependencies=[],
             dependency_type=DependencyType.NARROW,
-            partition_count=partition_count
+            partition_count=partition_count,
         )
 
     def add_reduce_stage(
-        self,
-        stage_id: str,
-        code_template: str,
-        dependencies: list[str],
-        partition_count: int = 1
+        self, stage_id: str, code_template: str, dependencies: list[str], partition_count: int = 1
     ) -> "DAGBuilder":
         """Add a reduce stage (depends on previous stages)."""
         return self.add_stage(
@@ -553,17 +549,14 @@ class DAGBuilder:
             data=None,
             dependencies=dependencies,
             dependency_type=DependencyType.WIDE,
-            partition_count=partition_count
+            partition_count=partition_count,
         )
 
     def _create_chunks(self, stage: Stage, data: Any, partition_count: int) -> list[TaskChunk]:
         """Create chunks for a stage."""
         if isinstance(data, list):
             chunk_size = max(1, len(data) // partition_count)
-            partitions = [
-                data[i:i + chunk_size]
-                for i in range(0, len(data), chunk_size)
-            ]
+            partitions = [data[i : i + chunk_size] for i in range(0, len(data), chunk_size)]
         else:
             partitions = [data]
 

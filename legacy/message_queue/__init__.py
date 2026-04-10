@@ -64,7 +64,7 @@ class Message(Generic[T]):
             "expires_at": self.expires_at,
             "retry_count": self.retry_count,
             "priority": self.priority,
-            "correlation_id": self.correlation_id
+            "correlation_id": self.correlation_id,
         }
 
 
@@ -86,7 +86,7 @@ class Subscription:
             "filter": self.filter_expr,
             "message_count": self.message_count,
             "error_count": self.error_count,
-            "last_message_at": self.last_message_at
+            "last_message_at": self.last_message_at,
         }
 
 
@@ -108,7 +108,7 @@ class QueueStats:
             "total_failed": self.total_failed,
             "pending_messages": self.pending_messages,
             "active_subscriptions": self.active_subscriptions,
-            "topics": self.topics
+            "topics": self.topics,
         }
 
 
@@ -193,9 +193,7 @@ class MemoryQueueBackend(MessageQueueBackend):
 
     def get_stats(self) -> QueueStats:
         with self._lock:
-            return QueueStats(
-                **dict(self._stats.__dict__.items())
-            )
+            return QueueStats(**dict(self._stats.__dict__.items()))
 
 
 class RedisQueueBackend(MessageQueueBackend):
@@ -205,7 +203,7 @@ class RedisQueueBackend(MessageQueueBackend):
         port: int = 6379,
         db: int = 0,
         password: str | None = None,
-        prefix: str = "mq:"
+        prefix: str = "mq:",
     ):
         self.host = host
         self.port = port
@@ -220,12 +218,13 @@ class RedisQueueBackend(MessageQueueBackend):
         if self._client is None:
             try:
                 import redis
+
                 self._client = redis.Redis(
                     host=self.host,
                     port=self.port,
                     db=self.db,
                     password=self.password,
-                    decode_responses=True
+                    decode_responses=True,
                 )
             except ImportError as e:
                 raise ImportError("Redis support requires redis package") from e
@@ -238,20 +237,22 @@ class RedisQueueBackend(MessageQueueBackend):
         return f"{self.prefix}msg:{message_id}"
 
     def publish(self, message: Message) -> bool:
-        message_data = json.dumps({
-            "id": message.id,
-            "topic": message.topic,
-            "payload": message.payload,
-            "headers": message.headers,
-            "status": message.status.value,
-            "created_at": message.created_at,
-            "expires_at": message.expires_at,
-            "retry_count": message.retry_count,
-            "max_retries": message.max_retries,
-            "priority": message.priority,
-            "correlation_id": message.correlation_id,
-            "reply_to": message.reply_to
-        })
+        message_data = json.dumps(
+            {
+                "id": message.id,
+                "topic": message.topic,
+                "payload": message.payload,
+                "headers": message.headers,
+                "status": message.status.value,
+                "created_at": message.created_at,
+                "expires_at": message.expires_at,
+                "retry_count": message.retry_count,
+                "max_retries": message.max_retries,
+                "priority": message.priority,
+                "correlation_id": message.correlation_id,
+                "reply_to": message.reply_to,
+            }
+        )
 
         self.client.hset(self._message_key(message.id), "data", message_data)
         self.client.rpush(self._topic_key(message.topic), message.id)
@@ -284,7 +285,7 @@ class RedisQueueBackend(MessageQueueBackend):
             max_retries=data.get("max_retries", 3),
             priority=data.get("priority", 0),
             correlation_id=data.get("correlation_id"),
-            reply_to=data.get("reply_to")
+            reply_to=data.get("reply_to"),
         )
 
         self._stats.total_delivered += 1
@@ -306,14 +307,16 @@ class RedisQueueBackend(MessageQueueBackend):
             message_data = self.client.hget(self._message_key(msg_id), "data")
             if message_data:
                 data = json.loads(message_data)
-                messages.append(Message(
-                    id=data["id"],
-                    topic=data["topic"],
-                    payload=data.get("payload"),
-                    headers=data.get("headers", {}),
-                    status=MessageStatus(data["status"]),
-                    created_at=data["created_at"]
-                ))
+                messages.append(
+                    Message(
+                        id=data["id"],
+                        topic=data["topic"],
+                        payload=data.get("payload"),
+                        headers=data.get("headers", {}),
+                        status=MessageStatus(data["status"]),
+                        created_at=data["created_at"],
+                    )
+                )
 
         return messages
 
@@ -325,7 +328,7 @@ class MessageQueue:
     def __init__(
         self,
         backend: MessageQueueBackend | None = None,
-        delivery_mode: DeliveryMode = DeliveryMode.AT_LEAST_ONCE
+        delivery_mode: DeliveryMode = DeliveryMode.AT_LEAST_ONCE,
     ):
         self.backend = backend or MemoryQueueBackend()
         self.delivery_mode = delivery_mode
@@ -343,7 +346,7 @@ class MessageQueue:
         priority: int = 0,
         ttl_seconds: float | None = None,
         correlation_id: str | None = None,
-        reply_to: str | None = None
+        reply_to: str | None = None,
     ) -> Message:
         message = Message(
             topic=topic,
@@ -352,7 +355,7 @@ class MessageQueue:
             priority=priority,
             expires_at=time.time() + ttl_seconds if ttl_seconds else None,
             correlation_id=correlation_id,
-            reply_to=reply_to
+            reply_to=reply_to,
         )
 
         self.backend.publish(message)
@@ -360,18 +363,12 @@ class MessageQueue:
         return message
 
     def subscribe(
-        self,
-        topic: str,
-        callback: Callable[[Message], None],
-        filter_expr: str | None = None
+        self, topic: str, callback: Callable[[Message], None], filter_expr: str | None = None
     ) -> Subscription:
         import uuid
 
         subscription = Subscription(
-            id=str(uuid.uuid4()),
-            topic=topic,
-            callback=callback,
-            filter_expr=filter_expr
+            id=str(uuid.uuid4()), topic=topic, callback=callback, filter_expr=filter_expr
         )
 
         with self._lock:
@@ -388,12 +385,7 @@ class MessageQueue:
                 return True
             return False
 
-    def request_reply(
-        self,
-        topic: str,
-        payload: Any,
-        timeout: float = 30.0
-    ) -> Message | None:
+    def request_reply(self, topic: str, payload: Any, timeout: float = 30.0) -> Message | None:
         correlation_id = str(uuid.uuid4())
         reply_topic = f"reply:{correlation_id}"
 
@@ -408,10 +400,7 @@ class MessageQueue:
         self.subscribe(reply_topic, reply_handler)
 
         self.publish(
-            topic=topic,
-            payload=payload,
-            correlation_id=correlation_id,
-            reply_to=reply_topic
+            topic=topic, payload=payload, correlation_id=correlation_id, reply_to=reply_topic
         )
 
         response_event.wait(timeout)
@@ -427,11 +416,7 @@ class MessageQueue:
         topics = topics or list(self._topic_subscriptions.keys())
 
         for topic in topics:
-            thread = threading.Thread(
-                target=self._consumer_loop,
-                args=(topic,),
-                daemon=True
-            )
+            thread = threading.Thread(target=self._consumer_loop, args=(topic,), daemon=True)
             thread.start()
             self._consumer_threads.append(thread)
 
@@ -482,8 +467,7 @@ class MessageQueue:
         with self._lock:
             if topic:
                 return [
-                    self._subscriptions[sid]
-                    for sid in self._topic_subscriptions.get(topic, [])
+                    self._subscriptions[sid] for sid in self._topic_subscriptions.get(topic, [])
                 ]
             return list(self._subscriptions.values())
 

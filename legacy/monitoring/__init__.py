@@ -8,6 +8,7 @@ Architecture Reference:
 - Prometheus: https://prometheus.io/docs/concepts/data_model/
 - OpenMetrics: https://github.com/OpenObservability/OpenMetrics
 """
+
 import asyncio
 import threading
 import time
@@ -18,6 +19,7 @@ from typing import Any, Optional
 
 class MetricType(str, Enum):
     """Metric type enumeration."""
+
     COUNTER = "counter"
     GAUGE = "gauge"
     HISTOGRAM = "histogram"
@@ -27,6 +29,7 @@ class MetricType(str, Enum):
 @dataclass
 class MetricSample:
     """A single metric sample."""
+
     name: str
     value: float
     labels: dict[str, str] = field(default_factory=dict)
@@ -36,12 +39,7 @@ class MetricSample:
 class Metric:
     """Base class for metrics."""
 
-    def __init__(
-        self,
-        name: str,
-        description: str = "",
-        labels: Optional[dict[str, str]] = None
-    ):
+    def __init__(self, name: str, description: str = "", labels: Optional[dict[str, str]] = None):
         self.name = name
         self.description = description
         self.labels = labels or {}
@@ -83,11 +81,7 @@ class Counter(Metric):
 
     def collect(self) -> list[MetricSample]:
         """Collect metric samples."""
-        return [MetricSample(
-            name=self.name,
-            value=self._value,
-            labels=self.labels
-        )]
+        return [MetricSample(name=self.name, value=self._value, labels=self.labels)]
 
 
 class Gauge(Metric):
@@ -127,11 +121,7 @@ class Gauge(Metric):
 
     def collect(self) -> list[MetricSample]:
         """Collect metric samples."""
-        return [MetricSample(
-            name=self.name,
-            value=self._value,
-            labels=self.labels
-        )]
+        return [MetricSample(name=self.name, value=self._value, labels=self.labels)]
 
 
 class Histogram(Metric):
@@ -151,7 +141,7 @@ class Histogram(Metric):
         name: str,
         description: str = "",
         labels: Optional[dict[str, str]] = None,
-        buckets: tuple = DEFAULT_BUCKETS
+        buckets: tuple = DEFAULT_BUCKETS,
     ):
         super().__init__(name, description, labels)
         self.buckets = sorted(buckets)
@@ -179,30 +169,26 @@ class Histogram(Metric):
         cumulative = 0.0
         for i, bucket in enumerate(self.buckets):
             cumulative += self._counts[i]
-            samples.append(MetricSample(
-                name=f"{self.name}_bucket",
-                value=cumulative,
-                labels={**self.labels, "le": str(bucket)}
-            ))
+            samples.append(
+                MetricSample(
+                    name=f"{self.name}_bucket",
+                    value=cumulative,
+                    labels={**self.labels, "le": str(bucket)},
+                )
+            )
 
         cumulative += self._counts[-1]
-        samples.append(MetricSample(
-            name=f"{self.name}_bucket",
-            value=cumulative,
-            labels={**self.labels, "le": "+Inf"}
-        ))
+        samples.append(
+            MetricSample(
+                name=f"{self.name}_bucket", value=cumulative, labels={**self.labels, "le": "+Inf"}
+            )
+        )
 
-        samples.append(MetricSample(
-            name=f"{self.name}_sum",
-            value=self._sum,
-            labels=self.labels
-        ))
+        samples.append(MetricSample(name=f"{self.name}_sum", value=self._sum, labels=self.labels))
 
-        samples.append(MetricSample(
-            name=f"{self.name}_count",
-            value=self._count,
-            labels=self.labels
-        ))
+        samples.append(
+            MetricSample(name=f"{self.name}_count", value=self._count, labels=self.labels)
+        )
 
         return samples
 
@@ -251,10 +237,7 @@ class MetricsRegistry:
         return self.register(Gauge(full_name, description))
 
     def histogram(
-        self,
-        name: str,
-        description: str = "",
-        buckets: tuple = Histogram.DEFAULT_BUCKETS
+        self, name: str, description: str = "", buckets: tuple = Histogram.DEFAULT_BUCKETS
     ) -> Histogram:
         """Get or create a histogram."""
         full_name = f"{self.namespace}_{name}"
@@ -334,13 +317,11 @@ class SystemMonitor:
         self.nodes_offline = self.registry.gauge("nodes_offline", "Offline nodes")
 
         self.task_duration = self.registry.histogram(
-            "task_duration_seconds",
-            "Task execution duration"
+            "task_duration_seconds", "Task execution duration"
         )
 
         self.scheduler_latency = self.registry.histogram(
-            "scheduler_latency_seconds",
-            "Scheduler decision latency"
+            "scheduler_latency_seconds", "Scheduler decision latency"
         )
 
         self._running = False
@@ -396,7 +377,7 @@ class SystemMonitor:
                 "total": self.nodes_total.get(),
                 "available": self.nodes_available.get(),
                 "offline": self.nodes_offline.get(),
-            }
+            },
         }
 
     def export_prometheus(self) -> str:
@@ -422,10 +403,7 @@ def setup_metrics_endpoint(app, monitor: SystemMonitor):
     async def metrics():
         """Prometheus metrics endpoint."""
         prometheus_output = monitor.export_prometheus()
-        return Response(
-            content=prometheus_output,
-            media_type="text/plain; version=0.0.4"
-        )
+        return Response(content=prometheus_output, media_type="text/plain; version=0.0.4")
 
     @app.get("/stats")
     async def stats():

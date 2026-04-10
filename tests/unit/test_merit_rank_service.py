@@ -43,13 +43,13 @@ class TestTransmissionDecay(unittest.TestCase):
     def test_transmission_decay_distance_two(self):
         score = 100.0
         decayed = self.engine._transmission_decay(score, 2)
-        expected = 100.0 * (0.8 ** 2)
+        expected = 100.0 * (0.8**2)
         self.assertAlmostEqual(decayed, expected, places=4)
 
     def test_transmission_decay_distance_five(self):
         score = 100.0
         decayed = self.engine._transmission_decay(score, 5)
-        expected = 100.0 * (0.8 ** 5)
+        expected = 100.0 * (0.8**5)
         self.assertAlmostEqual(decayed, expected, places=4)
 
     def test_transmission_decay_reduces_score(self):
@@ -61,7 +61,7 @@ class TestTransmissionDecay(unittest.TestCase):
     def test_transmission_decay_negative_score(self):
         score = -50.0
         decayed = self.engine._transmission_decay(score, 2)
-        expected = -50.0 * (0.8 ** 2)
+        expected = -50.0 * (0.8**2)
         self.assertAlmostEqual(decayed, expected, places=4)
 
 
@@ -74,13 +74,13 @@ class TestConnectionDecay(unittest.TestCase):
     def test_connection_decay_single_connection(self):
         score = 100.0
         decayed = self.engine._connection_decay(score, 1)
-        expected = 100.0 * (1.0 / (1 ** 1.5))
+        expected = 100.0 * (1.0 / (1**1.5))
         self.assertAlmostEqual(decayed, expected, places=4)
 
     def test_connection_decay_multiple_connections(self):
         score = 100.0
         decayed = self.engine._connection_decay(score, 10)
-        expected = 100.0 * (1.0 / (10 ** 1.5))
+        expected = 100.0 * (1.0 / (10**1.5))
         self.assertAlmostEqual(decayed, expected, places=4)
 
     def test_connection_decay_zero_connections(self):
@@ -121,7 +121,7 @@ class TestPeriodDecay(unittest.TestCase):
     def test_period_decay_multiple_periods(self):
         score = 100.0
         decayed = self.engine._period_decay(score, 10)
-        expected = 100.0 * (0.95 ** 10)
+        expected = 100.0 * (0.95**10)
         self.assertAlmostEqual(decayed, expected, places=4)
 
     def test_period_decay_reduces_score(self):
@@ -147,12 +147,7 @@ class TestCalculateReputation(unittest.TestCase):
         self.assertEqual(reputation, MeritRankEngine.DEFAULT_REPUTATION)
 
     def test_single_feedback(self):
-        feedback = Feedback(
-            from_address="user1",
-            to_address="user2",
-            score=10.0,
-            distance=1
-        )
+        feedback = Feedback(from_address="user1", to_address="user2", score=10.0, distance=1)
         self.engine.add_feedback(feedback)
 
         reputation = self.engine.get_reputation("user2")
@@ -161,10 +156,7 @@ class TestCalculateReputation(unittest.TestCase):
     def test_multiple_feedbacks(self):
         for i in range(5):
             feedback = Feedback(
-                from_address=f"user{i}",
-                to_address="target",
-                score=10.0,
-                distance=1
+                from_address=f"user{i}", to_address="target", score=10.0, distance=1
             )
             self.engine.add_feedback(feedback)
 
@@ -174,10 +166,7 @@ class TestCalculateReputation(unittest.TestCase):
     def test_reputation_bounds_max(self):
         for i in range(100):
             feedback = Feedback(
-                from_address=f"user{i}",
-                to_address="target",
-                score=100.0,
-                distance=1
+                from_address=f"user{i}", to_address="target", score=100.0, distance=1
             )
             self.engine.add_feedback(feedback)
 
@@ -187,10 +176,7 @@ class TestCalculateReputation(unittest.TestCase):
     def test_reputation_bounds_min(self):
         for i in range(100):
             feedback = Feedback(
-                from_address=f"user{i}",
-                to_address="target",
-                score=-100.0,
-                distance=1
+                from_address=f"user{i}", to_address="target", score=-100.0, distance=1
             )
             self.engine.add_feedback(feedback)
 
@@ -200,30 +186,15 @@ class TestCalculateReputation(unittest.TestCase):
     def test_negative_feedback_reduces_reputation(self):
         initial = self.engine.get_reputation("target")
 
-        feedback = Feedback(
-            from_address="user1",
-            to_address="target",
-            score=-50.0,
-            distance=1
-        )
+        feedback = Feedback(from_address="user1", to_address="target", score=-50.0, distance=1)
         self.engine.add_feedback(feedback)
 
         reputation = self.engine.get_reputation("target")
         self.assertLess(reputation, initial)
 
     def test_distance_affects_reputation(self):
-        feedback_near = Feedback(
-            from_address="user1",
-            to_address="target1",
-            score=10.0,
-            distance=1
-        )
-        feedback_far = Feedback(
-            from_address="user2",
-            to_address="target2",
-            score=10.0,
-            distance=5
-        )
+        feedback_near = Feedback(from_address="user1", to_address="target1", score=10.0, distance=1)
+        feedback_far = Feedback(from_address="user2", to_address="target2", score=10.0, distance=5)
 
         self.engine.add_feedback(feedback_near)
         self.engine.add_feedback(feedback_far)
@@ -237,9 +208,7 @@ class TestCalculateReputation(unittest.TestCase):
         initial = self.engine.get_reputation("worker1")
 
         self.engine.record_task_completion(
-            node_address="worker1",
-            requester_address="requester1",
-            quality_score=1.0
+            node_address="worker1", requester_address="requester1", quality_score=1.0
         )
 
         reputation = self.engine.get_reputation("worker1")
@@ -248,10 +217,7 @@ class TestCalculateReputation(unittest.TestCase):
     def test_task_failure_decreases_reputation(self):
         initial = self.engine.get_reputation("worker1")
 
-        self.engine.record_task_failure(
-            node_address="worker1",
-            requester_address="requester1"
-        )
+        self.engine.record_task_failure(node_address="worker1", requester_address="requester1")
 
         reputation = self.engine.get_reputation("worker1")
         self.assertLess(reputation, initial)
@@ -259,10 +225,7 @@ class TestCalculateReputation(unittest.TestCase):
     def test_uptime_reward(self):
         initial = self.engine.get_reputation("node1")
 
-        self.engine.record_uptime_reward(
-            node_address="node1",
-            uptime_minutes=120
-        )
+        self.engine.record_uptime_reward(node_address="node1", uptime_minutes=120)
 
         reputation = self.engine.get_reputation("node1")
         self.assertGreater(reputation, initial)
@@ -270,10 +233,7 @@ class TestCalculateReputation(unittest.TestCase):
     def test_uptime_reward_minimum_threshold(self):
         initial = self.engine.get_reputation("node1")
 
-        self.engine.record_uptime_reward(
-            node_address="node1",
-            uptime_minutes=30
-        )
+        self.engine.record_uptime_reward(node_address="node1", uptime_minutes=30)
 
         reputation = self.engine.get_reputation("node1")
         self.assertEqual(reputation, initial)
@@ -286,10 +246,7 @@ class TestSybilAttackDefense(unittest.TestCase):
         self.engine = MeritRankEngine()
 
     def test_sybil_attack_simulation(self):
-        result = self.engine.simulate_sybil_attack(
-            attacker_count=100,
-            fake_score=5.0
-        )
+        result = self.engine.simulate_sybil_attack(attacker_count=100, fake_score=5.0)
 
         self.assertEqual(result["attacker_count"], 100)
         self.assertEqual(result["fake_score_per_attacker"], 5.0)
@@ -297,10 +254,7 @@ class TestSybilAttackDefense(unittest.TestCase):
         self.assertLess(result["decay_ratio"], 0.5)
 
     def test_sybil_attack_effectiveness(self):
-        result = self.engine.simulate_sybil_attack(
-            attacker_count=1000,
-            fake_score=10.0
-        )
+        result = self.engine.simulate_sybil_attack(attacker_count=1000, fake_score=10.0)
 
         self.assertLess(result["effectiveness"], 0.1)
 
@@ -309,10 +263,7 @@ class TestSybilAttackDefense(unittest.TestCase):
 
         for i in range(100):
             feedback = Feedback(
-                from_address=f"attacker_{i}",
-                to_address="victim",
-                score=10.0,
-                distance=1
+                from_address=f"attacker_{i}", to_address="victim", score=10.0, distance=1
             )
             engine.add_feedback(feedback)
 
@@ -387,12 +338,7 @@ class TestReputationEvents(unittest.TestCase):
         self.engine = MeritRankEngine()
 
     def test_event_recorded_on_feedback(self):
-        feedback = Feedback(
-            from_address="user1",
-            to_address="user2",
-            score=10.0,
-            distance=1
-        )
+        feedback = Feedback(from_address="user1", to_address="user2", score=10.0, distance=1)
         self.engine.add_feedback(feedback)
 
         events = self.engine.get_reputation_events("user2")
@@ -400,12 +346,7 @@ class TestReputationEvents(unittest.TestCase):
         self.assertEqual(events[0].event_type, "reputation_update")
 
     def test_event_metadata(self):
-        feedback = Feedback(
-            from_address="user1",
-            to_address="user2",
-            score=10.0,
-            distance=1
-        )
+        feedback = Feedback(from_address="user1", to_address="user2", score=10.0, distance=1)
         self.engine.add_feedback(feedback)
 
         events = self.engine.get_reputation_events("user2")
@@ -455,12 +396,7 @@ class TestFeedbackDataclass(unittest.TestCase):
     """测试 Feedback 数据类"""
 
     def test_feedback_creation(self):
-        feedback = Feedback(
-            from_address="user1",
-            to_address="user2",
-            score=10.0,
-            distance=2
-        )
+        feedback = Feedback(from_address="user1", to_address="user2", score=10.0, distance=2)
 
         self.assertEqual(feedback.from_address, "user1")
         self.assertEqual(feedback.to_address, "user2")
@@ -469,22 +405,14 @@ class TestFeedbackDataclass(unittest.TestCase):
 
     def test_feedback_default_timestamp(self):
         before = time.time()
-        feedback = Feedback(
-            from_address="user1",
-            to_address="user2",
-            score=10.0
-        )
+        feedback = Feedback(from_address="user1", to_address="user2", score=10.0)
         after = time.time()
 
         self.assertGreaterEqual(feedback.timestamp, before)
         self.assertLessEqual(feedback.timestamp, after)
 
     def test_feedback_default_distance(self):
-        feedback = Feedback(
-            from_address="user1",
-            to_address="user2",
-            score=10.0
-        )
+        feedback = Feedback(from_address="user1", to_address="user2", score=10.0)
 
         self.assertEqual(feedback.distance, 1)
 
@@ -494,10 +422,7 @@ class TestReputationEventDataclass(unittest.TestCase):
 
     def test_event_creation(self):
         event = ReputationEvent(
-            address="user1",
-            event_type="test_event",
-            score_change=10.0,
-            reason="test reason"
+            address="user1", event_type="test_event", score_change=10.0, reason="test reason"
         )
 
         self.assertEqual(event.address, "user1")
@@ -506,12 +431,7 @@ class TestReputationEventDataclass(unittest.TestCase):
         self.assertEqual(event.reason, "test reason")
 
     def test_event_default_metadata(self):
-        event = ReputationEvent(
-            address="user1",
-            event_type="test",
-            score_change=5.0,
-            reason="test"
-        )
+        event = ReputationEvent(address="user1", event_type="test", score_change=5.0, reason="test")
 
         self.assertEqual(event.metadata, {})
 
@@ -521,7 +441,7 @@ class TestReputationEventDataclass(unittest.TestCase):
             event_type="test",
             score_change=5.0,
             reason="test",
-            metadata={"key": "value"}
+            metadata={"key": "value"},
         )
 
         self.assertEqual(event.metadata["key"], "value")

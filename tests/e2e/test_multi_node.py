@@ -36,13 +36,11 @@ class TestMultiNodeRegistration:
             node_data = {
                 "node_id": f"multi-node-{i}-{int(time.time())}",
                 "capacity": {"cpu": 2.0, "memory": 4096},
-                "tags": {"test": True, "index": i}
+                "tags": {"test": True, "index": i},
             }
 
             response = requests.post(
-                f"{scheduler_url}/api/nodes/register",
-                json=node_data,
-                timeout=10
+                f"{scheduler_url}/api/nodes/register", json=node_data, timeout=10
             )
 
             assert response.status_code == 200
@@ -71,16 +69,10 @@ class TestMultiNodeRegistration:
 
         node_id = f"heartbeat-node-{int(time.time())}"
 
-        register_data = {
-            "node_id": node_id,
-            "capacity": {"cpu": 4.0, "memory": 8192},
-            "tags": {}
-        }
+        register_data = {"node_id": node_id, "capacity": {"cpu": 4.0, "memory": 8192}, "tags": {}}
 
         response = requests.post(
-            f"{scheduler_url}/api/nodes/register",
-            json=register_data,
-            timeout=10
+            f"{scheduler_url}/api/nodes/register", json=register_data, timeout=10
         )
 
         if response.status_code != 200:
@@ -91,13 +83,11 @@ class TestMultiNodeRegistration:
             "current_load": {"cpu_usage": 1.5, "memory_usage": 2048},
             "is_idle": True,
             "available_resources": {"cpu": 2.5, "memory": 6144},
-            "is_available": True
+            "is_available": True,
         }
 
         response = requests.post(
-            f"{scheduler_url}/api/nodes/{node_id}/heartbeat",
-            json=heartbeat_data,
-            timeout=10
+            f"{scheduler_url}/api/nodes/{node_id}/heartbeat", json=heartbeat_data, timeout=10
         )
 
         assert response.status_code == 200
@@ -129,14 +119,10 @@ class TestMultiNodeTaskDistribution:
         task_data = {
             "code": "result = sum(range(100))\n__result__ = result",
             "timeout": 60,
-            "resources": {"cpu": 1.0, "memory": 512}
+            "resources": {"cpu": 1.0, "memory": 512},
         }
 
-        response = requests.post(
-            f"{scheduler_url}/submit",
-            json=task_data,
-            timeout=10
-        )
+        response = requests.post(f"{scheduler_url}/submit", json=task_data, timeout=10)
 
         assert response.status_code == 200
         result = response.json()
@@ -162,14 +148,10 @@ class TestMultiNodeTaskDistribution:
             task_data = {
                 "code": f"result = {i} ** 2\n__result__ = result",
                 "timeout": 30,
-                "resources": {"cpu": 0.5, "memory": 256}
+                "resources": {"cpu": 0.5, "memory": 256},
             }
 
-            response = requests.post(
-                f"{scheduler_url}/submit",
-                json=task_data,
-                timeout=10
-            )
+            response = requests.post(f"{scheduler_url}/submit", json=task_data, timeout=10)
 
             assert response.status_code == 200
             task_ids.append(response.json()["task_id"])
@@ -223,22 +205,15 @@ class TestMultiNodeResultAggregation:
         task_data = {
             "code": "result = 42\n__result__ = result",
             "timeout": 30,
-            "resources": {"cpu": 1.0, "memory": 512}
+            "resources": {"cpu": 1.0, "memory": 512},
         }
 
-        response = requests.post(
-            f"{scheduler_url}/submit",
-            json=task_data,
-            timeout=10
-        )
+        response = requests.post(f"{scheduler_url}/submit", json=task_data, timeout=10)
 
         assert response.status_code == 200
         task_id = response.json()["task_id"]
 
-        response = requests.get(
-            f"{scheduler_url}/status/{task_id}",
-            timeout=5
-        )
+        response = requests.get(f"{scheduler_url}/status/{task_id}", timeout=5)
 
         assert response.status_code == 200
         status = response.json()
@@ -293,22 +268,17 @@ class TestMultiNodeCoordination:
         register_data = {
             "node_id": node_id,
             "capacity": {"cpu": 2.0, "memory": 4096},
-            "tags": {"removable": True}
+            "tags": {"removable": True},
         }
 
         response = requests.post(
-            f"{scheduler_url}/api/nodes/register",
-            json=register_data,
-            timeout=10
+            f"{scheduler_url}/api/nodes/register", json=register_data, timeout=10
         )
 
         if response.status_code != 200:
             pytest.skip("Node registration failed")
 
-        response = requests.post(
-            f"{scheduler_url}/api/nodes/{node_id}/stop",
-            timeout=10
-        )
+        response = requests.post(f"{scheduler_url}/api/nodes/{node_id}/stop", timeout=10)
 
         assert response.status_code == 200
 

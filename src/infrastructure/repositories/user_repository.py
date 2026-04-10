@@ -26,7 +26,9 @@ class FileUserRepository(IUserRepository):
             users_dir: 用户数据目录，默认使用项目根目录下的local_users
         """
         if users_dir is None:
-            users_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), "local_users")
+            users_dir = os.path.join(
+                os.path.dirname(os.path.dirname(os.path.dirname(__file__))), "local_users"
+            )
         self._users_dir = os.path.abspath(users_dir)
         Path(self._users_dir).mkdir(parents=True, exist_ok=True)
 
@@ -45,7 +47,7 @@ class FileUserRepository(IUserRepository):
             bool: 是否安全
         """
         # 检查是否包含路径遍历字符
-        dangerous_chars = ['..', '\\', '/', ':', '*', '?', '"', '<', '>', '|']
+        dangerous_chars = ["..", "\\", "/", ":", "*", "?", '"', "<", ">", "|"]
         for char in dangerous_chars:
             if char in user_id:
                 return False
@@ -105,14 +107,14 @@ class FileUserRepository(IUserRepository):
         """加载用户名索引（优化 get_by_username）"""
         if os.path.exists(self._users_dir):
             for file_name in os.listdir(self._users_dir):
-                if file_name.endswith('.json'):
+                if file_name.endswith(".json"):
                     user_id = file_name[:-5]
                     user_file = self._get_user_file(user_id)
                     try:
-                        with open(user_file, encoding='utf-8') as f:
+                        with open(user_file, encoding="utf-8") as f:
                             data = json.load(f)
-                            if 'username' in data:
-                                self._username_index[data['username']] = user_id
+                            if "username" in data:
+                                self._username_index[data["username"]] = user_id
                     except Exception:
                         pass
 
@@ -137,7 +139,7 @@ class FileUserRepository(IUserRepository):
 
         user_file = self._get_user_file(user_id)
         if os.path.exists(user_file):
-            with open(user_file, encoding='utf-8') as f:
+            with open(user_file, encoding="utf-8") as f:
                 data = json.load(f)
                 user = User.from_dict(data)
                 self._user_cache.set(user_id, user)
@@ -154,7 +156,7 @@ class FileUserRepository(IUserRepository):
     def save(self, user: User) -> User:
         """保存用户（更新缓存和索引）"""
         user_file = self._get_user_file(user.user_id)
-        with open(user_file, 'w', encoding='utf-8') as f:
+        with open(user_file, "w", encoding="utf-8") as f:
             json.dump(user.to_dict(), f, ensure_ascii=False, indent=2)
 
         self._user_cache.set(user.user_id, user)
@@ -180,7 +182,7 @@ class FileUserRepository(IUserRepository):
         users = []
         if os.path.exists(self._users_dir):
             for file_name in os.listdir(self._users_dir):
-                if file_name.endswith('.json'):
+                if file_name.endswith(".json"):
                     user_id = file_name[:-5]
                     user = self.get_by_id(user_id)
                     if user:

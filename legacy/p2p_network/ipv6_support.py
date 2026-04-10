@@ -36,6 +36,7 @@ class AddressPreference(Enum):
 @dataclass
 class IPAddress:
     """Represents an IP address (IPv4 or IPv6)."""
+
     address: str
     port: int
     family: AddressFamily
@@ -96,20 +97,12 @@ class IPAddress:
                 end = addr_str.rfind("]")
                 if end > 0:
                     ip = addr_str[1:end]
-                    port = int(addr_str[end + 2:])
-                    return cls(
-                        address=ip,
-                        port=port,
-                        family=AddressFamily.IPv6
-                    )
+                    port = int(addr_str[end + 2 :])
+                    return cls(address=ip, port=port, family=AddressFamily.IPv6)
             else:
                 parts = addr_str.rsplit(":", 1)
                 if len(parts) == 2:
-                    return cls(
-                        address=parts[0],
-                        port=int(parts[1]),
-                        family=AddressFamily.IPv4
-                    )
+                    return cls(address=parts[0], port=int(parts[1]), family=AddressFamily.IPv4)
         raise ValueError(f"Invalid address format: {addr_str}")
 
 
@@ -188,9 +181,7 @@ class IPv6Support:
             return "invalid"
 
     def create_socket(
-        self,
-        family: AddressFamily = None,
-        sock_type: int = socket.SOCK_STREAM
+        self, family: AddressFamily = None, sock_type: int = socket.SOCK_STREAM
     ) -> Optional[socket.socket]:
         """Create a socket with the appropriate address family."""
         if family is None:
@@ -210,9 +201,7 @@ class IPv6Support:
             return None
 
     def create_dual_stack_socket(
-        self,
-        port: int = 0,
-        sock_type: int = socket.SOCK_STREAM
+        self, port: int = 0, sock_type: int = socket.SOCK_STREAM
     ) -> Optional[socket.socket]:
         """Create a dual-stack socket that handles both IPv4 and IPv6."""
         if not self._ipv6_available:
@@ -231,42 +220,34 @@ class IPv6Support:
         """Get the preferred address family based on preference."""
         if self.preference == AddressPreference.IPv4_ONLY:
             return AddressFamily.IPv4
-        elif self.preference == AddressPreference.IPv6_ONLY or self.preference == AddressPreference.IPv6_PREFERRED:
+        elif (
+            self.preference == AddressPreference.IPv6_ONLY
+            or self.preference == AddressPreference.IPv6_PREFERRED
+        ):
             return AddressFamily.IPv6 if self._ipv6_available else AddressFamily.IPv4
         elif self.preference == AddressPreference.IPv4_PREFERRED:
             return AddressFamily.IPv4
         else:
             return AddressFamily.IPv6 if self._ipv6_available else AddressFamily.IPv4
 
-    def resolve_hostname(
-        self,
-        hostname: str,
-        port: int = 0
-    ) -> list[IPAddress]:
+    def resolve_hostname(self, hostname: str, port: int = 0) -> list[IPAddress]:
         """Resolve a hostname to IP addresses."""
         addresses = []
 
         try:
             infos = socket.getaddrinfo(
-                hostname,
-                port,
-                family=socket.AF_UNSPEC,
-                type=socket.SOCK_STREAM
+                hostname, port, family=socket.AF_UNSPEC, type=socket.SOCK_STREAM
             )
 
             for family, _, _, _, sockaddr in infos:
                 if family == socket.AF_INET:
-                    addresses.append(IPAddress(
-                        address=sockaddr[0],
-                        port=sockaddr[1],
-                        family=AddressFamily.IPv4
-                    ))
+                    addresses.append(
+                        IPAddress(address=sockaddr[0], port=sockaddr[1], family=AddressFamily.IPv4)
+                    )
                 elif family == socket.AF_INET6:
-                    addresses.append(IPAddress(
-                        address=sockaddr[0],
-                        port=sockaddr[1],
-                        family=AddressFamily.IPv6
-                    ))
+                    addresses.append(
+                        IPAddress(address=sockaddr[0], port=sockaddr[1], family=AddressFamily.IPv6)
+                    )
         except socket.gaierror:
             pass
 
@@ -298,25 +279,18 @@ class IPv6Support:
         try:
             hostname = socket.gethostname()
             infos = socket.getaddrinfo(
-                hostname,
-                None,
-                family=socket.AF_UNSPEC,
-                type=socket.SOCK_STREAM
+                hostname, None, family=socket.AF_UNSPEC, type=socket.SOCK_STREAM
             )
 
             for family, _, _, _, sockaddr in infos:
                 if family == socket.AF_INET:
-                    addresses.append(IPAddress(
-                        address=sockaddr[0],
-                        port=0,
-                        family=AddressFamily.IPv4
-                    ))
+                    addresses.append(
+                        IPAddress(address=sockaddr[0], port=0, family=AddressFamily.IPv4)
+                    )
                 elif family == socket.AF_INET6:
-                    addresses.append(IPAddress(
-                        address=sockaddr[0],
-                        port=0,
-                        family=AddressFamily.IPv6
-                    ))
+                    addresses.append(
+                        IPAddress(address=sockaddr[0], port=0, family=AddressFamily.IPv6)
+                    )
         except socket.gaierror:
             pass
 

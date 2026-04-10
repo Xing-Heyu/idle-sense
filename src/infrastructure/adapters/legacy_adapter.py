@@ -22,18 +22,20 @@ if project_root not in sys.path:
 
 class FeatureFlag(Enum):
     """功能开关 - 控制新旧代码切换"""
-    USE_NEW_AUTH = "use_new_auth"          # 使用新认证系统
-    USE_NEW_TASK = "use_new_task"          # 使用新任务系统
-    USE_NEW_NODE = "use_new_node"          # 使用新节点系统
-    USE_NEW_UI = "use_new_ui"              # 使用新UI
+
+    USE_NEW_AUTH = "use_new_auth"  # 使用新认证系统
+    USE_NEW_TASK = "use_new_task"  # 使用新任务系统
+    USE_NEW_NODE = "use_new_node"  # 使用新节点系统
+    USE_NEW_UI = "use_new_ui"  # 使用新UI
 
 
 @dataclass
 class MigrationConfig:
     """迁移配置"""
+
     enabled_features: set = None
-    fallback_on_error: bool = True         # 出错时回退到旧代码
-    log_switching: bool = True             # 记录切换日志
+    fallback_on_error: bool = True  # 出错时回退到旧代码
+    log_switching: bool = True  # 记录切换日志
 
     def __post_init__(self):
         if self.enabled_features is None:
@@ -66,7 +68,7 @@ class LegacyAdapter:
         warnings.warn(
             "LegacyAdapter is deprecated. Please migrate to Clean Architecture.",
             DeprecationWarning,
-            stacklevel=2
+            stacklevel=2,
         )
 
     def _get_legacy_module(self):
@@ -75,9 +77,9 @@ class LegacyAdapter:
             try:
                 # 动态导入 web_interface.py 的功能
                 import importlib.util
+
                 spec = importlib.util.spec_from_file_location(
-                    "web_interface",
-                    os.path.join(project_root, "web_interface.py")
+                    "web_interface", os.path.join(project_root, "web_interface.py")
                 )
                 self._legacy_module = importlib.util.module_from_spec(spec)
                 spec.loader.exec_module(self._legacy_module)
@@ -93,12 +95,15 @@ class LegacyAdapter:
         if name not in self._new_repositories:
             if name == "user":
                 from src.infrastructure.repositories import FileUserRepository
+
                 self._new_repositories[name] = FileUserRepository()
             elif name == "task":
                 from src.infrastructure.repositories import InMemoryTaskRepository
+
                 self._new_repositories[name] = InMemoryTaskRepository()
             elif name == "node":
                 from src.infrastructure.repositories import InMemoryNodeRepository
+
                 self._new_repositories[name] = InMemoryNodeRepository()
         return self._new_repositories.get(name)
 
@@ -124,12 +129,16 @@ class LegacyAdapter:
 
                 return {
                     "success": response.success,
-                    "user": {
-                        "user_id": response.user.user_id,
-                        "username": response.user.username,
-                        "folder_location": response.user.folder_location
-                    } if response.user else None,
-                    "message": response.message
+                    "user": (
+                        {
+                            "user_id": response.user.user_id,
+                            "username": response.user.username,
+                            "folder_location": response.user.folder_location,
+                        }
+                        if response.user
+                        else None
+                    ),
+                    "message": response.message,
                 }
             except Exception as e:
                 if self.config.fallback_on_error:
@@ -139,22 +148,14 @@ class LegacyAdapter:
 
         # 回退到旧实现
         legacy = self._get_legacy_module()
-        if legacy and hasattr(legacy, 'UserManager'):
+        if legacy and hasattr(legacy, "UserManager"):
             manager = legacy.UserManager()
             # 模拟旧代码的登录逻辑
             users = manager.list_users()
             for user in users:
-                if user.get('username') == username:
-                    return {
-                        "success": True,
-                        "user": user,
-                        "message": "登录成功 (legacy)"
-                    }
-            return {
-                "success": False,
-                "user": None,
-                "message": "用户不存在"
-            }
+                if user.get("username") == username:
+                    return {"success": True, "user": user, "message": "登录成功 (legacy)"}
+            return {"success": False, "user": None, "message": "用户不存在"}
 
         return {"success": False, "message": "登录系统不可用"}
 
@@ -178,19 +179,22 @@ class LegacyAdapter:
 
                 user_repo = self._get_new_repository("user")
                 use_case = RegisterUseCase(user_repo)
-                response = use_case.execute(RegisterRequest(
-                    username=username,
-                    folder_location=folder_location
-                ))
+                response = use_case.execute(
+                    RegisterRequest(username=username, folder_location=folder_location)
+                )
 
                 return {
                     "success": response.success,
-                    "user": {
-                        "user_id": response.user.user_id,
-                        "username": response.user.username,
-                        "folder_location": response.user.folder_location
-                    } if response.user else None,
-                    "message": response.message
+                    "user": (
+                        {
+                            "user_id": response.user.user_id,
+                            "username": response.user.username,
+                            "folder_location": response.user.folder_location,
+                        }
+                        if response.user
+                        else None
+                    ),
+                    "message": response.message,
                 }
             except Exception as e:
                 if self.config.fallback_on_error:
@@ -200,7 +204,7 @@ class LegacyAdapter:
 
         # 回退到旧实现
         legacy = self._get_legacy_module()
-        if legacy and hasattr(legacy, 'UserManager'):
+        if legacy and hasattr(legacy, "UserManager"):
             manager = legacy.UserManager()
 
             # 检查用户名
@@ -213,14 +217,11 @@ class LegacyAdapter:
 
             # 创建用户
             import uuid
+
             user_id = str(uuid.uuid4())[:8]
             user_info = manager.save_user(user_id, new_username, folder_location)
 
-            return {
-                "success": True,
-                "user": user_info,
-                "message": "注册成功 (legacy)"
-            }
+            return {"success": True, "user": user_info, "message": "注册成功 (legacy)"}
 
         return {"success": False, "message": "注册系统不可用"}
 
@@ -232,16 +233,18 @@ class LegacyAdapter:
         """
         # 新架构中有 LogoutUseCase（待实现）
         # 暂时简单实现
-        return {
-            "success": True,
-            "message": "登出成功"
-        }
+        return {"success": True, "message": "登出成功"}
 
     # ==================== 任务适配 ====================
 
-    def submit_task(self, code: str, timeout: int = 300,
-                   cpu: float = 1.0, memory: int = 512,
-                   user_id: Optional[str] = None) -> dict[str, Any]:
+    def submit_task(
+        self,
+        code: str,
+        timeout: int = 300,
+        cpu: float = 1.0,
+        memory: int = 512,
+        user_id: Optional[str] = None,
+    ) -> dict[str, Any]:
         """
         提交任务
 
@@ -266,23 +269,20 @@ class LegacyAdapter:
 
                 task_repo = self._get_new_repository("task")
                 scheduler = SchedulerClient(
-                    base_url=settings.SCHEDULER.URL,
-                    timeout=settings.SCHEDULER.API_TIMEOUT
+                    base_url=settings.SCHEDULER.URL, timeout=settings.SCHEDULER.API_TIMEOUT
                 )
 
                 use_case = SubmitTaskUseCase(task_repo, scheduler)
-                response = use_case.execute(SubmitTaskRequest(
-                    code=code,
-                    timeout=timeout,
-                    cpu=cpu,
-                    memory=memory,
-                    user_id=user_id
-                ))
+                response = use_case.execute(
+                    SubmitTaskRequest(
+                        code=code, timeout=timeout, cpu=cpu, memory=memory, user_id=user_id
+                    )
+                )
 
                 return {
                     "success": response.success,
-                    "task_id": response.task_id if hasattr(response, 'task_id') else None,
-                    "message": response.message
+                    "task_id": response.task_id if hasattr(response, "task_id") else None,
+                    "message": response.message,
                 }
             except Exception as e:
                 if self.config.fallback_on_error:
@@ -298,32 +298,22 @@ class LegacyAdapter:
                 "code": code,
                 "timeout": timeout,
                 "resources": {"cpu": cpu, "memory": memory},
-                "user_id": user_id
+                "user_id": user_id,
             }
 
-            response = requests.post(
-                "http://localhost:8000/submit",
-                json=payload,
-                timeout=10
-            )
+            response = requests.post("http://localhost:8000/submit", json=payload, timeout=10)
 
             if response.status_code == 200:
                 data = response.json()
                 return {
                     "success": True,
                     "task_id": data.get("task_id"),
-                    "message": "任务提交成功 (legacy)"
+                    "message": "任务提交成功 (legacy)",
                 }
             else:
-                return {
-                    "success": False,
-                    "message": f"提交失败: {response.text}"
-                }
+                return {"success": False, "message": f"提交失败: {response.text}"}
         except Exception as e:
-            return {
-                "success": False,
-                "message": f"提交失败: {str(e)}"
-            }
+            return {"success": False, "message": f"提交失败: {str(e)}"}
 
     # ==================== 节点适配 ====================
 
@@ -335,8 +325,7 @@ class LegacyAdapter:
                 from src.infrastructure.external import SchedulerClient
 
                 scheduler = SchedulerClient(
-                    base_url=settings.SCHEDULER.URL,
-                    timeout=settings.SCHEDULER.API_TIMEOUT
+                    base_url=settings.SCHEDULER.URL, timeout=settings.SCHEDULER.API_TIMEOUT
                 )
 
                 success, data = scheduler.get_all_nodes()
@@ -344,7 +333,7 @@ class LegacyAdapter:
                     "success": success,
                     "nodes": data.get("nodes", []),
                     "online_nodes": data.get("online_nodes", 0),
-                    "idle_nodes": data.get("idle_nodes", 0)
+                    "idle_nodes": data.get("idle_nodes", 0),
                 }
             except Exception as e:
                 if self.config.fallback_on_error:
@@ -355,6 +344,7 @@ class LegacyAdapter:
         # 回退到旧实现
         try:
             import requests
+
             response = requests.get("http://localhost:8000/nodes", timeout=10)
             if response.status_code == 200:
                 return {"success": True, **response.json()}
@@ -368,6 +358,7 @@ class LegacyAdapter:
         """获取系统统计"""
         try:
             import requests
+
             response = requests.get("http://localhost:8000/stats", timeout=10)
             if response.status_code == 200:
                 return {"success": True, **response.json()}
@@ -377,6 +368,7 @@ class LegacyAdapter:
 
 
 # ==================== 便捷函数 ====================
+
 
 def create_adapter(enable_new_features: bool = False) -> LegacyAdapter:
     """
@@ -400,6 +392,7 @@ def create_adapter(enable_new_features: bool = False) -> LegacyAdapter:
 
 # 全局适配器实例（单例）
 _default_adapter: Optional[LegacyAdapter] = None
+
 
 def get_adapter() -> LegacyAdapter:
     """获取默认适配器实例"""

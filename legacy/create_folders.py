@@ -38,9 +38,9 @@ def request_uac_elevation(target_path):
     """发起UAC提权请求，以管理员身份重启当前脚本"""
     if not is_admin():
         temp_script = os.path.join(os.path.dirname(__file__), "temp_create_folders.py")
-        escaped_path = target_path.replace('\\', '\\\\')
+        escaped_path = target_path.replace("\\", "\\\\")
 
-        with open(temp_script, 'w', encoding='utf-8') as f:
+        with open(temp_script, "w", encoding="utf-8") as f:
             f.write(f"""
 import os
 import sys
@@ -115,15 +115,19 @@ if __name__ == "__main__":
 
         with contextlib.suppress(Exception):
             import threading
+
             def delete_script():
                 import time
+
                 time.sleep(3)
                 with contextlib.suppress(BaseException):
                     os.remove(temp_script)
+
             threading.Thread(target=delete_script, daemon=True).start()
 
         if result > 32:
             import time
+
             time.sleep(2)
             return True, "权限请求已发送，请确认UAC提示"
         else:
@@ -138,13 +142,13 @@ def create_system_info_file(user_id, username, folder_location):
         "success": False,
         "timestamp": datetime.now().isoformat(),
         "user_id": user_id,
-        "folder_location": folder_location
+        "folder_location": folder_location,
     }
 
     system_info = {
         "user_id": user_id,
         "username": username,
-        "purpose": "此文件包含闲置计算加速器系统运行所需的信息，请勿删除"
+        "purpose": "此文件包含闲置计算加速器系统运行所需的信息，请勿删除",
     }
 
     if folder_location == "project":
@@ -163,7 +167,7 @@ def create_system_info_file(user_id, username, folder_location):
     try:
         os.makedirs(base_path, exist_ok=True)
         test_file = os.path.join(base_path, ".permission_test")
-        with open(test_file, 'w') as f:
+        with open(test_file, "w") as f:
             f.write("test")
         os.remove(test_file)
         direct_creation = True
@@ -229,18 +233,20 @@ def create_system_info_file(user_id, username, folder_location):
 
 def main():
     """主函数"""
-    parser = argparse.ArgumentParser(description='创建闲置计算加速器系统文件夹')
-    parser.add_argument('--user-id', required=True, help='用户ID')
-    parser.add_argument('--username', required=True, help='用户名')
-    parser.add_argument('--folder-location', required=True, choices=['project', 'c', 'd'], help='文件夹位置')
-    parser.add_argument('--output', required=True, help='输出结果的JSON文件路径')
+    parser = argparse.ArgumentParser(description="创建闲置计算加速器系统文件夹")
+    parser.add_argument("--user-id", required=True, help="用户ID")
+    parser.add_argument("--username", required=True, help="用户名")
+    parser.add_argument(
+        "--folder-location", required=True, choices=["project", "c", "d"], help="文件夹位置"
+    )
+    parser.add_argument("--output", required=True, help="输出结果的JSON文件路径")
 
     args = parser.parse_args()
 
     result = create_system_info_file(args.user_id, args.username, args.folder_location)
 
     try:
-        with open(args.output, 'w', encoding='utf-8') as f:
+        with open(args.output, "w", encoding="utf-8") as f:
             json.dump(result, f, ensure_ascii=False, indent=2)
     except Exception as e:
         print(f"无法保存结果文件: {e}", file=sys.stderr)

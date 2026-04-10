@@ -131,7 +131,7 @@ class TestStorageSettings:
             USERS_DIR=str(tmp_path / "users"),
             NODE_DATA_DIR=str(tmp_path / "node_data"),
             LOG_DIR=str(tmp_path / "logs"),
-            TEMP_DIR=str(tmp_path / "tmp")
+            TEMP_DIR=str(tmp_path / "tmp"),
         )
         settings.ensure_directories()
 
@@ -212,7 +212,7 @@ class TestSettings:
                 USERS_DIR=str(tmp_path / "users"),
                 NODE_DATA_DIR=str(tmp_path / "node_data"),
                 LOG_DIR=str(tmp_path / "logs"),
-                TEMP_DIR=str(tmp_path / "tmp")
+                TEMP_DIR=str(tmp_path / "tmp"),
             )
         )
         settings.ensure_directories()

@@ -46,7 +46,7 @@ if __name__ == "__main__":
 
     # 询问是否开始持续监控
     choice = input("是否开始持续监控？(y/n): ")
-    if choice.lower() == 'y':
+    if choice.lower() == "y":
         monitor_idle_status(interval=30)
     else:
         print("测试结束")

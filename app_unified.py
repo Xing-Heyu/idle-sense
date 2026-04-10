@@ -132,27 +132,27 @@ MODERN_STYLE = """
 def init_session_state():
     """初始化 Session State"""
     defaults = {
-        'user_session': None,
-        'task_history': [],
-        'auto_refresh': settings.WEB.AUTO_REFRESH,
-        'debug_mode': settings.DEBUG,
-        'local_node_id': None,
-        'node_start_time': None,
-        'share_cpu_value': settings.RESOURCE.DEFAULT_CPU_SHARE,
-        'share_memory_value': settings.RESOURCE.DEFAULT_MEMORY_SHARE,
+        "user_session": None,
+        "task_history": [],
+        "auto_refresh": settings.WEB.AUTO_REFRESH,
+        "debug_mode": settings.DEBUG,
+        "local_node_id": None,
+        "node_start_time": None,
+        "share_cpu_value": settings.RESOURCE.DEFAULT_CPU_SHARE,
+        "share_memory_value": settings.RESOURCE.DEFAULT_MEMORY_SHARE,
     }
     for key, value in defaults.items():
         if key not in st.session_state:
             st.session_state[key] = value
 
-    if 'session_id' not in st.session_state:
+    if "session_id" not in st.session_state:
         st.session_state.session_id = hashlib.sha256(
             f"{datetime.now().isoformat()}_{os.getpid()}".encode()
         ).hexdigest()[:16]
 
 
 def restore_session():
-    if 'user_session' not in st.session_state or not st.session_state.user_session:
+    if "user_session" not in st.session_state or not st.session_state.user_session:
         user_id = st.query_params.get("user_id")
         username = st.query_params.get("username")
         if user_id and username:
@@ -185,7 +185,7 @@ def render_sidebar():
         st.markdown("### 👤 用户会话")
 
         if st.session_state.user_session:
-            username = st.session_state.user_session.get('username', '用户')
+            username = st.session_state.user_session.get("username", "用户")
             st.success(f"✅ {username}")
 
             user_id = st.session_state.user_session.get("user_id")
@@ -220,7 +220,10 @@ def render_sidebar():
 
                 st.query_params["user_id"] = user_id
                 st.query_params["username"] = username
-                st.toast(f"✅ 欢迎 {username}，获得 {settings.TOKEN.INITIAL_BALANCE} CMP 初始余额！", icon="✅")
+                st.toast(
+                    f"✅ 欢迎 {username}，获得 {settings.TOKEN.INITIAL_BALANCE} CMP 初始余额！",
+                    icon="✅",
+                )
                 time.sleep(0.3)
                 st.rerun()
 
@@ -230,7 +233,9 @@ def render_sidebar():
         cpu_share = st.slider("共享CPU核心数", 0.5, 16.0, st.session_state.share_cpu_value, 0.5)
         st.session_state.share_cpu_value = cpu_share
 
-        memory_share = st.slider("共享内存 (MB)", 512, 32768, st.session_state.share_memory_value, 512)
+        memory_share = st.slider(
+            "共享内存 (MB)", 512, 32768, st.session_state.share_memory_value, 512
+        )
         st.session_state.share_memory_value = memory_share
 
         st.info(f"📊 {cpu_share} 核心, {memory_share}MB")
@@ -248,7 +253,9 @@ def render_task_submission():
 
         col1, col2 = st.columns(2)
         with col1:
-            timeout = st.number_input("超时时间 (秒)", min_value=10, max_value=7200, value=300, step=10)
+            timeout = st.number_input(
+                "超时时间 (秒)", min_value=10, max_value=7200, value=300, step=10
+            )
             cpu_request = st.slider("CPU需求 (核心)", 0.5, 32.0, 4.0, 0.5)
         with col2:
             memory_request = st.slider("内存需求 (MB)", 512, 65536, 4096, 512)
@@ -257,38 +264,49 @@ def render_task_submission():
             "Python代码",
             value="",
             height=250,
-            placeholder="# 在这里编写代码\nprint('Hello, IdleSense!')"
+            placeholder="# 在这里编写代码\nprint('Hello, IdleSense!')",
         )
 
         if st.button("✨ 提交任务", width="stretch", type="primary"):
             if not code.strip():
                 st.toast("⚠️ 请输入代码", icon="⚠️")
             else:
-                user_id = st.session_state.user_session.get("user_id") if st.session_state.user_session else None
+                user_id = (
+                    st.session_state.user_session.get("user_id")
+                    if st.session_state.user_session
+                    else None
+                )
 
                 with st.spinner("提交中..."):
                     client = get_scheduler_client()
-                    success, result = client.submit_task(code, timeout, cpu_request, memory_request, user_id)
+                    success, result = client.submit_task(
+                        code, timeout, cpu_request, memory_request, user_id
+                    )
 
                     if success:
                         task_id = result.get("task_id")
                         cost_info = container.token_economy_service().estimate_task_cost(
                             cpu_request, memory_request, timeout
                         )
-                        st.toast(f"✅ 任务提交成功！ID: {task_id} | 预估: {cost_info['final_price']} CMP", icon="✅")
+                        st.toast(
+                            f"✅ 任务提交成功！ID: {task_id} | 预估: {cost_info['final_price']} CMP",
+                            icon="✅",
+                        )
 
-                        st.session_state.task_history.append({
-                            "task_id": task_id,
-                            "time": datetime.now().strftime("%H:%M:%S"),
-                            "status": "submitted",
-                        })
+                        st.session_state.task_history.append(
+                            {
+                                "task_id": task_id,
+                                "time": datetime.now().strftime("%H:%M:%S"),
+                                "status": "submitted",
+                            }
+                        )
                     else:
                         st.toast(f"❌ 提交失败: {result.get('error', '未知错误')}", icon="❌")
     else:
         st.info("🚀 分布式任务利用多个节点并行处理")
         st.warning("分布式任务模块正在重构中...")
 
-    st.markdown('</div>', unsafe_allow_html=True)
+    st.markdown("</div>", unsafe_allow_html=True)
 
 
 def render_task_monitor():
@@ -307,14 +325,23 @@ def render_task_monitor():
 
         if results_list:
             import pandas as pd
+
             results_data = []
             for result in results_list:
-                results_data.append({
-                    "任务ID": result.get("task_id", "N/A"),
-                    "完成时间": datetime.fromtimestamp(result.get("completed_at", time.time())).strftime("%H:%M:%S") if result.get("completed_at") else "N/A",
-                    "执行节点": result.get("assigned_node", "未知"),
-                    "状态": "✅ 完成" if result.get("result") else "⏳ 处理中",
-                })
+                results_data.append(
+                    {
+                        "任务ID": result.get("task_id", "N/A"),
+                        "完成时间": (
+                            datetime.fromtimestamp(
+                                result.get("completed_at", time.time())
+                            ).strftime("%H:%M:%S")
+                            if result.get("completed_at")
+                            else "N/A"
+                        ),
+                        "执行节点": result.get("assigned_node", "未知"),
+                        "状态": "✅ 完成" if result.get("result") else "⏳ 处理中",
+                    }
+                )
 
             if results_data:
                 df = pd.DataFrame(results_data)
@@ -324,7 +351,7 @@ def render_task_monitor():
     else:
         st.warning("无法获取任务结果")
 
-    st.markdown('</div>', unsafe_allow_html=True)
+    st.markdown("</div>", unsafe_allow_html=True)
 
 
 def render_node_management():
@@ -336,14 +363,18 @@ def render_node_management():
 
     with col1:
         if st.button("🚀 激活本机节点", width="stretch", type="primary"):
-            user_id = st.session_state.user_session.get("user_id") if st.session_state.user_session else None
+            user_id = (
+                st.session_state.user_session.get("user_id")
+                if st.session_state.user_session
+                else None
+            )
             client = get_scheduler_client()
 
             success, result = client.activate_local_node(
                 cpu_limit=st.session_state.share_cpu_value,
                 memory_limit=st.session_state.share_memory_value,
                 storage_limit=settings.RESOURCE.DEFAULT_STORAGE_SHARE,
-                user_id=user_id
+                user_id=user_id,
             )
 
             if success and result.get("success"):
@@ -381,15 +412,18 @@ def render_node_management():
 
         if nodes:
             import pandas as pd
+
             node_data = []
             for node in nodes:
-                node_data.append({
-                    "节点ID": node["node_id"],
-                    "状态": node["status"],
-                    "详情": node["status_detail"],
-                    "平台": node["platform"],
-                    "所有者": node["owner"],
-                })
+                node_data.append(
+                    {
+                        "节点ID": node["node_id"],
+                        "状态": node["status"],
+                        "详情": node["status_detail"],
+                        "平台": node["platform"],
+                        "所有者": node["owner"],
+                    }
+                )
 
             df = pd.DataFrame(node_data)
             st.dataframe(df, width="stretch", hide_index=True)
@@ -406,7 +440,7 @@ def render_node_management():
     else:
         st.error("无法获取节点信息")
 
-    st.markdown('</div>', unsafe_allow_html=True)
+    st.markdown("</div>", unsafe_allow_html=True)
 
 
 def render_system_stats():
@@ -421,37 +455,49 @@ def render_system_stats():
         col1, col2, col3, col4 = st.columns(4)
 
         with col1:
-            st.markdown(f"""
+            st.markdown(
+                f"""
             <div class="metric-card">
                 <div class="metric-value">{stats['tasks']['total']}</div>
                 <div class="metric-label">总任务数</div>
             </div>
-            """, unsafe_allow_html=True)
+            """,
+                unsafe_allow_html=True,
+            )
 
         with col2:
-            st.markdown(f"""
+            st.markdown(
+                f"""
             <div class="metric-card">
                 <div class="metric-value">{stats['tasks']['completed']}</div>
                 <div class="metric-label">已完成</div>
             </div>
-            """, unsafe_allow_html=True)
+            """,
+                unsafe_allow_html=True,
+            )
 
         with col3:
-            st.markdown(f"""
+            st.markdown(
+                f"""
             <div class="metric-card">
                 <div class="metric-value">{stats['nodes']['total']}</div>
                 <div class="metric-label">总节点数</div>
             </div>
-            """, unsafe_allow_html=True)
+            """,
+                unsafe_allow_html=True,
+            )
 
         with col4:
-            online = stats['nodes']['idle'] + stats['nodes']['busy']
-            st.markdown(f"""
+            online = stats["nodes"]["idle"] + stats["nodes"]["busy"]
+            st.markdown(
+                f"""
             <div class="metric-card">
                 <div class="metric-value">{online}</div>
                 <div class="metric-label">在线节点</div>
             </div>
-            """, unsafe_allow_html=True)
+            """,
+                unsafe_allow_html=True,
+            )
 
         st.markdown("---")
         st.subheader("💰 Token经济")
@@ -472,7 +518,7 @@ def render_system_stats():
     else:
         st.warning("无法获取系统统计")
 
-    st.markdown('</div>', unsafe_allow_html=True)
+    st.markdown("</div>", unsafe_allow_html=True)
 
 
 def render_task_results():
@@ -482,12 +528,13 @@ def render_task_results():
 
     if st.session_state.task_history:
         import pandas as pd
+
         df = pd.DataFrame(st.session_state.task_history)
         st.dataframe(df, width="stretch", hide_index=True)
     else:
         st.info("暂无任务历史记录")
 
-    st.markdown('</div>', unsafe_allow_html=True)
+    st.markdown("</div>", unsafe_allow_html=True)
 
 
 def main():
@@ -496,7 +543,7 @@ def main():
         page_title=settings.WEB.PAGE_TITLE,
         page_icon=settings.WEB.PAGE_ICON,
         layout=settings.WEB.LAYOUT,
-        initial_sidebar_state=settings.WEB.INITIAL_SIDEBAR_STATE
+        initial_sidebar_state=settings.WEB.INITIAL_SIDEBAR_STATE,
     )
 
     st.markdown(MODERN_STYLE, unsafe_allow_html=True)
@@ -504,19 +551,22 @@ def main():
     init_session_state()
     restore_session()
 
-    st.markdown("""
+    st.markdown(
+        """
     <div class="main-header">
         <h1>闲置计算加速器</h1>
         <p>闲置计算资源分布式计算平台</p>
     </div>
-    """, unsafe_allow_html=True)
+    """,
+        unsafe_allow_html=True,
+    )
 
     render_sidebar()
 
     if st.session_state.user_session:
-        tab1, tab2, tab3, tab4, tab5 = st.tabs([
-            "📝 提交任务", "📊 任务监控", "🖥️ 节点管理", "📈 系统统计", "📋 任务结果"
-        ])
+        tab1, tab2, tab3, tab4, tab5 = st.tabs(
+            ["📝 提交任务", "📊 任务监控", "🖥️ 节点管理", "📈 系统统计", "📋 任务结果"]
+        )
 
         with tab1:
             render_task_submission()
@@ -535,13 +585,16 @@ def main():
     else:
         st.markdown('<div class="glass-card">', unsafe_allow_html=True)
         st.info("🔐 请在左侧边栏登录以使用平台功能。")
-        st.markdown('</div>', unsafe_allow_html=True)
+        st.markdown("</div>", unsafe_allow_html=True)
 
-    st.markdown("""
+    st.markdown(
+        """
     <div style="text-align: center; padding: 2rem 0; margin-top: 2rem; border-top: 1px solid rgba(255,255,255,0.1); color: rgba(255,255,255,0.6); font-size: 0.85rem;">
         ✨ 闲置计算加速器 • 分布式计算平台 • 版本 2.0
     </div>
-    """, unsafe_allow_html=True)
+    """,
+        unsafe_allow_html=True,
+    )
 
 
 if __name__ == "__main__":

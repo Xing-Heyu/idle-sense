@@ -6,7 +6,7 @@ print("Checking node status...")
 print("Attempting to connect to: http://localhost:8000/api/nodes")
 
 try:
-    response = requests.get('http://localhost:8000/api/nodes', timeout=10)
+    response = requests.get("http://localhost:8000/api/nodes", timeout=10)
     print("Status Code:", response.status_code)
     print("Full Response Text:", repr(response.text))  # 使用repr显示原始内容
 

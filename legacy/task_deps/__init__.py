@@ -69,17 +69,12 @@ class DependencyGraph(Generic[T]):
         source: T,
         target: T,
         dep_type: DependencyType = DependencyType.HARD,
-        condition: Callable | None = None
+        condition: Callable | None = None,
     ) -> Dependency[T]:
         source_node = self.add_node(source)
         target_node = self.add_node(target)
 
-        dep = Dependency(
-            source=source,
-            target=target,
-            dep_type=dep_type,
-            condition=condition
-        )
+        dep = Dependency(source=source, target=target, dep_type=dep_type, condition=condition)
         self.edges.append(dep)
 
         if dep_type == DependencyType.HARD:
@@ -104,10 +99,7 @@ class DependencyGraph(Generic[T]):
         source_node.conditional_dependencies.pop(target, None)
         target_node.dependents.discard(source)
 
-        self.edges = [
-            e for e in self.edges
-            if not (e.source == source and e.target == target)
-        ]
+        self.edges = [e for e in self.edges if not (e.source == source and e.target == target)]
 
         return True
 
@@ -131,10 +123,7 @@ class DependencyGraph(Generic[T]):
 
         del self.nodes[node_id]
 
-        self.edges = [
-            e for e in self.edges
-            if e.source != node_id and e.target != node_id
-        ]
+        self.edges = [e for e in self.edges if e.source != node_id and e.target != node_id]
 
         return True
 
@@ -197,10 +186,7 @@ class DependencyGraph(Generic[T]):
             for _dep_id in self.nodes[node_id].dependencies:
                 in_degree[node_id] += 1
 
-        queue = deque([
-            node_id for node_id in self.nodes
-            if in_degree[node_id] == 0
-        ])
+        queue = deque([node_id for node_id in self.nodes if in_degree[node_id] == 0])
 
         result = []
 
@@ -230,10 +216,7 @@ class DependencyGraph(Generic[T]):
                 levels[node_id] = 0
                 return 0
 
-            max_dep_level = max(
-                compute_level(dep_id)
-                for dep_id in node.dependencies
-            )
+            max_dep_level = max(compute_level(dep_id) for dep_id in node.dependencies)
 
             levels[node_id] = max_dep_level + 1
             return levels[node_id]
@@ -261,17 +244,15 @@ class DependencyGraph(Generic[T]):
         path = []
         current_level = max_level
 
-        candidates = [
-            node_id for node_id, level in levels.items()
-            if level == current_level
-        ]
+        candidates = [node_id for node_id, level in levels.items() if level == current_level]
 
         while candidates and current_level >= 0:
             path.append(candidates[0])
             current_level -= 1
 
             candidates = [
-                dep_id for dep_id in self.nodes[candidates[0]].dependencies
+                dep_id
+                for dep_id in self.nodes[candidates[0]].dependencies
                 if levels.get(dep_id) == current_level
             ]
 
@@ -286,12 +267,7 @@ class DependencyGraph(Generic[T]):
 
         for edge in self.edges:
             if edge.source in node_ids and edge.target in node_ids:
-                sub.add_dependency(
-                    edge.source,
-                    edge.target,
-                    edge.dep_type,
-                    edge.condition
-                )
+                sub.add_dependency(edge.source, edge.target, edge.dep_type, edge.condition)
 
         return sub
 
@@ -402,10 +378,7 @@ class TaskDependencyManager:
         self._task_data: dict[str, Any] = {}
 
     def register_task(
-        self,
-        task_id: str,
-        dependencies: list[str] | None = None,
-        data: Any | None = None
+        self, task_id: str, dependencies: list[str] | None = None, data: Any | None = None
     ):
         self.graph.add_node(task_id)
         self._task_data[task_id] = data
@@ -418,10 +391,7 @@ class TaskDependencyManager:
         return self.resolver.resolve()
 
     def get_next_batch(
-        self,
-        completed: set[str],
-        running: set[str],
-        max_batch_size: int = 10
+        self, completed: set[str], running: set[str], max_batch_size: int = 10
     ) -> list[str]:
         ready = self.resolver.get_ready_tasks(completed, running)
         return ready[:max_batch_size]

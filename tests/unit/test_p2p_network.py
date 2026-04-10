@@ -140,10 +140,7 @@ class TestKademliaDHT(unittest.TestCase):
         self.assertIsNone(retrieved)
 
     def test_find_closest_peers(self):
-        peers = [
-            PeerInfo(node_id=f"peer{i}", ip=f"192.168.1.{i}", port=8765)
-            for i in range(5)
-        ]
+        peers = [PeerInfo(node_id=f"peer{i}", ip=f"192.168.1.{i}", port=8765) for i in range(5)]
 
         for peer in peers:
             self.dht.add_peer(peer)
@@ -163,10 +160,7 @@ class TestKademliaDHT(unittest.TestCase):
         self.assertIsNone(value)
 
     def test_get_all_peers(self):
-        peers = [
-            PeerInfo(node_id=f"peer{i}", ip=f"192.168.1.{i}", port=8765)
-            for i in range(3)
-        ]
+        peers = [PeerInfo(node_id=f"peer{i}", ip=f"192.168.1.{i}", port=8765) for i in range(3)]
 
         for peer in peers:
             self.dht.add_peer(peer)
