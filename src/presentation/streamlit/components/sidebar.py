@@ -59,7 +59,7 @@ def _render_user_status():
         username = st.text_input("用户名", key="sidebar_username")
 
         if st.button("快速登录", width="stretch") and username:
-            use_case = container.login_use_case
+            use_case = container.login_use_case()
             response = use_case.execute(LoginRequest(username_or_id=username))
 
             if response.success:

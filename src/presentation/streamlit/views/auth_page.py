@@ -29,7 +29,7 @@ def render_login():
             st.error("请输入用户名或用户ID")
         else:
             with st.spinner("登录中..."):
-                use_case = container.login_use_case
+                use_case = container.login_use_case()
                 response = use_case.execute(LoginRequest(
                     username_or_id=username_or_id
                 ))
@@ -66,7 +66,7 @@ def render_register():
     )
 
     if username:
-        use_case = container.register_use_case
+        use_case = container.register_use_case()
         test_response = use_case.execute(RegisterRequest(username=username))
         if not test_response.success and "格式" in test_response.message:
             st.error(f"用户名格式错误: {test_response.message}")
@@ -237,7 +237,7 @@ def render_register():
                 status_text.text("正在验证用户名...")
                 progress_bar.progress(30)
 
-                use_case = container.register_use_case
+                use_case = container.register_use_case()
                 response = use_case.execute(RegisterRequest(
                     username=username,
                     folder_location=folder_value
