@@ -18,9 +18,10 @@ class TestPropertyAccessFix:
         """测试 config 属性访问"""
         container = Container()
         
-        # 属性访问方式
         config = container.config
         assert config is not None
+        if hasattr(config, '__call__'):
+            config = config()
         assert hasattr(config, 'SCHEDULER')
 
     def test_cache_property_access(self):

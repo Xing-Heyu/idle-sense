@@ -50,7 +50,7 @@ echo ✅ 核心依赖安装成功
 :: 以可编辑模式安装项目
 echo.
 echo [3.5/4] 以可编辑模式安装项目...
-pip install -e . -q
+pip install -e . -q -i https://pypi.tuna.tsinghua.edu.cn/simple
 if errorlevel 1 (
     echo ❌ 项目安装失败，请检查 setup.py 是否存在
     pause

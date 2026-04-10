@@ -8,12 +8,12 @@ similar to MapReduce shuffle phase.
 """
 
 import asyncio
+import contextlib
 import hashlib
 import time
 from collections import defaultdict
 from dataclasses import dataclass, field
 from typing import Any, Callable, Generic, Optional, TypeVar
-import contextlib
 
 K = TypeVar("K")
 V = TypeVar("V")

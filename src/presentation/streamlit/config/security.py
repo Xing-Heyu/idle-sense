@@ -15,7 +15,7 @@ class SecurityHeaders:
 
     content_security_policy: str = (
         "default-src 'self'; "
-        "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net; "
+        "script-src 'self' https://cdn.jsdelivr.net; "
         "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; "
         "font-src 'self' https://fonts.gstatic.com; "
         "img-src 'self' data: https:; "
@@ -57,7 +57,7 @@ class SecurityConfig:
     headers: SecurityHeaders = None
     enable_cors_protection: bool = True
     enable_csrf_protection: bool = True
-    session_cookie_secure: bool = False  # 生产环境必须改为 True（需 HTTPS）
+    session_cookie_secure: bool = True
     session_cookie_httponly: bool = True
     session_cookie_samesite: str = "Lax"
 

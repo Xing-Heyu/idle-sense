@@ -173,7 +173,7 @@ class TaskFactory:
     ) -> Task:
         """创建新任务"""
         return Task(
-            task_id=f"task_{hashlib.md5(f'{time.time()}_{code[:50]}'.encode()).hexdigest()[:12]}",
+            task_id=f"task_{hashlib.sha256(f'{time.time()}_{code[:50]}'.encode()).hexdigest()[:12]}",
             code=code,
             user_id=user_id,
             timeout=timeout,

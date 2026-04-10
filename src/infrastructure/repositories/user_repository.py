@@ -98,12 +98,8 @@ class FileUserRepository(IUserRepository):
         return absolute_path
 
     def _get_user_file(self, user_id: str) -> str:
-        """获取用户文件路径（向后兼容）"""
-        try:
-            return self._get_safe_user_file(user_id)
-        except ValueError:
-            # 旧代码路径（保持向后兼容，但建议使用新方法）
-            return os.path.join(self._users_dir, f"{user_id}.json")
+        """获取用户文件路径（带安全验证）"""
+        return self._get_safe_user_file(user_id)
 
     def _load_username_index(self):
         """加载用户名索引（优化 get_by_username）"""

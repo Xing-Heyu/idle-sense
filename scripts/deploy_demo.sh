@@ -62,7 +62,7 @@ services:
       - ./requirements.txt:/app/requirements.txt
       - ./demo-config/scheduler-config.yaml:/app/config.yaml
     command: >
-      sh -c "pip install -r requirements.txt &&
+      sh -c "pip install -r requirements.txt -i https://pypi.tuna.tsinghua.edu.cn/simple &&
              uvicorn scheduler.simple_server:app --host 0.0.0.0 --port 8000"
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/"]
@@ -82,7 +82,7 @@ services:
       - ./web_interface.py:/app/web_interface.py
       - ./requirements.txt:/app/requirements.txt
     command: >
-      sh -c "pip install -r requirements.txt &&
+      sh -c "pip install -r requirements.txt -i https://pypi.tuna.tsinghua.edu.cn/simple &&
              streamlit run web_interface.py --server.port 8501 --server.address 0.0.0.0"
     depends_on:
       - scheduler
@@ -103,7 +103,7 @@ services:
       - NODE_NAME=demo-windows-node
       - SCHEDULER_URL=http://scheduler:8000
     command: >
-      sh -c "pip install -r requirements.txt &&
+      sh -c "pip install -r requirements.txt -i https://pypi.tuna.tsinghua.edu.cn/simple &&
              echo '模拟Windows节点启动...' &&
              while true; do
                echo '节点运行中...';
@@ -128,7 +128,7 @@ services:
       - NODE_NAME=demo-macos-node
       - SCHEDULER_URL=http://scheduler:8000
     command: >
-      sh -c "pip install -r requirements.txt &&
+      sh -c "pip install -r requirements.txt -i https://pypi.tuna.tsinghua.edu.cn/simple &&
              echo '模拟macOS节点启动...' &&
              while true; do
                echo '节点运行中...';

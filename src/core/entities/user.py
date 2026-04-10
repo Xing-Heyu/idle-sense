@@ -55,11 +55,11 @@ class User:
         Returns:
             (是否有效, 错误消息)
         """
-        if len(self.username) > 20:
-            return False, "用户名长度不能超过20个字符"
-
         if not self.username:
             return False, "用户名不能为空"
+
+        if len(self.username) > 20:
+            return False, "用户名长度不能超过20个字符"
 
         pattern = r'^[\u4e00-\u9fa5a-zA-Z0-9]+$'
         if not re.match(pattern, self.username):
@@ -95,7 +95,7 @@ class User:
     @staticmethod
     def generate_user_id(username: str) -> str:
         """生成用户ID"""
-        return f"local_{hashlib.md5(f'{username}_{time.time()}'.encode()).hexdigest()[:8]}"
+        return f"local_{hashlib.sha256(f'{username}_{time.time()}'.encode()).hexdigest()[:8]}"
 
 
 class UserFactory:

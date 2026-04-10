@@ -76,7 +76,7 @@ class STUNAttribute:
         return cls(STUNAttributeType.MAPPED_ADDRESS, value)
 
     @classmethod
-    def xor_mapped_address(cls, ip: str, port: int, transaction_id: bytes, magic_cookie: int = 0x2112A442) -> "STUNAttribute":
+    def xor_mapped_address(cls, ip: str, port: int, _transaction_id: bytes, magic_cookie: int = 0x2112A442) -> "STUNAttribute":
         """Create a XOR-MAPPED-ADDRESS attribute."""
         ip_bytes = socket.inet_pton(socket.AF_INET, ip)
         family = 1

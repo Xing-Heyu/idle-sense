@@ -1,5 +1,6 @@
 import asyncio
 import concurrent.futures
+import contextlib
 import json
 import threading
 import time
@@ -10,7 +11,6 @@ from typing import Any, Optional
 from src.core.entities.task import Task, TaskStatus
 from src.infrastructure.persistence import ensure_data_dirs, get_db_path
 from src.infrastructure.repositories.sqlite_task_repository import SQLiteTaskRepository
-import contextlib
 
 
 @dataclass
@@ -165,20 +165,20 @@ class PersistentTaskStorage:
                         )
                     future = self._executor.submit(_run_in_thread, coro)
                 return future.result(timeout=30)
-            except Exception as e:
+            except Exception:
                 if attempt < max_retries - 1:
                     self._stats["reconnect_count"] += 1
-                    if self._repo and self._repo._conn:
-                        try:
+                    try:
+                        if self._repo:
                             with self._executor_lock:
                                 if self._executor:
                                     close_future = self._executor.submit(
                                         _run_in_thread, self._repo.close()
                                     )
                                     close_future.result(timeout=10)
-                        except Exception:
-                            pass
-                        self._repo._conn = None
+                    except Exception:
+                        pass
+                    self._repo = None
                     time.sleep(0.1 * (attempt + 1))
                 else:
                     raise
@@ -236,7 +236,7 @@ class PersistentTaskStorage:
     def get_task_for_node(self, node_id: str) -> Optional[CachedTaskInfo]:
         """为指定节点获取一个待处理任务（兼容调度器接口）"""
         with self._lock:
-            node_cached = self._cache.values()
+            self._cache.values()
             best_task = None
             best_score = -1.0
 

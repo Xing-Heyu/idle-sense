@@ -4,10 +4,10 @@ API 请求限流模块
 提供基于 IP 地址的请求限流功能，防止 DoS 攻击
 """
 
+import logging
 from dataclasses import dataclass
 from functools import wraps
 from typing import Callable, Optional
-import logging
 
 from fastapi import FastAPI, Request
 
@@ -26,6 +26,7 @@ class RateLimitConfig:
     activate_limit: str = "5/minute"
 
     retry_after_seconds: int = 60
+    trusted_proxies: list[str] = None
 
 
 class RateLimiter:
@@ -93,14 +94,14 @@ class RateLimiter:
         return self._limiter.limit(limit_value)
 
     def get_client_ip(self, request: Request) -> str:
-        """获取客户端 IP 地址"""
-        forwarded = request.headers.get("X-Forwarded-For")
-        if forwarded:
-            return forwarded.split(",")[0].strip()
-
-        real_ip = request.headers.get("X-Real-IP")
-        if real_ip:
-            return real_ip
+        """获取客户端 IP 地址（仅信任已配置的代理）"""
+        if self.config.trusted_proxies:
+            forwarded = request.headers.get("X-Forwarded-For")
+            if forwarded:
+                return forwarded.split(",")[0].strip()
+            real_ip = request.headers.get("X-Real-IP")
+            if real_ip:
+                return real_ip
 
         return request.client.host if request.client else "unknown"
 

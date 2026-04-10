@@ -156,8 +156,8 @@ EOF
     # 激活虚拟环境并安装
     echo "安装依赖包..."
     source venv/bin/activate
-    pip install --upgrade pip
-    pip install -r requirements.txt
+    pip install --upgrade pip -i https://pypi.tuna.tsinghua.edu.cn/simple
+    pip install -r requirements.txt -i https://pypi.tuna.tsinghua.edu.cn/simple
     
     echo -e "${GREEN}✓ Python依赖安装完成${NC}"
 }

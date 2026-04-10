@@ -52,7 +52,7 @@ def _parse_uploaded_file(uploaded_file, file_type: str) -> tuple[bool, Any, str]
             if isinstance(content, bytes):
                 content = content.decode("utf-8")
             reader = csv.reader(io.StringIO(content))
-            data = [row for row in reader]
+            data = list(reader)
             return True, data, ""
 
         elif file_type == "TXT (文本列表)":
@@ -64,7 +64,7 @@ def _parse_uploaded_file(uploaded_file, file_type: str) -> tuple[bool, Any, str]
         elif file_type == "TXT (数字列表)":
             if isinstance(content, bytes):
                 content = content.decode("utf-8")
-            data = [float(x.strip()) if "." in x.strip() else int(x.strip()) 
+            data = [float(x.strip()) if "." in x.strip() else int(x.strip())
                    for x in content.replace("\n", ",").split(",") if x.strip()]
             return True, data, ""
 
@@ -239,7 +239,6 @@ def _render_distributed_task(user_id: Optional[str]):
     priority = st.slider("任务优先级", 0, 10, 0, 1, help="优先级越高，任务调度越快，但消耗更多代币（普通提交免费）")
 
     if user_id and priority > 0:
-        estimated_resources = 1000
         cost_info = container.token_economy_service().estimate_task_cost(
             max_parallel_chunks, 4096, 600, priority
         )
@@ -256,7 +255,7 @@ def _render_distributed_task(user_id: Optional[str]):
 
         if data_type == "数字列表":
             data_input = st.text_area(
-                "输入数字列表，用逗号分隔", 
+                "输入数字列表，用逗号分隔",
                 value="1,2,3,4,5,6,7,8,9,10",
                 help="例如: 1,2,3,4,5"
             )
@@ -272,7 +271,7 @@ def _render_distributed_task(user_id: Optional[str]):
 
         elif data_type == "文本列表":
             data_input = st.text_area(
-                "输入文本列表，每行一项", 
+                "输入文本列表，每行一项",
                 value="苹果\n香蕉\n橙子\n葡萄\n西瓜",
                 help="每行输入一个文本项"
             )
@@ -352,7 +351,7 @@ def _render_distributed_task(user_id: Optional[str]):
 
                     if success:
                         task_data = data
-                        st.success(f"✅ 文件解析成功！")
+                        st.success("✅ 文件解析成功！")
                         st.session_state['uploaded_task_data'] = task_data
                     else:
                         st.error(f"❌ {error_msg}")

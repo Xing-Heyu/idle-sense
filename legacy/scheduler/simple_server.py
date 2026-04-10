@@ -3,14 +3,14 @@ scheduler/simple_server.py
 优化版任务调度器 - 修复节点显示问题
 """
 
+import asyncio
+import atexit
+import concurrent.futures
 import os
 import sys
-import atexit
 import threading
 import time
 import uuid
-import asyncio
-import concurrent.futures
 from collections import defaultdict
 from typing import Any, Optional
 
@@ -584,8 +584,8 @@ class PersistentSchedulerStorage:
     """
 
     def __init__(self, db_path=None):
-        from src.infrastructure.persistence.persistent_task_storage import PersistentTaskStorage
         from src.infrastructure.persistence.persistent_node_storage import PersistentNodeStorage
+        from src.infrastructure.persistence.persistent_task_storage import PersistentTaskStorage
 
         self.task_storage = PersistentTaskStorage(db_path=db_path)
         self.node_storage = PersistentNodeStorage(db_path=db_path)
@@ -692,7 +692,9 @@ class PersistentSchedulerStorage:
 
     # ========== 节点管理方法（委托给 node_storage，同步包装）==========
     def register_node(self, registration) -> bool:
-        from src.infrastructure.persistence.persistent_node_storage import NodeRegistration as PNodeRegistration
+        from src.infrastructure.persistence.persistent_node_storage import (
+            NodeRegistration as PNodeRegistration,
+        )
         reg = PNodeRegistration(
             node_id=registration.node_id,
             capacity=registration.capacity,
@@ -704,7 +706,9 @@ class PersistentSchedulerStorage:
         return result
 
     def update_node_heartbeat(self, heartbeat) -> bool:
-        from src.infrastructure.persistence.persistent_node_storage import NodeHeartbeat as PNodeHeartbeat
+        from src.infrastructure.persistence.persistent_node_storage import (
+            NodeHeartbeat as PNodeHeartbeat,
+        )
         hb = PNodeHeartbeat(
             node_id=heartbeat.node_id,
             current_load=heartbeat.current_load,

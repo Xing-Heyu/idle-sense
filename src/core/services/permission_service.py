@@ -16,6 +16,7 @@
 
 import ctypes
 import os
+import sys
 
 
 class PermissionService:
@@ -23,13 +24,16 @@ class PermissionService:
 
     def check_admin_permission(self) -> bool:
         """
-        检查管理员权限
+        检查管理员权限（跨平台支持）
 
         Returns:
             是否具有管理员权限
         """
         try:
-            return ctypes.windll.shell32.IsUserAnAdmin()
+            if sys.platform == "win32":
+                return bool(ctypes.windll.shell32.IsUserAnAdmin())
+            else:
+                return os.geteuid() == 0
         except (AttributeError, OSError):
             return False
 

@@ -110,7 +110,7 @@ class TokenEncryption:
 
     def _derive_keys_from_password(self, password: str) -> None:
         if self._salt_file and os.path.exists(self._salt_file):
-            with open(self._salt_file, "r") as f:
+            with open(self._salt_file) as f:
                 salt = base64.b64decode(f.read().strip())
         else:
             salt = secrets.token_bytes(self.SALT_SIZE)
@@ -316,9 +316,15 @@ class TokenEncryption:
             raise ValueError("必须提供新密码或新密钥文件")
 
     def clear_keys(self) -> None:
-        """清除内存中的密钥"""
+        """清除内存中的密钥（安全覆写）"""
+        if self._encryption_key:
+            self._encryption_key = b'\x00' * len(self._encryption_key)
+        if self._hmac_key:
+            self._hmac_key = b'\x00' * len(self._hmac_key)
         self._encryption_key = None
         self._hmac_key = None
+        if self._main_password:
+            self._main_password = '\x00' * len(self._main_password)
         self._main_password = None
 
 

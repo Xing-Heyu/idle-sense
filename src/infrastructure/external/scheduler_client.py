@@ -336,7 +336,7 @@ class SchedulerClient:
             },
             "nodes": {
                 "idle": nodes_info.get("idle", 0),
-                "busy": nodes_info.get("online", 0) - nodes_info.get("idle", 0),
+                "busy": max(0, nodes_info.get("online", 0) - nodes_info.get("idle", 0)),
                 "offline": nodes_info.get("offline", 0),
                 "total": nodes_info.get("total", 0)
             },

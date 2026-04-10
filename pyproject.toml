@@ -3,7 +3,7 @@ requires = ["setuptools>=61.0"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "idle-accelerator"
+name = "idle-sense"
 version = "1.0.0"
 description = "Cross-platform distributed computing platform utilizing idle computer resources"
 readme = "README.md"
@@ -19,7 +19,6 @@ classifiers = [
     "License :: OSI Approved :: MIT License",
     "Operating System :: OS Independent",
     "Programming Language :: Python :: 3",
-    "Programming Language :: Python :: 3.8",
     "Programming Language :: Python :: 3.9",
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
@@ -28,12 +27,26 @@ classifiers = [
 
 dependencies = [
     "psutil>=5.9.0",
+    "fastapi>=0.115.0",
+    "uvicorn[standard]>=0.34.0",
+    "python-multipart>=0.0.6",
+    "requests>=2.31.0",
+    "streamlit>=1.40.0",
+    "plotly>=5.18.0",
+    "pandas>=2.3.0",
+    "cryptography>=45.0.0",
+    "pydantic>=2.10.0",
+    "pydantic-settings>=2.0.0",
+    "pyyaml>=6.0",
+    "slowapi>=0.1.9",
+    "dependency-injector>=4.41.0",
+    "aiosqlite>=0.19.0",
 ]
 
 [project.optional-dependencies]
 scheduler = [
-    "fastapi>=0.104.0",
-    "uvicorn[standard]>=0.24.0",
+    "fastapi>=0.115.0",
+    "uvicorn[standard]>=0.34.0",
     "python-multipart>=0.0.6",
     "redis>=4.5.0",
 ]
@@ -43,9 +56,9 @@ node = [
 ]
 
 web = [
-    "streamlit>=1.28.0",
+    "streamlit>=1.40.0",
     "plotly>=5.18.0",
-    "pandas>=2.0.0",
+    "pandas>=2.3.0",
 ]
 
 dev = [
@@ -62,11 +75,11 @@ dev = [
 ]
 
 security = [
-    "cryptography>=41.0.0",
+    "cryptography>=45.0.0",
 ]
 
 all = [
-    "idle-accelerator[scheduler,node,web,dev,security]",
+    "idle-sense[scheduler,node,web,dev,security]",
 ]
 
 [project.scripts]
@@ -74,9 +87,9 @@ idle-scheduler = "scheduler.simple_server:main"
 idle-node = "node.simple_client:main"
 
 [project.urls]
-Homepage = "https://github.com/Xing-Heyu/idle-accelerator"
-Repository = "https://github.com/Xing-Heyu/idle-accelerator"
-Documentation = "https://github.com/Xing-Heyu/idle-accelerator/tree/main/docs"
+Homepage = "https://github.com/Xing-Heyu/idle-sense"
+Repository = "https://github.com/Xing-Heyu/idle-sense"
+Documentation = "https://github.com/Xing-Heyu/idle-sense/tree/main/docs"
 
 [tool.setuptools.packages.find]
 include = ["idle_sense*", "scheduler*", "node*", "config*", "user_management*"]
@@ -114,10 +127,11 @@ known-first-party = ["idle_sense", "scheduler", "node", "config", "user_manageme
 "tests/*" = ["ARG", "S101"]
 "examples/*" = ["ARG", "T201"]
 "demo/*" = ["ARG", "T201"]
+"src/presentation/streamlit/app.py" = ["E402"]
 
 [tool.black]
 line-length = 100
-target-version = ['py38', 'py39', 'py310', 'py311']
+target-version = ['py39', 'py310', 'py311']
 include = '\.pyi?$'
 exclude = '''
 /(

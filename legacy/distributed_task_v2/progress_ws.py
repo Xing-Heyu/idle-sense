@@ -6,6 +6,7 @@ providing real-time updates on task status, stage progress, and chunk completion
 """
 
 import asyncio
+import contextlib
 import hashlib
 import json
 import time
@@ -13,7 +14,6 @@ from collections import defaultdict
 from dataclasses import dataclass, field
 from enum import Enum
 from typing import Any, Callable, Optional
-import contextlib
 
 
 class MessageType(Enum):

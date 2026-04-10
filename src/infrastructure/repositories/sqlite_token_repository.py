@@ -246,6 +246,8 @@ class SQLiteTokenRepository(ITokenRepository):
 
         conn = await self._pool.get_connection()
         try:
+            await conn.execute("PRAGMA journal_mode=WAL")
+            await conn.execute("PRAGMA busy_timeout=5000")
             await conn.execute("""
                 CREATE TABLE IF NOT EXISTS token_accounts (
                     user_id TEXT PRIMARY KEY,
@@ -432,12 +434,30 @@ class SQLiteTokenRepository(ITokenRepository):
         conn = await pool.get_connection()
         try:
             now = self._now()
-            account = await self.get_or_create_account(user_id)
 
-            new_balance = account.balance + delta
+            async with conn.execute(
+                "SELECT * FROM token_accounts WHERE user_id = ?", (user_id,)
+            ) as cursor:
+                row = await cursor.fetchone()
+
+            if not row:
+                await conn.execute(
+                    """
+                    INSERT INTO token_accounts
+                    (user_id, balance, frozen_balance, total_earned, total_spent, updated_at, created_at)
+                    VALUES (?, 0.0, 0.0, 0.0, 0.0, ?, ?)
+                    """,
+                    (user_id, now, now),
+                )
+                await conn.commit()
+                current_balance = 0.0
+            else:
+                current_balance = row["balance"]
+
+            new_balance = current_balance + delta
             if new_balance < 0:
                 raise InsufficientBalanceError(
-                    f"用户 {user_id} 余额不足: 当前 {account.balance}, 需要 {-delta}"
+                    f"用户 {user_id} 余额不足: 当前 {current_balance}, 需要 {-delta}"
                 )
 
             if is_earning and delta > 0:
@@ -489,7 +509,11 @@ class SQLiteTokenRepository(ITokenRepository):
                 )
             await conn.commit()
 
-            return await self.get_account(user_id)
+            async with conn.execute(
+                "SELECT * FROM token_accounts WHERE user_id = ?", (user_id,)
+            ) as cursor:
+                result_row = await cursor.fetchone()
+            return self._row_to_account(result_row)
         finally:
             await pool.release_connection(conn)
 
@@ -539,13 +563,53 @@ class SQLiteTokenRepository(ITokenRepository):
                     pass
 
                 is_earning = tx_type in ("deposit", "reward", "interest", "unstake")
-                await self.update_balance(to_user_id, amount, is_earning=is_earning)
+
+                async with conn.execute(
+                    "SELECT * FROM token_accounts WHERE user_id = ?", (to_user_id,)
+                ) as cursor:
+                    row = await cursor.fetchone()
+
+                if not row:
+                    await conn.execute(
+                        """
+                        INSERT INTO token_accounts
+                        (user_id, balance, frozen_balance, total_earned, total_spent, updated_at, created_at)
+                        VALUES (?, 0.0, 0.0, 0.0, 0.0, ?, ?)
+                        """,
+                        (to_user_id, now, now),
+                    )
+
+                if is_earning:
+                    await conn.execute(
+                        """
+                        UPDATE token_accounts SET
+                            balance = balance + ?,
+                            total_earned = total_earned + ?,
+                            updated_at = ?
+                        WHERE user_id = ?
+                        """,
+                        (amount, amount, now, to_user_id),
+                    )
+                else:
+                    await conn.execute(
+                        """
+                        UPDATE token_accounts SET
+                            balance = balance + ?,
+                            updated_at = ?
+                        WHERE user_id = ?
+                        """,
+                        (amount, now, to_user_id),
+                    )
 
                 await conn.commit()
             except aiosqlite.IntegrityError:
                 raise DuplicateTransactionError(f"交易哈希冲突: {tx_hash}") from None
 
-            return await self.get_transaction_by_hash(tx_hash)
+            async with conn.execute(
+                "SELECT * FROM token_transactions WHERE tx_hash = ?", (tx_hash,)
+            ) as cursor:
+                tx_row = await cursor.fetchone()
+            return self._row_to_transaction(tx_row)
         finally:
             await pool.release_connection(conn)
 

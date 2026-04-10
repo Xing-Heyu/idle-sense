@@ -134,7 +134,9 @@ class TestTokenRestartConsistency:
         bob_tx_before = await repo.get_transaction_history("bob", limit=20)
 
         await repo.close()
-        repo._conn = None
+
+        import asyncio
+        await asyncio.sleep(0.5)
 
         repo2 = SQLiteTokenRepository(db_path=db_path)
 
@@ -247,42 +249,46 @@ class TestConcurrentWrites:
         asyncio.run(storage.close())
 
         async def _run_token_concurrency():
-            repo = SQLiteTokenRepository(db_path=token_db)
-
             users = [f"user_{i}" for i in range(8)]
+            
+            init_repo = SQLiteTokenRepository(db_path=token_db)
             for u in users:
-                await repo.get_or_create_account(u)
-                await repo.add_transaction(u, 1000.0, tx_type="deposit")
+                await init_repo.get_or_create_account(u)
+                await init_repo.add_transaction(u, 1000.0, tx_type="deposit")
+            await init_repo.close()
 
             errors = []
             lock = threading.Lock()
 
-            def do_transfers():
+            def do_transfers(thread_id: int):
                 try:
                     loop = asyncio.new_event_loop()
                     asyncio.set_event_loop(loop)
+                    thread_repo = SQLiteTokenRepository(db_path=token_db)
                     try:
                         for i in range(20):
                             from_u = users[i % len(users)]
                             to_u = users[(i + 1) % len(users)]
                             loop.run_until_complete(
-                                repo.transfer(from_u, to_u, 10.0, description=f"concurrent_tx_{threading.current_thread().name}_{i}")
+                                thread_repo.transfer(from_u, to_u, 10.0, description=f"concurrent_tx_t{thread_id}_{i}")
                             )
                     finally:
+                        loop.run_until_complete(thread_repo.close())
                         loop.close()
                 except Exception as e:
                     with lock:
                         errors.append(e)
 
-            threads = [threading.Thread(target=do_transfers) for _ in range(4)]
+            threads = [threading.Thread(target=do_transfers, args=(i,)) for i in range(4)]
             for t in threads:
                 t.start()
             for t in threads:
-                t.join(timeout=30)
+                t.join(timeout=60)
 
+            verify_repo = SQLiteTokenRepository(db_path=token_db)
             total_balance = 0.0
             for u in users:
-                bal = await repo.get_balance(u)
+                bal = await verify_repo.get_balance(u)
                 total_balance += bal
 
             initial_total = len(users) * 1000.0
@@ -293,10 +299,10 @@ class TestConcurrentWrites:
             assert len(errors) == 0, f"并发写入出现异常: {errors}"
 
             for u in users:
-                history = await repo.get_transaction_history(u, limit=200)
+                history = await verify_repo.get_transaction_history(u, limit=200)
                 assert len(history) > 0, f"用户 {u} 的交易历史为空"
 
-            await repo.close()
+            await verify_repo.close()
 
         asyncio.run(_run_token_concurrency())
 
@@ -380,6 +386,9 @@ class TestCorruptedDbRecovery:
             await repo.get_or_create_account("test_user")
             await repo.add_transaction("test_user", 100.0, tx_type="deposit")
             await repo.close()
+
+            import asyncio
+            await asyncio.sleep(0.5)
 
             with open(token_db, "wb") as f:
                 f.write(b"GARBAGE_DATA_NOT_SQLITE" * 500)

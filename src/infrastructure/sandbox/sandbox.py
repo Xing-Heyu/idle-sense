@@ -10,6 +10,7 @@
 """
 
 import contextlib
+import importlib
 import logging
 import os
 import subprocess
@@ -110,7 +111,7 @@ class BaseSandbox(ABC):
 
         for module_name in self.validator.policy.allowed_modules:
             with contextlib.suppress(ImportError):
-                safe_globals[module_name] = __import__(module_name)
+                safe_globals[module_name] = importlib.import_module(module_name)
 
         return safe_globals
 
@@ -661,9 +662,62 @@ class WASMSandbox(BaseSandbox):
         return None
 
     def _compile_with_pyodide(self, code: str) -> Optional[bytes]:
+        """
+        使用Pyodide将Python代码编译为WASM
+
+        注意：此功能需要完整安装Pyodide环境，包括：
+        - pyodide Python包
+        - Pyodide运行时环境
+        - Emscripten工具链
+
+        当前为占位实现，返回None以触发fallback到其他编译方法。
+
+        Args:
+            code: Python源代码
+
+        Returns:
+            编译后的WASM字节码，当前实现返回None
+
+        Future Implementation:
+            1. 初始化Pyodide环境
+            2. 使用Pyodide的Python-to-WASM编译器
+            3. 返回编译后的WASM模块
+        """
+        self._logger.debug(
+            f"[WASM编译] Pyodide编译方法被调用 - 代码长度: {len(code)} 字符"
+        )
+        self._logger.warning(
+            "[WASM编译] Pyodide编译功能尚未实现，将使用fallback方法"
+        )
         return None
 
     def _compile_with_rustpython(self, code: str) -> Optional[bytes]:
+        """
+        使用RustPython将Python代码编译为WASM
+
+        注意：此功能需要：
+        - rustpython Python包
+        - RustPython WASM运行时
+
+        当前为占位实现，返回None以触发fallback到其他编译方法。
+
+        Args:
+            code: Python源代码
+
+        Returns:
+            编译后的WASM字节码，当前实现返回None
+
+        Future Implementation:
+            1. 初始化RustPython环境
+            2. 使用RustPython的WASM后端
+            3. 返回编译后的WASM模块
+        """
+        self._logger.debug(
+            f"[WASM编译] RustPython编译方法被调用 - 代码长度: {len(code)} 字符"
+        )
+        self._logger.warning(
+            "[WASM编译] RustPython编译功能尚未实现，将使用fallback方法"
+        )
         return None
 
     def execute(self, code: str) -> ExecutionResult:

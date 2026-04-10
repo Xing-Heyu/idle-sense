@@ -64,6 +64,9 @@ class SQLiteConnectionPool:
 
         conn = await aiosqlite.connect(self.db_path)
         conn.row_factory = aiosqlite.Row
+        await conn.execute("PRAGMA journal_mode=WAL")
+        await conn.execute("PRAGMA busy_timeout=10000")
+        await conn.execute("PRAGMA synchronous=NORMAL")
         return conn
 
     async def initialize(self) -> None:
@@ -109,7 +112,13 @@ class SQLiteConnectionPool:
                     conn = await asyncio.wait_for(
                         self._pool.get(), timeout=self.timeout
                     )
-                    return conn
+                    try:
+                        cursor = await conn.execute("SELECT 1")
+                        await cursor.close()
+                        return conn
+                    except Exception:
+                        self._current_connections -= 1
+                        continue
 
                 if self._current_connections < self.max_connections:
                     async with self._lock:
@@ -180,6 +189,7 @@ class SQLiteConnectionPool:
             except Exception as e:
                 self._logger.error(f"Error closing connection: {e}")
 
+        self._current_connections = 0
         self._initialized = False
         self._logger.info("SQLite connection pool closed")
 

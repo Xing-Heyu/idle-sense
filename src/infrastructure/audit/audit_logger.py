@@ -147,8 +147,7 @@ class AuditLogger:
             user_agent=user_agent,
         )
 
-        with self._lock:
-            with sqlite3.connect(self.db_path) as conn:
+        with self._lock, sqlite3.connect(self.db_path) as conn:
                 conn.execute(
                     """
                     INSERT INTO audit_logs

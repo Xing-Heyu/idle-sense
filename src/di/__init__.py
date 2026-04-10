@@ -26,7 +26,8 @@ di - 依赖注入容器模块
 
 import warnings
 
-from .container import Container, container as _container
+from .container import Container
+from .container import container as _container
 
 
 def get_container():

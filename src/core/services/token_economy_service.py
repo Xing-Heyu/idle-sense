@@ -120,7 +120,7 @@ class TokenEconomyService:
         base_price = self._economy.pricing.calculate_price(
             resources, priority=priority
         )
-        congestion = self._economy.pricing._congestion_level
+        congestion = self._economy.pricing.get_market_stats()["congestion_level"]
 
         return {
             "base_price": round(base_price, 4),

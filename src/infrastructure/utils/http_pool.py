@@ -26,7 +26,7 @@ class HTTPConnectionPool:
     _instance: Optional["HTTPConnectionPool"] = None
     _lock = threading.Lock()
 
-    def __new__(cls, *args, **kwargs):
+    def __new__(cls, *_args, **_kwargs):
         if cls._instance is None:
             with cls._lock:
                 if cls._instance is None:

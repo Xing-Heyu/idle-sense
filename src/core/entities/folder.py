@@ -18,6 +18,7 @@
 
 import contextlib
 import os
+import shutil
 from dataclasses import dataclass, field
 from datetime import datetime
 from enum import Enum
@@ -107,7 +108,7 @@ class Folder:
         """
         try:
             if self.exists:
-                os.rmdir(self.path)
+                shutil.rmtree(self.path)
             return True
         except Exception:
             return False

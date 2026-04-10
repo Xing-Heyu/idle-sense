@@ -174,7 +174,7 @@ class TestSettings:
         """测试默认值"""
         settings = Settings()
         assert settings.APP_NAME == "闲置计算加速器"
-        assert settings.APP_VERSION == "2.0.0"
+        assert settings.APP_VERSION == "1.0.0"
         assert not settings.DEBUG
 
     def test_sub_settings(self):

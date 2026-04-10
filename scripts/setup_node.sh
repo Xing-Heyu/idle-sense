@@ -138,16 +138,16 @@ install_python_package() {
     source "$VENV_DIR/bin/activate"
     
     # 安装包
-    pip install --upgrade pip
+    pip install --upgrade pip -i https://pypi.tuna.tsinghua.edu.cn/simple
     
     # 安装idle-accelerator-node包（假设已发布）
     # pip install idle-accelerator-node
     
     # 临时：从当前目录安装
     if [ -f "requirements.txt" ]; then
-        pip install -r requirements.txt
+        pip install -r requirements.txt -i https://pypi.tuna.tsinghua.edu.cn/simple
     else
-        pip install psutil requests
+        pip install psutil requests -i https://pypi.tuna.tsinghua.edu.cn/simple
     fi
     
     echo -e "${GREEN}✓ Python包安装完成${NC}"

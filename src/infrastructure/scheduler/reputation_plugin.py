@@ -7,7 +7,7 @@
 """
 
 from src.core.services.merit_rank_service import MeritRankEngine
-from src.infrastructure.scheduler import PriorityPlugin, TaskInfo, NodeInfo
+from src.infrastructure.scheduler import NodeInfo, PriorityPlugin, TaskInfo
 
 
 class ReputationPriorityPlugin(PriorityPlugin):

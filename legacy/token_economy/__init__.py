@@ -499,7 +499,7 @@ class TokenEconomyPersistenceAdapter:
                     return future.result(timeout=30)
             else:
                 return loop.run_until_complete(coro)
-        except Exception as e:
+        except Exception:
             return None
 
     @property

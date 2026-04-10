@@ -7,16 +7,27 @@
 import streamlit as st
 
 from src.presentation.streamlit.utils.di_utils import ensure_wired
+
 ensure_wired()
 
-from src.presentation.streamlit.components.sidebar import render_sidebar
-from src.presentation.streamlit.utils.session_manager import SessionManager
-from src.presentation.streamlit.views.auth_page import render as render_auth
-from src.presentation.streamlit.views.node_management_page import render as render_node_management
-from src.presentation.streamlit.views.system_stats_page import render as render_system_stats
-from src.presentation.streamlit.views.task_monitor_page import render as render_task_monitor
-from src.presentation.streamlit.views.task_results_page import render as render_task_results
-from src.presentation.streamlit.views.task_submission_page import render as render_task_submission
+from src.presentation.streamlit.components.sidebar import render_sidebar  # noqa: E402
+from src.presentation.streamlit.utils.session_manager import SessionManager  # noqa: E402
+from src.presentation.streamlit.views.auth_page import render as render_auth  # noqa: E402
+from src.presentation.streamlit.views.node_management_page import (
+    render as render_node_management,  # noqa: E402
+)
+from src.presentation.streamlit.views.system_stats_page import (
+    render as render_system_stats,  # noqa: E402
+)
+from src.presentation.streamlit.views.task_monitor_page import (
+    render as render_task_monitor,  # noqa: E402
+)
+from src.presentation.streamlit.views.task_results_page import (
+    render as render_task_results,  # noqa: E402
+)
+from src.presentation.streamlit.views.task_submission_page import (
+    render as render_task_submission,  # noqa: E402
+)
 
 
 def configure_page():

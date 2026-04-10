@@ -305,7 +305,7 @@ class SessionManager:
     @staticmethod
     def generate_user_id(username: str) -> str:
         """生成用户ID"""
-        hash_value = hashlib.md5(username.encode()).hexdigest()[:8]
+        hash_value = hashlib.sha256(username.encode()).hexdigest()[:8]
         return f"local_{hash_value}"
 
     @staticmethod

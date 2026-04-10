@@ -87,9 +87,10 @@ class TestRateLimiter:
 
     def test_get_client_ip_forwarded(self):
         """测试通过 X-Forwarded-For 获取客户端 IP"""
-        from src.infrastructure.security.rate_limiter import RateLimiter
+        from src.infrastructure.security.rate_limiter import RateLimiter, RateLimitConfig
 
-        limiter = RateLimiter()
+        config = RateLimitConfig(trusted_proxies=["192.168.1.0/24"])
+        limiter = RateLimiter(config)
         request = MagicMock(spec=Request)
         request.headers = {"X-Forwarded-For": "10.0.0.1, 192.168.1.1"}
         request.client = MagicMock()
@@ -101,9 +102,10 @@ class TestRateLimiter:
 
     def test_get_client_ip_real_ip(self):
         """测试通过 X-Real-IP 获取客户端 IP"""
-        from src.infrastructure.security.rate_limiter import RateLimiter
+        from src.infrastructure.security.rate_limiter import RateLimiter, RateLimitConfig
 
-        limiter = RateLimiter()
+        config = RateLimitConfig(trusted_proxies=["192.168.1.0/24"])
+        limiter = RateLimiter(config)
         request = MagicMock(spec=Request)
         request.headers = {"X-Real-IP": "10.0.0.2"}
         request.client = MagicMock()

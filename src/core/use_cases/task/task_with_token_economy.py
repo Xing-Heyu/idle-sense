@@ -12,14 +12,14 @@ import time
 from dataclasses import dataclass
 from typing import Any, Optional
 
+from legacy.token_economy import ResourceMetrics
 from src.core.entities import TaskFactory, TaskStatus
 from src.core.interfaces.repositories import ITaskRepository
 from src.core.interfaces.services import ISchedulerService
 from src.core.services import TokenEconomyService
 from src.core.services.contribution_proof_service import ContributionProofService
 from src.core.services.merit_rank_service import MeritRankEngine
-from src.infrastructure.audit import AuditLogger, AuditAction
-from legacy.token_economy import ResourceMetrics
+from src.infrastructure.audit import AuditAction, AuditLogger
 
 
 @dataclass
