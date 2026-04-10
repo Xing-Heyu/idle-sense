@@ -204,11 +204,11 @@ class MessageCipher:
     @classmethod
     def derive_key(cls, shared_secret: bytes, salt: Optional[bytes] = None) -> bytes:
         """Derive an encryption key from a shared secret using HKDF.
-        
+
         Args:
             shared_secret: The shared secret to derive the key from
             salt: Random salt for key derivation (REQUIRED for security)
-            
+
         Raises:
             ValueError: If salt is not provided
         """

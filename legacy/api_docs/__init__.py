@@ -9,7 +9,6 @@ from enum import Enum
 from functools import wraps
 from typing import Any, Callable, Optional
 
-
 _TYPE_MAP = {
     "str": str, "int": int, "float": float, "bool": bool,
     "list": list, "dict": dict, "set": set, "tuple": tuple,

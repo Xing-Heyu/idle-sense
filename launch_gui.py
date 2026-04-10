@@ -233,7 +233,7 @@ class IdleSenseLauncher:
             if response.status_code == 200:
                 stats = response.json()
                 msg = f"""系统状态
-                
+
 任务统计:
   总任务数: {stats.get('total_tasks', 0)}
   等待中: {stats.get('pending_tasks', 0)}

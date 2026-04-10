@@ -17,7 +17,7 @@ from pathlib import Path
 
 def run_command(command_args, name, delay=0):
     """运行命令并监控输出
-    
+
     Args:
         command_args: 命令参数列表，如 ['python', 'script.py']
         name: 进程名称

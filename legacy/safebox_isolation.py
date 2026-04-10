@@ -188,7 +188,7 @@ def execute_user_code():
                 full_path = os.path.join(USER_FOLDER_PATH, filename)
                 real_path = os.path.realpath(full_path)
                 real_user_path = os.path.realpath(USER_FOLDER_PATH)
-                
+
                 if not real_path.startswith(real_user_path + os.sep) and real_path != real_user_path:
                     raise PermissionError("只能读取用户数据文件夹内的文件")
 

@@ -18,7 +18,7 @@ class SessionInfo:
 class AuthManager:
     """认证管理器 - 支持密码认证和权限验证"""
     SESSION_TIMEOUT = 3600  # 会话超时时间（秒）
-    
+
     def __init__(self):
         self.users: dict[str, User] = {}
         self.users_by_username: dict[str, str] = {}
@@ -117,11 +117,11 @@ class AuthManager:
 
     def create_session(self, user_id: str, ip_address: Optional[str] = None) -> str:
         """创建会话
-        
+
         Args:
             user_id: 用户ID
             ip_address: 客户端IP地址（可选）
-            
+
         Returns:
             session_id: 会话ID
         """
@@ -137,27 +137,27 @@ class AuthManager:
 
     def validate_session(self, session_id: str, ip_address: Optional[str] = None) -> Optional[str]:
         """验证会话，返回用户ID
-        
+
         Args:
             session_id: 会话ID
             ip_address: 客户端IP地址（可选，用于IP绑定验证）
-            
+
         Returns:
             用户ID，如果会话无效则返回None
         """
         session = self.sessions.get(session_id)
         if not session:
             return None
-            
+
         # 检查是否过期
         if time.time() > session.expires_at:
             del self.sessions[session_id]
             return None
-            
+
         # 可选：IP绑定验证
         if ip_address and session.ip_address and session.ip_address != ip_address:
             return None
-            
+
         return session.user_id
 
     def refresh_session(self, session_id: str) -> bool:

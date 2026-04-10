@@ -1471,7 +1471,7 @@ def add_debug_endpoints(app_instance, storage_instance):
     """添加调试端点"""
     import os
     enable_debug = os.getenv("ENABLE_DEBUG_ENDPOINTS", "false").lower() == "true"
-    
+
     if not enable_debug:
         print("[调试端点] 已禁用 (设置 ENABLE_DEBUG_ENDPOINTS=true 启用)")
         return

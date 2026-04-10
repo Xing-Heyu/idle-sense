@@ -142,7 +142,6 @@ def cmd_scheduler_start(args):
             print(f"SQLite path: {args.sqlite_path}")
 
         import uvicorn
-
         from scheduler.simple_server import app
 
         uvicorn.run(

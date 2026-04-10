@@ -14,8 +14,8 @@ from datetime import datetime
 import streamlit as st
 
 from config.settings import settings
-from src.presentation.streamlit.utils.di_utils import container
 from src.infrastructure.external import SchedulerClient
+from src.presentation.streamlit.utils.di_utils import container
 
 MODERN_STYLE = """
 <style>
