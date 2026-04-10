@@ -405,7 +405,7 @@ class Settings(BaseSettings):
 
     # 应用信息
     APP_NAME: str = Field(default="闲置计算加速器", description="应用名称")
-    APP_VERSION: str = Field(default="1.0.0", description="应用版本")
+    APP_VERSION: str = Field(default="2.0.0", description="应用版本")
     DEBUG: bool = Field(default=False, description="调试模式")
 
     # 子配置

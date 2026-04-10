@@ -847,7 +847,7 @@ class PersistentSchedulerStorage:
 app = FastAPI(
     title="优化版闲置计算调度器",
     description="修复节点显示问题，增强稳定性",
-    version="2.2.0"
+    version="2.0.0"
 )
 
 rate_limiter = None

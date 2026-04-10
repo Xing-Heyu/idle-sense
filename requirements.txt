@@ -9,7 +9,7 @@
 psutil>=5.9.0,<7.0.0         # System monitoring (CPU, memory, battery)
 
 # [SCHEDULER] FastAPI server for task distribution
-fastapi>=0.115.0,<1.0.0      # Web framework for scheduler
+fastapi>=0.135.0,<1.0.0      # Web framework for scheduler
 uvicorn[standard]>=0.34.0    # ASGI server for FastAPI
 python-multipart>=0.0.6      # Form parsing for FastAPI
 slowapi>=0.1.9               # Rate limiting for FastAPI
@@ -19,14 +19,14 @@ requests>=2.31.0,<3.0.0      # HTTP client for communicating with scheduler
 
 # [CONFIG] Configuration management
 pyyaml>=6.0                  # YAML configuration file parsing
-pydantic>=2.10.0             # Data validation
+pydantic>=2.12.0             # Data validation
 pydantic-settings>=2.0.0     # Settings management (BaseSettings moved here in Pydantic v2)
 
 # [DI] Dependency Injection
 dependency-injector>=4.41.0  # Dependency injection container
 
 # [WEB] Web interface (Streamlit)
-streamlit>=1.40.0            # Web UI framework
+streamlit>=1.56.0            # Web UI framework
 plotly>=5.18.0               # Interactive charts
 pandas>=2.3.0                # Data manipulation for charts
 
@@ -40,7 +40,7 @@ pandas>=2.3.0                # Data manipulation for charts
 aiosqlite>=0.19.0            # Async SQLite for persistent storage
 
 # [SECURITY] Security and encryption
-cryptography>=45.0.0         # Security-critical encryption library
+cryptography>=46.0.7         # Security-critical encryption library (fixes CVE-2026-39892)
 
 # [P2P] P2P networking (optional)
 # upnpclient>=1.0.3          # UPnP for NAT traversal

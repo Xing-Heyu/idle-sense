@@ -66,7 +66,7 @@ if "%DEPS_OK%"=="0" (
         echo.
         echo [INFO] Attempting to install dependencies to system Python...
         echo [3/5] Installing dependencies...
-        pip install -r requirements.txt
+        pip install -r requirements.txt -i https://pypi.tuna.tsinghua.edu.cn/simple
         if errorlevel 1 (
             echo [ERROR] Failed to install dependencies. Please run install.bat manually.
             pause

@@ -65,3 +65,7 @@ htmlcov/
 # Temporary files
 temp/
 tmp/
+
+# Local user data
+data/sessions/
+local_users/

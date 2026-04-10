@@ -47,7 +47,7 @@ HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
 
 LABEL org.opencontainers.image.title="Idle-Accelerator" \
       org.opencontainers.image.description="Distributed computing platform utilizing idle computer resources" \
-      org.opencontainers.image.version="1.0.0" \
+      org.opencontainers.image.version="2.0.0" \
       org.opencontainers.image.licenses="MIT"
 
 CMD ["python", "-m", "scheduler.simple_server"]

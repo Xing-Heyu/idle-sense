@@ -664,20 +664,20 @@ class WASMSandbox(BaseSandbox):
     def _compile_with_pyodide(self, code: str) -> Optional[bytes]:
         """
         使用Pyodide将Python代码编译为WASM
-
+        
         注意：此功能需要完整安装Pyodide环境，包括：
         - pyodide Python包
         - Pyodide运行时环境
         - Emscripten工具链
-
+        
         当前为占位实现，返回None以触发fallback到其他编译方法。
-
+        
         Args:
             code: Python源代码
-
+            
         Returns:
             编译后的WASM字节码，当前实现返回None
-
+            
         Future Implementation:
             1. 初始化Pyodide环境
             2. 使用Pyodide的Python-to-WASM编译器
@@ -694,19 +694,19 @@ class WASMSandbox(BaseSandbox):
     def _compile_with_rustpython(self, code: str) -> Optional[bytes]:
         """
         使用RustPython将Python代码编译为WASM
-
+        
         注意：此功能需要：
         - rustpython Python包
         - RustPython WASM运行时
-
+        
         当前为占位实现，返回None以触发fallback到其他编译方法。
-
+        
         Args:
             code: Python源代码
-
+            
         Returns:
             编译后的WASM字节码，当前实现返回None
-
+            
         Future Implementation:
             1. 初始化RustPython环境
             2. 使用RustPython的WASM后端

@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "idle-sense"
-version = "1.0.0"
+version = "2.0.0"
 description = "Cross-platform distributed computing platform utilizing idle computer resources"
 readme = "README.md"
 license = {text = "MIT License"}
@@ -27,15 +27,15 @@ classifiers = [
 
 dependencies = [
     "psutil>=5.9.0",
-    "fastapi>=0.115.0",
+    "fastapi>=0.135.0",
     "uvicorn[standard]>=0.34.0",
     "python-multipart>=0.0.6",
     "requests>=2.31.0",
-    "streamlit>=1.40.0",
+    "streamlit>=1.56.0",
     "plotly>=5.18.0",
     "pandas>=2.3.0",
-    "cryptography>=45.0.0",
-    "pydantic>=2.10.0",
+    "cryptography>=46.0.7",
+    "pydantic>=2.12.0",
     "pydantic-settings>=2.0.0",
     "pyyaml>=6.0",
     "slowapi>=0.1.9",
@@ -45,7 +45,7 @@ dependencies = [
 
 [project.optional-dependencies]
 scheduler = [
-    "fastapi>=0.115.0",
+    "fastapi>=0.135.0",
     "uvicorn[standard]>=0.34.0",
     "python-multipart>=0.0.6",
     "redis>=4.5.0",
@@ -56,7 +56,7 @@ node = [
 ]
 
 web = [
-    "streamlit>=1.40.0",
+    "streamlit>=1.56.0",
     "plotly>=5.18.0",
     "pandas>=2.3.0",
 ]

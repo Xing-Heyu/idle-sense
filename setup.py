@@ -9,7 +9,7 @@ with open("requirements.txt") as f:
 
 setup(
     name="idle-sense",
-    version="1.0.0",
+    version="2.0.0",
     description="Idle-Sense Distributed Computing Platform",
     author="Idle-Sense Team",
     packages=find_packages(include=["src", "src.*", "config", "config.*"]),
