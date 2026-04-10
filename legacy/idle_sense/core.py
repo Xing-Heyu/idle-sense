@@ -180,6 +180,27 @@ def get_version() -> str:
     """
     return "1.0.0"
 
+def get_idle_info(idle_threshold_sec: int = 300,
+                  cpu_threshold: float = 15.0,
+                  memory_threshold: float = 70.0) -> dict:
+    """
+    获取空闲信息（get_system_status 的别名）。
+
+    Args:
+        idle_threshold_sec: 用户空闲时间阈值（秒）
+        cpu_threshold: CPU使用率阈值（%）
+        memory_threshold: 内存使用率阈值（%）
+
+    Returns:
+        Dict: 包含系统状态信息的字典
+
+    Examples:
+        >>> from idle_sense import get_idle_info
+        >>> info = get_idle_info()
+        >>> print(f"CPU使用率: {info.get('cpu_percent', 0)}%")
+    """
+    return get_system_status(idle_threshold_sec, cpu_threshold, memory_threshold)
+
 # 模块初始化时的平台检查
 def _initialize() -> None:
     """
@@ -204,5 +225,6 @@ __all__ = [
     'get_system_status',
     'get_platform',
     'check_platform_module',
-    'get_version'
+    'get_version',
+    'get_idle_info'
 ]

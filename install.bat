@@ -62,7 +62,11 @@ echo ✅ 项目已安装为可编辑包
 echo.
 echo [4/4] 安装可选组件...
 pip install wasmtime -q -i https://pypi.tuna.tsinghua.edu.cn/simple 2>nul
-echo ✅ WASM 沙箱支持已安装
+if errorlevel 1 (
+    echo ⚠️ WASM 沙箱支持安装失败（可选，不影响核心功能）
+) else (
+    echo ✅ WASM 沙箱支持已安装
+)
 
 :: 检查 Docker
 docker --version >nul 2>&1

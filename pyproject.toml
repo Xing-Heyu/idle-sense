@@ -9,7 +9,7 @@ description = "Cross-platform distributed computing platform utilizing idle comp
 readme = "README.md"
 license = {text = "MIT License"}
 authors = [
-    {name = "Xing-Heyu"},
+    {name = "Idle-Sense Team"},
 ]
 requires-python = ">=3.9"
 keywords = ["distributed-computing", "idle-detection", "task-scheduler", "python"]
@@ -34,7 +34,7 @@ dependencies = [
     "streamlit>=1.56.0,<2.0.0",
     "plotly>=5.18.0,<6.0.0",
     "pandas>=2.3.0,<3.0.0",
-    "cryptography>=46.0.7",
+    "cryptography>=42.0.0",
     "pydantic>=2.12.0,<3.0.0",
     "pydantic-settings>=2.0.0,<3.0.0",
     "pyyaml>=6.0,<7.0",
@@ -75,7 +75,7 @@ dev = [
 ]
 
 security = [
-    "cryptography>=46.0.7",
+    "cryptography>=42.0.0",
 ]
 
 all = [

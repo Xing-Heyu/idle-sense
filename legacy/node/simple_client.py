@@ -412,7 +412,7 @@ class NodeClient:
         # ===== 自动包装用户代码 =====
             wrapper = f"""
 # ===== 系统环境初始化 =====
-import sys, os, json, time
+import json, time
 from datetime import datetime
 
 __node_id__ = "{self.node_id}"
@@ -420,7 +420,7 @@ __task_id__ = "unknown"
 __start_time__ = time.time()
 
 # ===== 用户代码开始 =====
-{code}
+{code!r}
 
 # ===== 用户代码结束 =====
 
@@ -433,7 +433,7 @@ if __result__ is None:
     f = io.StringIO()
     with contextlib.redirect_stdout(f):
         try:
-            exec(\"\"\"{code}\"\"\")
+            exec({code!r})
         except:
             pass
     __result__ = f.getvalue()

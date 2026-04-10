@@ -6,7 +6,7 @@
 
 import json
 import os
-import random
+import secrets
 from pathlib import Path
 from typing import Optional
 
@@ -206,7 +206,7 @@ class FileUserRepository(IUserRepository):
                 return new_username
             counter += 1
             if counter > 999:
-                return f"{username}_{random.randint(1000, 9999)}"
+                return f"{username}_{secrets.randbelow(9000) + 1000}"
 
 
 __all__ = ["FileUserRepository"]

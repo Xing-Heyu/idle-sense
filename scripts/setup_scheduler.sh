@@ -114,7 +114,8 @@ setup_project_files() {
         CLONE_GIT=${CLONE_GIT:-y}
         
         if [[ $CLONE_GIT =~ ^[Yy]$ ]]; then
-            GIT_REPO="https://github.com/your-username/idle-accelerator.git"
+            # 默认仓库地址（请替换为实际地址）
+            GIT_REPO="https://github.com/idle-sense/idle-sense.git"
             read -p "GitHub仓库URL [$GIT_REPO]: " INPUT_REPO
             GIT_REPO=${INPUT_REPO:-$GIT_REPO}
             
@@ -189,7 +190,7 @@ REDIS_ENABLED=false
 REDIS_URL=redis://localhost:6379/0
 
 # 安全配置
-CORS_ALLOWED_ORIGINS=*
+CORS_ALLOWED_ORIGINS=http://localhost:8501
 EOF
         echo -e "${GREEN}✓ 环境文件已创建: .env${NC}"
     fi

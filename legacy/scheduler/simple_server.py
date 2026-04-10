@@ -1216,8 +1216,6 @@ except ImportError:
 
 # ==================== 启动 ====================
 if __name__ == "__main__":
-    import os
-
     import uvicorn
 
     port = int(os.getenv("PORT", os.getenv("SCHEDULER_PORT", "8000")))
@@ -1471,6 +1469,12 @@ def enhance_api_endpoints(app_instance, storage_instance):
 
 def add_debug_endpoints(app_instance, storage_instance):
     """添加调试端点"""
+    import os
+    enable_debug = os.getenv("ENABLE_DEBUG_ENDPOINTS", "false").lower() == "true"
+    
+    if not enable_debug:
+        print("[调试端点] 已禁用 (设置 ENABLE_DEBUG_ENDPOINTS=true 启用)")
+        return
 
     @app_instance.get("/api/debug/nodes-status")
     async def debug_nodes_status():
@@ -1517,7 +1521,7 @@ def add_debug_endpoints(app_instance, storage_instance):
             "timestamp": time.time()
         }
 
-    print("[修复] 调试端点已添加")
+    print("[调试端点] 已启用 (仅限开发环境使用)")
 
 # ==================== 主修复函数 ====================
 

@@ -15,34 +15,26 @@ import time
 from pathlib import Path
 
 
-def run_command(command, name, delay=0):
-    """运行命令并监控输出"""
+def run_command(command_args, name, delay=0):
+    """运行命令并监控输出
+    
+    Args:
+        command_args: 命令参数列表，如 ['python', 'script.py']
+        name: 进程名称
+        delay: 启动延迟
+    """
     print(f"🚀 启动 {name}...")
     time.sleep(delay)
 
     try:
-        if sys.platform == "win32":
-            # Windows系统
-            process = subprocess.Popen(
-                command,
-                shell=True,
-                stdout=subprocess.PIPE,
-                stderr=subprocess.STDOUT,
-                text=True,
-                bufsize=1,
-                universal_newlines=True
-            )
-        else:
-            # Linux/Mac系统
-            process = subprocess.Popen(
-                command,
-                stdout=subprocess.PIPE,
-                stderr=subprocess.STDOUT,
-                text=True,
-                bufsize=1,
-                universal_newlines=True,
-                shell=True
-            )
+        process = subprocess.Popen(
+            command_args,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            text=True,
+            bufsize=1,
+            universal_newlines=True
+        )
 
         # 实时输出
         def output_reader():
@@ -87,11 +79,11 @@ def get_platform_client():
     """
     system = platform.system()
     platform_map = {
-        "Windows": ("node/windows_client.py", "Windows节点客户端"),
-        "Darwin": ("node/simple_client.py", "macOS节点客户端"),
-        "Linux": ("node/simple_client.py", "Linux节点客户端"),
+        "Windows": ("legacy/node/windows_client.py", "Windows节点客户端"),
+        "Darwin": ("legacy/node/simple_client.py", "macOS节点客户端"),
+        "Linux": ("legacy/node/simple_client.py", "Linux节点客户端"),
     }
-    return platform_map.get(system, ("node/simple_client.py", "通用节点客户端"))
+    return platform_map.get(system, ("legacy/node/simple_client.py", "通用节点客户端"))
 
 def check_dependencies():
     """检查必要的依赖"""
@@ -148,11 +140,11 @@ def main():
 
     # 构建启动命令
     scheduler_url = f"http://localhost:{args.scheduler_port}"
-    scheduler_cmd = "python scheduler/simple_server.py"
+    scheduler_cmd = [sys.executable, "legacy/scheduler/simple_server.py"]
     if args.scheduler_port != 8000:
-        scheduler_cmd += f" --port {args.scheduler_port}"
+        scheduler_cmd.extend(["--port", str(args.scheduler_port)])
 
-    web_cmd = f"streamlit run web_interface.py --server.port {args.web_port}"
+    web_cmd = [sys.executable, "-m", "streamlit", "run", "src/presentation/streamlit/app.py", "--server.port", str(args.web_port)]
 
     # 启动调度中心
     scheduler_process = run_command(scheduler_cmd, "调度中心")
@@ -168,7 +160,8 @@ def main():
     node_process = None
     if not args.no_node:
         time.sleep(2)
-        node_process = run_command(f"python {client_file}", client_name)
+        node_cmd = [sys.executable, client_file]
+        node_process = run_command(node_cmd, client_name)
 
     # 启动网页界面
     web_process = None

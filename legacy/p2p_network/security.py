@@ -45,10 +45,9 @@ class NodeIdentity:
     def generate(cls, node_id: Optional[str] = None) -> "NodeIdentity":
         """Generate a new node identity with Ed25519 keypair."""
         if not CRYPTO_AVAILABLE:
-            return cls(
-                node_id=node_id or secrets.token_hex(16),
-                public_key=b"no_crypto_support",
-                private_key=b"no_crypto_support"
+            raise ImportError(
+                "cryptography library is required for secure P2P communication. "
+                "Install it with: pip install cryptography"
             )
 
         private_key = ed25519.Ed25519PrivateKey.generate()
@@ -77,7 +76,10 @@ class NodeIdentity:
     def from_private_key(cls, private_key_bytes: bytes, node_id: Optional[str] = None) -> "NodeIdentity":
         """Create identity from existing private key."""
         if not CRYPTO_AVAILABLE:
-            return cls(node_id=node_id or "unknown", public_key=b"", private_key=private_key_bytes)
+            raise ImportError(
+                "cryptography library is required for secure P2P communication. "
+                "Install it with: pip install cryptography"
+            )
 
         private_key = ed25519.Ed25519PrivateKey.from_private_bytes(private_key_bytes)
         public_key = private_key.public_key()
@@ -97,8 +99,13 @@ class NodeIdentity:
 
     def sign(self, data: bytes) -> bytes:
         """Sign data with the private key."""
-        if not CRYPTO_AVAILABLE or not self.private_key:
-            return b"no_signature"
+        if not CRYPTO_AVAILABLE:
+            raise ImportError(
+                "cryptography library is required for signing. "
+                "Install it with: pip install cryptography"
+            )
+        if not self.private_key:
+            raise ValueError("No private key available for signing")
 
         private_key = ed25519.Ed25519PrivateKey.from_private_bytes(self.private_key)
         return private_key.sign(data)
@@ -106,7 +113,10 @@ class NodeIdentity:
     def verify(self, data: bytes, signature: bytes, public_key: Optional[bytes] = None) -> bool:
         """Verify a signature."""
         if not CRYPTO_AVAILABLE:
-            return True
+            raise ImportError(
+                "cryptography library is required for signature verification. "
+                "Install it with: pip install cryptography"
+            )
 
         pub_key_bytes = public_key or self.public_key
         try:
@@ -192,8 +202,21 @@ class MessageCipher:
         return secrets.token_bytes(cls.KEY_SIZE)
 
     @classmethod
-    def derive_key(cls, shared_secret: bytes, salt: bytes = b"idle-sense-v1") -> bytes:
-        """Derive an encryption key from a shared secret using HKDF."""
+    def derive_key(cls, shared_secret: bytes, salt: Optional[bytes] = None) -> bytes:
+        """Derive an encryption key from a shared secret using HKDF.
+        
+        Args:
+            shared_secret: The shared secret to derive the key from
+            salt: Random salt for key derivation (REQUIRED for security)
+            
+        Raises:
+            ValueError: If salt is not provided
+        """
+        if salt is None:
+            raise ValueError(
+                "A random salt is required for secure key derivation. "
+                "Generate one with: secrets.token_bytes(16)"
+            )
         return hashlib.pbkdf2_hmac(
             "sha256",
             shared_secret,
@@ -205,8 +228,10 @@ class MessageCipher:
     def encrypt(self, plaintext: bytes, associated_data: Optional[bytes] = None) -> tuple[bytes, bytes]:
         """Encrypt plaintext and return (nonce, ciphertext)."""
         if not CRYPTO_AVAILABLE:
-            nonce = secrets.token_bytes(self.NONCE_SIZE)
-            return nonce, plaintext
+            raise ImportError(
+                "cryptography library is required for encryption. "
+                "Install it with: pip install cryptography"
+            )
 
         nonce = secrets.token_bytes(self.NONCE_SIZE)
         ciphertext = self.aesgcm.encrypt(nonce, plaintext, associated_data)
@@ -215,7 +240,10 @@ class MessageCipher:
     def decrypt(self, nonce: bytes, ciphertext: bytes, associated_data: Optional[bytes] = None) -> Optional[bytes]:
         """Decrypt ciphertext. Returns None if decryption fails."""
         if not CRYPTO_AVAILABLE:
-            return ciphertext
+            raise ImportError(
+                "cryptography library is required for decryption. "
+                "Install it with: pip install cryptography"
+            )
 
         try:
             return self.aesgcm.decrypt(nonce, ciphertext, associated_data)

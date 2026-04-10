@@ -369,7 +369,7 @@ class WebSocketProgressServer:
 
     async def _handle_client(self, reader: asyncio.StreamReader, writer: asyncio.StreamWriter):
         """Handle a WebSocket client connection."""
-        client_id = hashlib.md5(str(time.time()).encode()).hexdigest()[:8]
+        client_id = hashlib.sha256(str(time.time()).encode()).hexdigest()[:8]
         self._clients[client_id] = writer
 
         try:

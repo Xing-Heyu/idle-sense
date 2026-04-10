@@ -190,9 +190,9 @@ advanced:
     
   # 加密和安全性
   security:
-    enable_ssl: false             # 是否启用SSL/TLS
-    require_auth: false           # 是否要求认证
-    allowed_origins: ["*"]        # CORS允许的来源
+    enable_ssl: true              # 是否启用SSL/TLS（生产环境建议启用）
+    require_auth: true            # 是否要求认证
+    allowed_origins: ["http://localhost:8501"]  # CORS允许的来源（生产环境改为实际域名）
 
 # ==================== 环境覆盖说明 ====================
 # 以下配置可通过环境变量覆盖：

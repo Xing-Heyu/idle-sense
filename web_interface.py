@@ -471,7 +471,7 @@ def create_folders_with_script(user_id, username, folder_location):
 
     try:
         project_root = Path(__file__).resolve().parent
-        script_path = project_root / "create_folders.py"
+        script_path = project_root / "legacy" / "create_folders.py"
         if not str(script_path).startswith(str(project_root)):
             raise ValueError(f"Invalid script path: {script_path}")
         if not script_path.exists():
@@ -678,10 +678,10 @@ def get_all_nodes():
 # ==================== 保持原版的API函数 ====================
 
 def submit_task(code, timeout=300, cpu=1.0, memory=512):
+    """提交任务到调度中心"""
     user_id = None
     if st.session_state.user_session:
         user_id = st.session_state.user_session.get("user_id")
-    """提交任务到调度中心"""
     payload = {
         "code": code,
         "timeout": timeout,

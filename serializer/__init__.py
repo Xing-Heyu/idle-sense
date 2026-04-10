@@ -153,18 +153,10 @@ class PickleSerializer(Serializer):
             raise SerializationError(f"Pickle serialization failed: {e}") from e
 
     def deserialize(self, data: bytes) -> Any:
-        import warnings
-        warnings.warn(
-            "PickleSerializer.deserialize() is insecure and can execute arbitrary code. "
-            "Only deserialize data from trusted sources. Consider using JSONSerializer instead.",
-            SecurityWarning,
-            stacklevel=2,
+        raise DeserializationError(
+            "PickleSerializer.deserialize() is disabled for security. "
+            "Use JSONSerializer or MessagePackSerializer instead."
         )
-        try:
-            with self._lock:
-                return pickle.loads(data)
-        except Exception as e:
-            raise DeserializationError(f"Pickle deserialization failed: {e}") from e
 
 
 class MessagePackSerializer(Serializer):

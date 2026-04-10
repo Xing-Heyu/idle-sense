@@ -26,7 +26,7 @@ class RateLimitConfig:
     activate_limit: str = "5/minute"
 
     retry_after_seconds: int = 60
-    trusted_proxies: list[str] = None
+    trusted_proxies: Optional[list[str]] = None
 
 
 class RateLimiter:

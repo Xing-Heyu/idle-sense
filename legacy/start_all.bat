@@ -8,21 +8,21 @@ echo 📁 项目目录: %CD%
 echo.
 
 echo 🚀 启动调度中心...
-start "调度中心" python scheduler/simple_server.py
+start "调度中心" python legacy/scheduler/simple_server.py
 echo.
 
 echo ⏳ 等待调度中心启动...
 timeout /t 5 /nobreak >nul
 
 echo 🚀 启动节点客户端...
-start "节点客户端" python node/simple_client.py
+start "节点客户端" python legacy/node/simple_client.py
 echo.
 
 echo ⏳ 等待节点客户端启动...
 timeout /t 3 /nobreak >nul
 
 echo 🚀 启动网页界面...
-start "网页界面" streamlit run web_interface.py
+start "网页界面" streamlit run src/presentation/streamlit/app.py
 echo.
 
 echo ========================================================

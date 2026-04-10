@@ -184,20 +184,18 @@ def execute_user_code():
             """安全读取用户数据文件夹中的文件"""
             import os
 
-            # 构建完整的文件路径
             if USER_FOLDER_PATH:
                 full_path = os.path.join(USER_FOLDER_PATH, filename)
-
-                # 安全检查：确保路径在用户文件夹内
-                if not full_path.startswith(USER_FOLDER_PATH):
+                real_path = os.path.realpath(full_path)
+                real_user_path = os.path.realpath(USER_FOLDER_PATH)
+                
+                if not real_path.startswith(real_user_path + os.sep) and real_path != real_user_path:
                     raise PermissionError("只能读取用户数据文件夹内的文件")
 
-                # 检查文件是否存在
-                if not os.path.exists(full_path):
+                if not os.path.exists(real_path):
                     raise FileNotFoundError(f"文件不存在: {filename}")
 
-                # 读取文件内容
-                with open(full_path, 'r', encoding='utf-8') as f:
+                with open(real_path, 'r', encoding='utf-8') as f:
                     return f.read()
             else:
                 raise PermissionError("匿名用户无法访问用户数据文件夹")

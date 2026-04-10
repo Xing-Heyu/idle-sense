@@ -97,7 +97,7 @@ class Message:
     type: MessageType
     sender_id: str
     timestamp: float = field(default_factory=time.time)
-    message_id: str = field(default_factory=lambda: hashlib.md5(str(time.time()).encode()).hexdigest()[:16])
+    message_id: str = field(default_factory=lambda: hashlib.sha256(str(time.time()).encode()).hexdigest()[:16])
     payload: dict[str, Any] = field(default_factory=dict)
     ttl: int = 3600
 

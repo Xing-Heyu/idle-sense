@@ -52,7 +52,9 @@ def test_idle_sense_library():
         print(f"✅ 平台检测: {platform}")
 
         # 测试健康检查
-        success, message = core.check_platform_module()
+        result = core.check_platform_module()
+        success = result.get('loaded', False)
+        message = result.get('error', 'OK') if not success else '模块加载成功'
         print(f"✅ 模块健康: {success} - {message}")
 
         # 测试基本功能
