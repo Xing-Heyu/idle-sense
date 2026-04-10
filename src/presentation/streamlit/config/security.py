@@ -72,7 +72,7 @@ class SecurityConfig:
             enabled=os.getenv("IDLE_SECURITY_ENABLED", "true").lower() == "true",
             enable_cors_protection=os.getenv("IDLE_CORS_PROTECTION", "true").lower() == "true",
             enable_csrf_protection=os.getenv("IDLE_CSRF_PROTECTION", "true").lower() == "true",
-            session_cookie_secure=os.getenv("IDLE_SESSION_COOKIE_SECURE", "false").lower() == "true",
+            session_cookie_secure=os.getenv("IDLE_SESSION_COOKIE_SECURE", "true").lower() == "true",
         )
 
 

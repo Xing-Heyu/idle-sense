@@ -692,9 +692,15 @@ class SQLiteStorage(BaseStorage):
     async def update_task(self, task_id: int, updates: dict[str, Any]) -> None:
         conn = await self._get_connection()
 
+        _TASK_ALLOWED_COLUMNS = {
+            "status", "result", "error", "assigned_node", "resources",
+            "started_at", "completed_at", "progress", "priority",
+        }
         set_clauses = []
         values = []
         for key, value in updates.items():
+            if key not in _TASK_ALLOWED_COLUMNS:
+                continue
             if key == "resources":
                 value = json.dumps(value)
             elif key == "status" and isinstance(value, TaskStatus):
@@ -798,9 +804,15 @@ class SQLiteStorage(BaseStorage):
     async def update_node(self, node_id: str, updates: dict[str, Any]) -> None:
         conn = await self._get_connection()
 
+        _NODE_ALLOWED_COLUMNS = {
+            "status", "capacity", "tags", "current_load", "available_resources",
+            "is_idle", "last_heartbeat", "completed_tasks",
+        }
         set_clauses = []
         values = []
         for key, value in updates.items():
+            if key not in _NODE_ALLOWED_COLUMNS:
+                continue
             if key in ("capacity", "tags", "current_load", "available_resources"):
                 value = json.dumps(value)
             elif key == "status" and isinstance(value, NodeStatus):

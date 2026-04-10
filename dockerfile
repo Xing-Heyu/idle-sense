@@ -50,4 +50,4 @@ LABEL org.opencontainers.image.title="Idle-Accelerator" \
       org.opencontainers.image.version="2.0.0" \
       org.opencontainers.image.licenses="MIT"
 
-CMD ["python", "-m", "scheduler.simple_server"]
+CMD ["python", "-m", "legacy.scheduler.simple_server"]

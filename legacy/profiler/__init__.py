@@ -324,11 +324,20 @@ class Profiler:
         return cProfile.Profile(sort=sort_by)
 
     def profile_code(self, code: str, globals_dict: dict | None = None) -> str:
+        from src.infrastructure.sandbox.security import CodeValidator
+        validator = CodeValidator()
+        is_valid, errors = validator.validate(code)
+        if not is_valid:
+            return f"代码安全检查失败: {'; '.join(errors)}"
+
         pr = cProfile.Profile()
         pr.enable()
 
         try:
-            exec(code, globals_dict or {})
+            safe_globals = {"__builtins__": {}}
+            if globals_dict:
+                safe_globals.update(globals_dict)
+            exec(code, safe_globals)
         except Exception as e:
             return f"Error: {e}"
         finally:

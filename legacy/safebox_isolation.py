@@ -103,13 +103,26 @@ def execute_user_code():
                 'print': print, 'len': len, 'range': range, 'str': str,
                 'int': int, 'float': float, 'list': list, 'dict': dict,
                 'abs': abs, 'max': max, 'min': min, 'sum': sum,
-                '__import__': __import__  # 允许导入模块（受限制）
             },
-            'USER_FOLDER': USER_FOLDER_PATH,  # 用户文件夹路径
-            'TEMP_FOLDER': TEMP_FOLDER_PATH,  # 临时文件夹路径
-            'get_user_folder': lambda: USER_FOLDER_PATH,  # 获取用户文件夹
-            'get_temp_folder': lambda: TEMP_FOLDER_PATH   # 获取临时文件夹
+            'USER_FOLDER': USER_FOLDER_PATH,
+            'TEMP_FOLDER': TEMP_FOLDER_PATH,
+            'get_user_folder': lambda: USER_FOLDER_PATH,
+            'get_temp_folder': lambda: TEMP_FOLDER_PATH
         }
+
+        _ALLOWED_MODULES = {
+            'math', 'random', 'statistics', 'io', 'csv', 'json',
+            'base64', 'hashlib', 'decimal', 'fractions', 'itertools',
+            'functools', 'collections', 're', 'string', 'typing', 'uuid',
+            'datetime', 'time',
+        }
+
+        def _safe_import(name, *args, **kwargs):
+            if name in _ALLOWED_MODULES:
+                return __import__(name, *args, **kwargs)
+            raise ImportError(f"Module '{name}' is not allowed in sandbox")
+
+        safe_globals['__builtins__']['__import__'] = _safe_import
 
         # 预导入安全的数学模块
         try:

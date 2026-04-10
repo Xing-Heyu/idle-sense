@@ -26,39 +26,39 @@ classifiers = [
 ]
 
 dependencies = [
-    "psutil>=5.9.0",
-    "fastapi>=0.135.0",
-    "uvicorn[standard]>=0.34.0",
-    "python-multipart>=0.0.6",
-    "requests>=2.31.0",
-    "streamlit>=1.56.0",
-    "plotly>=5.18.0",
-    "pandas>=2.3.0",
+    "psutil>=5.9.0,<7.0.0",
+    "fastapi>=0.135.0,<1.0.0",
+    "uvicorn[standard]>=0.34.0,<1.0.0",
+    "python-multipart>=0.0.6,<1.0.0",
+    "requests>=2.31.0,<3.0.0",
+    "streamlit>=1.56.0,<2.0.0",
+    "plotly>=5.18.0,<6.0.0",
+    "pandas>=2.3.0,<3.0.0",
     "cryptography>=46.0.7",
-    "pydantic>=2.12.0",
-    "pydantic-settings>=2.0.0",
-    "pyyaml>=6.0",
-    "slowapi>=0.1.9",
-    "dependency-injector>=4.41.0",
-    "aiosqlite>=0.19.0",
+    "pydantic>=2.12.0,<3.0.0",
+    "pydantic-settings>=2.0.0,<3.0.0",
+    "pyyaml>=6.0,<7.0",
+    "slowapi>=0.1.9,<1.0.0",
+    "dependency-injector>=4.41.0,<5.0.0",
+    "aiosqlite>=0.19.0,<1.0.0",
 ]
 
 [project.optional-dependencies]
 scheduler = [
-    "fastapi>=0.135.0",
-    "uvicorn[standard]>=0.34.0",
-    "python-multipart>=0.0.6",
-    "redis>=4.5.0",
+    "fastapi>=0.135.0,<1.0.0",
+    "uvicorn[standard]>=0.34.0,<1.0.0",
+    "python-multipart>=0.0.6,<1.0.0",
+    "redis>=5.0.0,<6.0.0",
 ]
 
 node = [
-    "requests>=2.31.0",
+    "requests>=2.31.0,<3.0.0",
 ]
 
 web = [
-    "streamlit>=1.56.0",
-    "plotly>=5.18.0",
-    "pandas>=2.3.0",
+    "streamlit>=1.56.0,<2.0.0",
+    "plotly>=5.18.0,<6.0.0",
+    "pandas>=2.3.0,<3.0.0",
 ]
 
 dev = [
@@ -75,7 +75,7 @@ dev = [
 ]
 
 security = [
-    "cryptography>=45.0.0",
+    "cryptography>=46.0.7",
 ]
 
 all = [
@@ -83,8 +83,8 @@ all = [
 ]
 
 [project.scripts]
-idle-scheduler = "scheduler.simple_server:main"
-idle-node = "node.simple_client:main"
+idle-scheduler = "legacy.scheduler.simple_server:main"
+idle-node = "legacy.node.simple_client:main"
 
 [project.urls]
 Homepage = "https://github.com/Xing-Heyu/idle-sense"
@@ -92,7 +92,7 @@ Repository = "https://github.com/Xing-Heyu/idle-sense"
 Documentation = "https://github.com/Xing-Heyu/idle-sense/tree/main/docs"
 
 [tool.setuptools.packages.find]
-include = ["idle_sense*", "scheduler*", "node*", "config*", "user_management*"]
+include = ["src*", "legacy*", "config*", "serializer*", "security_audit*"]
 
 [tool.ruff]
 line-length = 100
@@ -121,7 +121,7 @@ ignore = [
 ]
 
 [tool.ruff.lint.isort]
-known-first-party = ["idle_sense", "scheduler", "node", "config", "user_management"]
+known-first-party = ["src", "legacy", "config", "serializer", "security_audit"]
 
 [tool.ruff.lint.per-file-ignores]
 "tests/*" = ["ARG", "S101"]
@@ -193,7 +193,7 @@ filterwarnings = [
 ]
 
 [tool.coverage.run]
-source = ["idle_sense", "scheduler", "node", "config"]
+source = ["src", "config", "legacy"]
 branch = true
 omit = [
     "tests/*",

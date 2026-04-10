@@ -223,7 +223,7 @@ User=$USER
 WorkingDirectory=$INSTALL_DIR
 Environment="PATH=$INSTALL_DIR/venv/bin"
 EnvironmentFile=$INSTALL_DIR/.env
-ExecStart=$INSTALL_DIR/venv/bin/uvicorn scheduler.simple_server:app --host \${SCHEDULER_HOST} --port \${SCHEDULER_PORT}
+ExecStart=$INSTALL_DIR/venv/bin/uvicorn legacy.scheduler.simple_server:app --host \${SCHEDULER_HOST} --port \${SCHEDULER_PORT}
 Restart=always
 RestartSec=10
 StandardOutput=syslog

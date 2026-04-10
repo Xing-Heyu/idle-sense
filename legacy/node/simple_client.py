@@ -403,6 +403,12 @@ class NodeClient:
     def safe_execute(self, code: str, timeout: int = TASK_TIMEOUT) -> str:
 
         try:
+            from src.infrastructure.sandbox.security import CodeValidator
+            validator = CodeValidator()
+            is_valid, errors = validator.validate(code)
+            if not is_valid:
+                return f"代码安全检查失败: {'; '.join(errors)}"
+
         # ===== 自动包装用户代码 =====
             wrapper = f"""
 # ===== 系统环境初始化 =====

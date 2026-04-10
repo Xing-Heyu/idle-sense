@@ -7,7 +7,6 @@
 """
 
 import hashlib
-import json
 import os
 import time
 from datetime import datetime
@@ -147,7 +146,7 @@ def init_session_state():
             st.session_state[key] = value
 
     if 'session_id' not in st.session_state:
-        st.session_state.session_id = hashlib.md5(
+        st.session_state.session_id = hashlib.sha256(
             f"{datetime.now().isoformat()}_{os.getpid()}".encode()
         ).hexdigest()[:16]
 
@@ -213,7 +212,7 @@ def render_sidebar():
             username = st.text_input("用户名", key="sidebar_username")
 
             if st.button("快速登录", width="stretch") and username:
-                user_id = f"local_{hashlib.md5(username.encode()).hexdigest()[:8]}"
+                user_id = f"local_{hashlib.sha256(username.encode()).hexdigest()[:8]}"
                 session_data = {"username": username, "user_id": user_id}
                 st.session_state.user_session = session_data
 

@@ -25,16 +25,10 @@ from functools import lru_cache
 from pathlib import Path
 from typing import Any
 
-try:
-    from pydantic import Field, field_validator
-    from pydantic_settings import BaseSettings, SettingsConfigDict
-    PYDANTIC_V2 = True
-except ImportError:
-    from pydantic import BaseSettings, Field, validator
-    PYDANTIC_V2 = False
+from pydantic import Field, field_validator
+from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
-# 项目根目录
 PROJECT_ROOT = Path(__file__).parent.parent
 
 
@@ -46,7 +40,7 @@ class SchedulerSettings(BaseSettings):
         env_file=".env",
         env_file_encoding="utf-8",
         extra="ignore"
-    ) if PYDANTIC_V2 else {}
+    )
 
     URL: str = Field(
         default="http://localhost:8000",
@@ -77,19 +71,12 @@ class SchedulerSettings(BaseSettings):
         description="重试延迟时间（秒）"
     )
 
-    if PYDANTIC_V2:
-        @field_validator("URL")
-        @classmethod
-        def validate_url(cls, v: str) -> str:
-            if not v.startswith(("http://", "https://")):
-                raise ValueError("URL must start with http:// or https://")
-            return v.rstrip("/")
-    else:
-        @validator("URL")
-        def validate_url(cls, v: str) -> str:
-            if not v.startswith(("http://", "https://")):
-                raise ValueError("URL must start with http:// or https://")
-            return v.rstrip("/")
+    @field_validator("URL")
+    @classmethod
+    def validate_url(cls, v: str) -> str:
+        if not v.startswith(("http://", "https://")):
+            raise ValueError("URL must start with http:// or https://")
+        return v.rstrip("/")
 
 
 class ResourceSettings(BaseSettings):
@@ -100,7 +87,7 @@ class ResourceSettings(BaseSettings):
         env_file=".env",
         env_file_encoding="utf-8",
         extra="ignore"
-    ) if PYDANTIC_V2 else {}
+    )
 
     DEFAULT_CPU_SHARE: float = Field(
         default=4.0,
@@ -146,7 +133,7 @@ class WebUISettings(BaseSettings):
         env_file=".env",
         env_file_encoding="utf-8",
         extra="ignore"
-    ) if PYDANTIC_V2 else {}
+    )
 
     PAGE_TITLE: str = Field(
         default="闲置计算加速器",
@@ -194,7 +181,7 @@ class StorageSettings(BaseSettings):
         env_file=".env",
         env_file_encoding="utf-8",
         extra="ignore"
-    ) if PYDANTIC_V2 else {}
+    )
 
     BACKEND: str = Field(
         default="memory",
@@ -249,7 +236,7 @@ class DistributedTaskSettings(BaseSettings):
         env_file=".env",
         env_file_encoding="utf-8",
         extra="ignore"
-    ) if PYDANTIC_V2 else {}
+    )
 
     DEFAULT_CHUNK_SIZE: int = Field(
         default=10,
@@ -285,7 +272,7 @@ class SecuritySettings(BaseSettings):
         env_file=".env",
         env_file_encoding="utf-8",
         extra="ignore"
-    ) if PYDANTIC_V2 else {}
+    )
 
     MAX_CODE_SIZE: int = Field(
         default=10000,
@@ -327,7 +314,7 @@ class TokenEconomySettings(BaseSettings):
         env_file=".env",
         env_file_encoding="utf-8",
         extra="ignore"
-    ) if PYDANTIC_V2 else {}
+    )
 
     INITIAL_BALANCE: float = Field(
         default=1000.0,
@@ -355,7 +342,7 @@ class PersistenceSettings(BaseSettings):
         env_file=".env",
         env_file_encoding="utf-8",
         extra="ignore"
-    ) if PYDANTIC_V2 else {}
+    )
 
     DB_PATH: str = Field(
         default="",
@@ -382,7 +369,6 @@ class PersistenceSettings(BaseSettings):
         ge=1,
         le=365,
         description="数据保留天数"
-
     )
 
 
@@ -401,14 +387,12 @@ class Settings(BaseSettings):
         env_file_encoding="utf-8",
         extra="ignore",
         case_sensitive=True
-    ) if PYDANTIC_V2 else {}
+    )
 
-    # 应用信息
     APP_NAME: str = Field(default="闲置计算加速器", description="应用名称")
     APP_VERSION: str = Field(default="2.0.0", description="应用版本")
     DEBUG: bool = Field(default=False, description="调试模式")
 
-    # 子配置
     SCHEDULER: SchedulerSettings = Field(default_factory=SchedulerSettings)
     RESOURCE: ResourceSettings = Field(default_factory=ResourceSettings)
     WEB: WebUISettings = Field(default_factory=WebUISettings)
@@ -418,11 +402,11 @@ class Settings(BaseSettings):
     TOKEN: TokenEconomySettings = Field(default_factory=TokenEconomySettings)
     PERSISTENCE: PersistenceSettings = Field(default_factory=PersistenceSettings)
 
-    # 兼容旧代码的快捷属性
     @property
     def PATH(self) -> StorageSettings:
         """路径配置（兼容旧代码）"""
         return self.STORAGE
+
     @property
     def SCHEDULER_URL(self) -> str:
         """调度器URL（兼容旧代码）"""
@@ -448,14 +432,14 @@ class Settings(BaseSettings):
             "APP_NAME": self.APP_NAME,
             "APP_VERSION": self.APP_VERSION,
             "DEBUG": self.DEBUG,
-            "SCHEDULER": self.SCHEDULER.model_dump() if PYDANTIC_V2 else self.SCHEDULER.dict(),
-            "RESOURCE": self.RESOURCE.model_dump() if PYDANTIC_V2 else self.RESOURCE.dict(),
-            "WEB": self.WEB.model_dump() if PYDANTIC_V2 else self.WEB.dict(),
-            "STORAGE": self.STORAGE.model_dump() if PYDANTIC_V2 else self.STORAGE.dict(),
-            "DISTRIBUTED": self.DISTRIBUTED.model_dump() if PYDANTIC_V2 else self.DISTRIBUTED.dict(),
-            "SECURITY": self.SECURITY.model_dump() if PYDANTIC_V2 else self.SECURITY.dict(),
-            "TOKEN": self.TOKEN.model_dump() if PYDANTIC_V2 else self.TOKEN.dict(),
-            "PERSISTENCE": self.PERSISTENCE.model_dump() if PYDANTIC_V2 else self.PERSISTENCE.dict(),
+            "SCHEDULER": self.SCHEDULER.model_dump(),
+            "RESOURCE": self.RESOURCE.model_dump(),
+            "WEB": self.WEB.model_dump(),
+            "STORAGE": self.STORAGE.model_dump(),
+            "DISTRIBUTED": self.DISTRIBUTED.model_dump(),
+            "SECURITY": self.SECURITY.model_dump(),
+            "TOKEN": self.TOKEN.model_dump(),
+            "PERSISTENCE": self.PERSISTENCE.model_dump(),
         }
 
 
@@ -470,11 +454,9 @@ def clear_settings_cache() -> None:
     get_settings.cache_clear()
 
 
-# 全局配置实例
 settings = get_settings()
 
 
-# 导出
 __all__ = [
     "Settings",
     "SchedulerSettings",

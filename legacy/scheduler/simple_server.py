@@ -934,7 +934,7 @@ def periodic_cleanup():
 def startup_event():
     """启动事件"""
     print("=" * 60)
-    print("优化版任务调度器 v2.2.0")
+    print("优化版任务调度器 v2.0.0")
     print(f"服务器ID: {storage.server_id}")
     print(f"存储后端: {backend}")
     if isinstance(storage, PersistentSchedulerStorage):
@@ -959,7 +959,7 @@ async def root():
     return {
         "service": "优化版闲置计算调度器",
         "status": "运行中",
-        "version": "2.2.0",
+        "version": "2.0.0",
         "server_id": storage.server_id,
         **stats
     }

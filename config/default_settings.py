@@ -19,7 +19,7 @@ for directory in [LOG_DIR, DATA_DIR]:
 # ==================== 调度中心默认配置 ====================
 class SchedulerDefaults:
     """调度中心默认配置"""
-    HOST = "0.0.0.0"
+    HOST = "127.0.0.1"
     PORT = 8000
     LOG_LEVEL = "INFO"
     LOG_FILE = str(LOG_DIR / "scheduler.log")
@@ -93,10 +93,10 @@ class WebDefaults:
     """网页界面默认配置"""
     # Streamlit
     STREAMLIT_PORT = 8501
-    STREAMLIT_HOST = "0.0.0.0"
+    STREAMLIT_HOST = "127.0.0.1"
     THEME = "dark"
-    AUTO_REFRESH = True
-    REFRESH_INTERVAL = 10
+    AUTO_REFRESH = False
+    REFRESH_INTERVAL = 30
     MAX_HISTORY = 50
 
     # 传统Web（备用）

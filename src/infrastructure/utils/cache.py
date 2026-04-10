@@ -213,7 +213,7 @@ class MultiLevelCache:
             {"args": str(args)[:200], "kwargs": str(kwargs)[:200]},
             sort_keys=True,
         )
-        key_hash = hashlib.md5(key_data.encode()).hexdigest()[:8]
+        key_hash = hashlib.sha256(key_data.encode()).hexdigest()[:8]
         return f"{prefix}:{func_name}:{key_hash}"
 
     def stats(self) -> dict[str, Any]:

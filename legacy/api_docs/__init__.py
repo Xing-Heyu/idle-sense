@@ -10,6 +10,28 @@ from functools import wraps
 from typing import Any, Callable, Optional
 
 
+_TYPE_MAP = {
+    "str": str, "int": int, "float": float, "bool": bool,
+    "list": list, "dict": dict, "set": set, "tuple": tuple,
+    "bytes": bytes, "bytearray": bytearray,
+    "None": type(None), "NoneType": type(None),
+}
+
+def _safe_resolve_type(type_str: str):
+    resolved = _TYPE_MAP.get(type_str)
+    if resolved is not None:
+        return resolved
+    if "." in type_str:
+        parts = type_str.rsplit(".", 1)
+        import importlib
+        try:
+            mod = importlib.import_module(parts[0])
+            return getattr(mod, parts[1], str)
+        except (ImportError, AttributeError):
+            return str
+    return str
+
+
 class HTTPMethod(str, Enum):
     GET = "GET"
     POST = "POST"
@@ -204,7 +226,7 @@ class DocumentationGenerator:
                     "required": p.required,
                     "description": p.description,
                     "schema": p.schema or self.type_mapper.map_type(
-                        eval(p.param_type) if isinstance(p.param_type, str) else str
+                        _safe_resolve_type(p.param_type) if isinstance(p.param_type, str) else str
                     )
                 }
                 for p in endpoint.parameters

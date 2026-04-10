@@ -153,6 +153,13 @@ class PickleSerializer(Serializer):
             raise SerializationError(f"Pickle serialization failed: {e}") from e
 
     def deserialize(self, data: bytes) -> Any:
+        import warnings
+        warnings.warn(
+            "PickleSerializer.deserialize() is insecure and can execute arbitrary code. "
+            "Only deserialize data from trusted sources. Consider using JSONSerializer instead.",
+            SecurityWarning,
+            stacklevel=2,
+        )
         try:
             with self._lock:
                 return pickle.loads(data)
@@ -325,7 +332,6 @@ class SerializerRegistry:
         self._initialized = True
         self._serializers: dict[str, Serializer] = {
             "json": JSONSerializer(),
-            "pickle": PickleSerializer(),
         }
         self._default = "json"
 

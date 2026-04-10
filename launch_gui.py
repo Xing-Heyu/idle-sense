@@ -221,7 +221,7 @@ class IdleSenseLauncher:
 
     def open_web(self):
         try:
-            webbrowser.open("http://localhost:8000")
+            webbrowser.open("http://localhost:8501")
             self.log("已打开 Web 界面")
         except Exception as e:
             messagebox.showerror("错误", f"无法打开浏览器:\n{e}")

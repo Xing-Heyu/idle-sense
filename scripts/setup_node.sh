@@ -191,7 +191,7 @@ Type=simple
 User=$USER
 WorkingDirectory=$HOME
 Environment="PATH=$HOME/.idle-accelerator/venv/bin"
-ExecStart=$HOME/.idle-accelerator/venv/bin/python -m idle_sense.node.simple_client
+ExecStart=$HOME/.idle-accelerator/venv/bin/python -m legacy.node.simple_client
 Restart=always
 RestartSec=10
 StandardOutput=syslog
@@ -241,7 +241,7 @@ setup_launchd_service() {
     <array>
         <string>$HOME/.idle-accelerator/venv/bin/python</string>
         <string>-m</string>
-        <string>idle_sense.node.simple_client</string>
+        <string>legacy.node.simple_client</string>
     </array>
     
     <key>RunAtLoad</key>
@@ -283,7 +283,7 @@ create_manual_scripts() {
 #!/bin/bash
 cd "$(dirname "$0")/.."
 source venv/bin/activate
-python -m idle_sense.node.simple_client
+python -m legacy.node.simple_client
 EOF
     
     chmod +x "$SCRIPT_DIR/start-node.sh"
@@ -291,7 +291,7 @@ EOF
     # 停止脚本
     cat > "$SCRIPT_DIR/stop-node.sh" << 'EOF'
 #!/bin/bash
-pkill -f "idle_sense.node.simple_client"
+pkill -f "legacy.node.simple_client"
 EOF
     
     chmod +x "$SCRIPT_DIR/stop-node.sh"

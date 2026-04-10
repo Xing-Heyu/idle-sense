@@ -68,4 +68,34 @@ tmp/
 
 # Local user data
 data/sessions/
+data/test_sessions/
 local_users/
+
+# Tool output
+ruff/
+.mypy_cache/
+*.ruff_cache/
+
+# AI tool config
+.trae/
+
+# Test output
+test_results.txt
+test_*.py
+verify_*.py
+
+# Generated reports
+unused_code_report.md
+
+# Legacy runtime data
+legacy/node_data/
+legacy/test_result*.json
+legacy/test_*.py
+
+# Environment config (protect secrets)
+config/.env.development
+config/.env.production
+config/.env.testing
+
+# Lock files (regenerate with pip freeze)
+requirements-lock.txt
