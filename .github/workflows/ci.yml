@@ -7,7 +7,7 @@ on:
     branches: [main]
 
 env:
-  PYTHON_VERSION: "3.9"
+  PYTHON_VERSION: "3.10"
 
 jobs:
   lint:
@@ -64,7 +64,7 @@ jobs:
           
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v4
-        if: matrix.os == 'ubuntu-latest' && matrix.python == '3.9'
+        if: matrix.os == 'ubuntu-latest' && matrix.python == '3.10'
         with:
           files: ./coverage.xml
           fail_ci_if_error: false
