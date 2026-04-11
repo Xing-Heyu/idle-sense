@@ -112,7 +112,12 @@ class SQLiteConnectionPool:
                         cursor = await conn.execute("SELECT 1")
                         await cursor.close()
                         return conn
-                    except Exception:
+                    except Exception as e:
+                        self._logger.warning(f"Connection validation failed: {e}")
+                        try:
+                            await conn.close()
+                        except Exception:
+                            pass
                         self._current_connections -= 1
                         continue
 

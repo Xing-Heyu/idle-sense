@@ -3,11 +3,35 @@
 # ============================================
 # Python version: >=3.9
 # Compatible with Python 3.9, 3.10, 3.11, 3.12
+# Platforms: Windows, Linux, macOS
+# ============================================
+#
+# 安装命令（使用国内镜像源加速）：
+#
+# Windows (PowerShell):
+#   pip install -r requirements.txt -i https://pypi.tuna.tsinghua.edu.cn/simple
+#
+# Linux/macOS:
+#   pip install -r requirements.txt -i https://pypi.tuna.tsinghua.edu.cn/simple
+#
+# 或配置永久镜像源：
+#   pip config set global.index-url https://pypi.tuna.tsinghua.edu.cn/simple
+#
+# 其他镜像源：
+#   - 阿里云: https://mirrors.aliyun.com/pypi/simple/
+#   - 腾讯云: https://mirrors.cloud.tencent.com/pypi/simple/
+#   - 华为云: https://repo.huaweicloud.com/repository/pypi/simple/
 # ============================================
 
 # [CORE] Platform-specific idle detection
-psutil>=5.9.0,<7.0.0         # System monitoring (CPU, memory, battery)
-python-xlib>=0.33            # X11 idle detection for Linux (optional)
+psutil>=5.9.0,<7.0.0         # System monitoring (CPU, memory, battery) - All platforms
+python-xlib>=0.33            # X11 idle detection for Linux (optional, Linux only)
+
+# [WINDOWS] Windows-specific dependencies
+# pywin32>=305                # Windows API (auto-installed with psutil on Windows)
+
+# [MACOS] macOS-specific dependencies
+# pyobjc>=9.0                 # macOS API (optional, for advanced idle detection)
 
 # [SCHEDULER] FastAPI server for task distribution
 fastapi>=0.135.0,<1.0.0      # Web framework for scheduler
@@ -19,7 +43,7 @@ slowapi>=0.1.9               # Rate limiting for FastAPI
 requests>=2.31.0,<3.0.0      # HTTP client for communicating with scheduler
 
 # [CONFIG] Configuration management
-pyyaml>=6.0,<7.0                  # YAML configuration file parsing
+pyyaml>=6.0,<7.0             # YAML configuration file parsing
 pydantic>=2.12.0             # Data validation
 pydantic-settings>=2.0.0     # Settings management (BaseSettings moved here in Pydantic v2)
 
@@ -44,8 +68,9 @@ msgpack>=1.0.0               # MessagePack serialization (optional)
 # [SECURITY] Security and encryption
 cryptography>=42.0.0         # Security-critical encryption library
 
-# [P2P] P2P networking (optional)
-# upnpclient>=1.0.3          # UPnP for NAT traversal
+# [P2P] P2P networking
+websockets>=12.0             # WebSocket for federation communication
+# upnpclient>=1.0.3          # UPnP for NAT traversal (optional)
 
 # [DEV] Development tools (not required for production)
 # pytest>=7.4.0              # Testing framework
@@ -57,3 +82,19 @@ cryptography>=42.0.0         # Security-critical encryption library
 # [CLOUD] Cloud deployment considerations
 # Note: All core dependencies are cloud-compatible
 # No GUI or system-level dependencies
+
+# ============================================
+# Platform-specific notes:
+#
+# Windows:
+#   - psutil includes Windows support out of the box
+#   - No additional dependencies required
+#
+# Linux:
+#   - python-xlib is required for X11 idle detection
+#   - For headless servers, idle detection may be limited
+#
+# macOS:
+#   - psutil includes macOS support out of the box
+#   - For advanced idle detection, pyobjc can be installed optionally
+# ============================================

@@ -981,12 +981,12 @@ else:
             st.code(
                 """
 方法1: 使用批处理文件
-双击运行 start_all.bat
+双击运行 start.bat
 
 方法2: 手动启动
 1. 打开命令提示符
 2. 切换到项目目录
-3. 运行: python node/simple_client.py
+3. 运行: python start.py
             """,
                 language="bash",
             )
@@ -1628,7 +1628,7 @@ print(f"合并完成，总共处理了 {total_count} 项数据")
             st.info("""
 ### 节点启动说明
 1. 确保调度器正在运行
-2. 双击运行 start_all.bat
+2. 双击运行 start.bat
 3. 等待节点注册成功
 4. 刷新页面查看节点状态
             """)

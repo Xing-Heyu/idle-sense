@@ -1,3 +1,5 @@
+import os
+import re
 import secrets
 import time
 from dataclasses import dataclass
@@ -16,12 +18,55 @@ class SessionInfo:
     ip_address: Optional[str] = None
 
 
+def validate_password_strength(password: str) -> tuple[bool, str]:
+    """
+    验证密码强度
+    
+    要求:
+    - 至少8个字符
+    - 包含至少一个大写字母
+    - 包含至少一个小写字母
+    - 包含至少一个数字
+    
+    Returns:
+        (是否有效, 错误信息)
+    """
+    if not password:
+        return False, "密码不能为空"
+    
+    if len(password) < 8:
+        return False, "密码长度至少8位"
+    
+    if len(password) > 128:
+        return False, "密码长度不能超过128位"
+    
+    if not re.search(r'[A-Z]', password):
+        return False, "密码必须包含至少一个大写字母"
+    
+    if not re.search(r'[a-z]', password):
+        return False, "密码必须包含至少一个小写字母"
+    
+    if not re.search(r'\d', password):
+        return False, "密码必须包含至少一个数字"
+    
+    common_passwords = {
+        'password', 'Password1', 'Password123', 'Admin123', 
+        'Qwerty123', 'Letmein1', 'Welcome1', 'Passw0rd'
+    }
+    if password in common_passwords:
+        return False, "密码过于简单，请使用更复杂的密码"
+    
+    return True, ""
+
+
+DEFAULT_SESSION_TIMEOUT = int(os.getenv("AUTH_SESSION_TIMEOUT", "3600"))
+
+
 class AuthManager:
     """认证管理器 - 支持密码认证和权限验证"""
 
-    SESSION_TIMEOUT = 3600  # 会话超时时间（秒）
-
-    def __init__(self):
+    def __init__(self, session_timeout: int = DEFAULT_SESSION_TIMEOUT):
+        self.session_timeout = max(300, min(session_timeout, 86400))
         self.users: dict[str, User] = {}
         self.users_by_username: dict[str, str] = {}
         self.user_quotas: dict[str, UserQuota] = {}
@@ -42,8 +87,9 @@ class AuthManager:
         if any(u.email == email for u in self.users.values()):
             return {"success": False, "error": "邮箱已存在"}
 
-        if not password or len(password) < 6:
-            return {"success": False, "error": "密码长度至少6位"}
+        is_valid, error_msg = validate_password_strength(password)
+        if not is_valid:
+            return {"success": False, "error": error_msg}
 
         user = User(username, email, password)
 
@@ -137,7 +183,7 @@ class AuthManager:
         self.sessions[session_id] = SessionInfo(
             user_id=user_id,
             created_at=now,
-            expires_at=now + self.SESSION_TIMEOUT,
+            expires_at=now + self.session_timeout,
             ip_address=ip_address,
         )
         return session_id
@@ -172,7 +218,7 @@ class AuthManager:
         session = self.sessions.get(session_id)
         if not session:
             return False
-        session.expires_at = time.time() + self.SESSION_TIMEOUT
+        session.expires_at = time.time() + self.session_timeout
         return True
 
     def cleanup_expired_sessions(self) -> int:
@@ -201,8 +247,9 @@ class AuthManager:
         if not user.verify_password(old_password):
             return {"success": False, "error": "原密码错误"}
 
-        if len(new_password) < 6:
-            return {"success": False, "error": "新密码长度至少6位"}
+        is_valid, error_msg = validate_password_strength(new_password)
+        if not is_valid:
+            return {"success": False, "error": error_msg}
 
         user.set_password(new_password)
         return {"success": True, "message": "密码修改成功"}

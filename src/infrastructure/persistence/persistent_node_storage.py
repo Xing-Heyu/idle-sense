@@ -74,7 +74,7 @@ class PersistentNodeStorage:
     async def _ensure_init(self) -> None:
         """确保数据库连接已初始化"""
         if not self._initialized:
-            await self._repository._get_connection()
+            await self._repository._get_pool()
             self._initialized = True
 
     def _node_to_cache_dict(self, node: Node) -> dict[str, Any]:

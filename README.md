@@ -1,4 +1,4 @@
-# 🖥️ Idle-Sense: 分布式闲置算力共享平台
+# 🖥️ Idle-Sense: 对等个人中心 - 分布式闲置算力共享平台
 
 [![Python 3.9+](https://img.shields.io/badge/python-3.9+-blue.svg)](https://www.python.org/downloads/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
@@ -8,7 +8,7 @@
 
 **让全球闲置算力不再浪费**
 
-Idle-Sense 是一个分布式计算平台，能够智能检测个人电脑的闲置状态，安全地利用闲置算力执行计算任务，并奖励贡献者。
+Idle-Sense 是一个分布式计算平台，采用"对等个人中心"架构，每个用户运行自己的完整栈，通过联邦模块互联，形成去中心化的算力联盟。
 
 ## ✨ 核心特性
 
@@ -16,18 +16,33 @@ Idle-Sense 是一个分布式计算平台，能够智能检测个人电脑的闲
 - 🛡️ **安全沙箱执行** - 多级隔离（进程/容器/VM/WASM），保护提供者安全
 - ⚖️ **公平调度算法** - 基于贡献度的公平优先调度，防止饥饿
 - 💰 **代币激励机制** - 贡献算力获得代币奖励，消费算力支付代币
-- 🌐 **P2P分布式网络** - 去中心化节点发现和任务分发
+- 🌐 **联邦网络** - 调度器互联，自动发现，任务共享
 - 📊 **Web管理界面** - 直观的任务提交、监控和管理
 
-## 🗄️ 数据持久化
+## 🏗️ 架构说明
 
-| 组件 | 存储方式 | 状态 |
-|------|---------|------|
-| 调度器任务 | SQLite + 内存缓存 | ✅ 已实现 |
-| 节点信息 | SQLite + 内存缓存 | ✅ 已实现 |
-| 代币经济 | SQLite（原子事务） | ✅ 已实现 |
-| 用户数据 | JSON 文件 | ✅ 已实现 |
-| 会话管理 | 文件 / Redis | ✅ 已实现（默认文件） |
+### 对等个人中心架构
+
+```
+用户 A 环境                           用户 B 环境
+┌─────────────────────────┐          ┌─────────────────────────┐
+│ Web UI ←→ 调度器 A       │←—P2P—→│ 调度器 B ←→ Web UI       │
+│              ↑           │          │           ↑             │
+│         本地节点 A        │          │      本地节点 B         │
+│              ↑           │          │           ↑             │
+│         (执行任务)        │          │      (执行任务)         │
+└─────────────────────────┘          └─────────────────────────┘
+```
+
+### 联邦模块功能
+
+| 功能 | 说明 |
+|------|------|
+| **发现** | 通过组播/DHT 发现其他调度器 |
+| **握手** | 与其他调度器建立长连接 |
+| **节点同步** | 广播本地节点列表 |
+| **任务路由** | 本地无空闲节点时自动转发 |
+| **结果回传** | 远程执行结果沿原路径返回 |
 
 ## 🚀 快速开始
 
@@ -42,37 +57,61 @@ cd idle-sense
 pip install -r requirements.txt
 ```
 
-> **首次运行**：系统会自动创建 `data/` 目录，用于存放 SQLite 数据库文件、用户数据及会话信息。无需手动初始化。
+### 启动
 
-### 启动调度中心
-
-```bash
-python -m legacy.scheduler.simple_server
-```
-
-### 启动计算节点
+**方式一：一键启动（推荐）**
 
 ```bash
-python -m legacy.node.simple_client --scheduler http://localhost:8000
+# Windows
+.\start.bat
+
+# 或直接运行 Python 脚本
+python start.py
 ```
 
-### 启动Web界面
+这会自动：
+- 启动调度器、工作节点和 Web 界面
+- 加载 Legacy 模块（健康检查、分布式锁、监控等）
+- 实现零配置跨网络连接
+
+**方式二：命令行启动**
 
 ```bash
-streamlit run src/presentation/streamlit/app.py
+# 完整模式
+python start.py
+
+# 仅调度器
+python start.py --role scheduler
+
+# 仅工作节点
+python start.py --role worker --scheduler-url http://192.168.1.100:8000
 ```
 
-访问 http://localhost:8501 打开Web管理界面。
+**方式三：手动启动（Linux/macOS）**
+
+```bash
+python -m legacy.scheduler.simple_server  # 终端1：启动调度器
+python -m legacy.node.simple_client --scheduler-url http://localhost:8000  # 终端2：启动节点
+streamlit run src/presentation/streamlit/app.py  # 终端3：启动Web界面
+```
+
+### 验证
+
+- Web界面：<http://localhost:8501>
+- API文档：<http://localhost:8000/docs>
+- 联邦状态：<http://localhost:8000/api/federation/stats>
 
 ## ⚙️ 环境变量
 
 | 变量名 | 默认值 | 说明 |
 |--------|-------|------|
+| `ENABLE_FEDERATION` | `true` | 启用联邦模式 |
+| `FEDERATION_PORT` | `8765` | 联邦通信端口 |
+| `PORT` | `8000` | HTTP API端口 |
 | `IDLESENSE_DATA_DIR` | `./data` | 数据存储根目录 |
 | `IDLESENSE_DB_PATH` | `./data/idle_sense.db` | SQLite 数据库路径 |
-| `IDLESENSE_SESSION_BACKEND` | `file` | 会话后端：`file` 或 `redis` |
-| `IDLESENSE_REDIS_URL` | - | Redis 连接 URL（仅 redis 后端时需要） |
-| `IDLESENSE_CACHE_TTL` | `300` | 内存缓存过期时间（秒） |
+| `STUN_SERVER` | `stun.l.google.com:19302` | STUN服务器地址 |
+| `DHT_BOOTSTRAP` | `router.bittorrent.com:6881` | DHT引导节点 |
 
 ## 📖 文档
 
@@ -81,16 +120,18 @@ streamlit run src/presentation/streamlit/app.py
 - [用户指南](USER_GUIDE.md) - 详细使用说明
 - [API参考](docs/API_REFERENCE.md) - 完整API文档
 - [架构设计](docs/ARCHITECTURE.md) - 系统架构说明
-- [部署指南](docs/DEPLOYMENT.md) - 生产环境部署
+- [部署指南](部署指南_Deployment_Guide.md) - 生产环境部署
 - [设计决策](docs/DESIGN_DECISIONS.md) - 关键设计选择
+- [小白使用指南](超级小白保姆级使用指南.md) - 超详细新手教程
 
-## 🏗️ 项目结构
+## 🗄️ 项目结构
 
 ```
 idle-sense/
 ├── legacy/                    # 原始实现（向后兼容）
 │   ├── idle_sense/           # 闲置检测库
 │   ├── scheduler/            # 调度中心
+│   │   └── p2p_federation.py # 联邦模块
 │   ├── node/                 # 节点客户端
 │   ├── demo/                 # 演示脚本
 │   └── examples/             # 示例任务
@@ -109,22 +150,6 @@ idle-sense/
 ├── docs/                     # 文档
 ├── tests/                    # 测试
 └── scripts/                  # 工具脚本
-```
-
-## 🔧 命令行工具
-
-```bash
-# 检查调度器状态
-python -m legacy.scheduler.cli status
-
-# 列出所有节点
-python -m legacy.node.cli list
-
-# 提交任务
-python -m legacy.task.cli submit --code "print('Hello')"
-
-# 查询任务状态
-python -m legacy.task.cli status --task-id <TASK_ID>
 ```
 
 ## 🛡️ 安全沙箱支持

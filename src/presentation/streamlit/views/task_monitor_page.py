@@ -79,7 +79,8 @@ def render(user_id: Optional[str] = None):
                 st.dataframe(results_df, width="stretch", hide_index=True)
 
                 selected_task_id = st.selectbox(
-                    "选择任务查看完整结果", [r["任务ID"] for r in results_data]
+                    "选择任务查看完整结果", [r["任务ID"] for r in results_data],
+                    key="task_monitor_select_task"
                 )
 
                 if selected_task_id:
@@ -164,7 +165,7 @@ def render(user_id: Optional[str] = None):
                     f"任务{task['task_id']} (状态: {task['status']})": task["task_id"]
                     for task in deletable_tasks
                 }
-                selected_task_label = st.selectbox("选择要删除的任务", list(task_options.keys()))
+                selected_task_label = st.selectbox("选择要删除的任务", list(task_options.keys()), key="task_monitor_delete_task")
                 selected_task_id = task_options[selected_task_label]
 
                 if st.button("🗑️ 删除选中任务", type="secondary"):

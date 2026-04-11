@@ -5,16 +5,94 @@ Structured Logger - 结构化日志系统
 - 线程安全的日志记录
 - 中文输出
 - 额外字段通过 **kwargs 传递
+- 敏感信息自动脱敏
 - 与 Python 标准 logging 模块兼容
 """
 
 import json
 import logging
+import re
 import sys
 import threading
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Optional, Union
+
+
+SENSITIVE_FIELDS = {
+    'password', 'passwd', 'pwd',
+    'token', 'access_token', 'refresh_token', 'auth_token',
+    'secret', 'secret_key', 'api_key', 'apikey',
+    'private_key', 'privatekey',
+    'credential', 'credentials',
+    'session_id', 'sessionid',
+    'authorization', 'auth',
+}
+
+SENSITIVE_PATTERNS = [
+    (re.compile(r'(password["\']?\s*[:=]\s*["\']?)([^"\',\s]+)', re.IGNORECASE), r'\1***'),
+    (re.compile(r'(token["\']?\s*[:=]\s*["\']?)([^"\',\s]+)', re.IGNORECASE), r'\1***'),
+    (re.compile(r'(secret["\']?\s*[:=]\s*["\']?)([^"\',\s]+)', re.IGNORECASE), r'\1***'),
+    (re.compile(r'(api_key["\']?\s*[:=]\s*["\']?)([^"\',\s]+)', re.IGNORECASE), r'\1***'),
+]
+
+MASK_VALUE = '***'
+
+
+def sanitize_value(key: str, value: Any) -> Any:
+    """
+    对敏感字段的值进行脱敏处理
+    
+    Args:
+        key: 字段名
+        value: 字段值
+        
+    Returns:
+        脱敏后的值
+    """
+    if not isinstance(key, str):
+        return value
+    
+    key_lower = key.lower().replace('-', '_')
+    
+    for sensitive in SENSITIVE_FIELDS:
+        if sensitive in key_lower:
+            return MASK_VALUE
+    
+    if isinstance(value, str):
+        for pattern, replacement in SENSITIVE_PATTERNS:
+            if pattern.search(value):
+                value = pattern.sub(replacement, value)
+    
+    return value
+
+
+def sanitize_dict(data: dict[str, Any]) -> dict[str, Any]:
+    """
+    递归脱敏字典中的敏感信息
+    
+    Args:
+        data: 原始字典
+        
+    Returns:
+        脱敏后的字典
+    """
+    if not isinstance(data, dict):
+        return data
+    
+    result = {}
+    for key, value in data.items():
+        if isinstance(value, dict):
+            result[key] = sanitize_dict(value)
+        elif isinstance(value, list):
+            result[key] = [
+                sanitize_dict(item) if isinstance(item, dict) else sanitize_value(key, item)
+                for item in value
+            ]
+        else:
+            result[key] = sanitize_value(key, value)
+    
+    return result
 
 
 class JsonFormatter(logging.Formatter):
@@ -133,7 +211,8 @@ class StructuredLogger:
         self._logger.addHandler(file_handler)
 
     def _log(self, level: int, message: str, exc_info: bool = False, **kwargs: Any) -> None:
-        extra = {"extra_fields": kwargs} if kwargs else {}
+        sanitized_kwargs = sanitize_dict(kwargs) if kwargs else {}
+        extra = {"extra_fields": sanitized_kwargs} if sanitized_kwargs else {}
 
         with self._lock:
             self._logger.log(level, message, exc_info=exc_info, extra=extra)

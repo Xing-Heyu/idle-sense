@@ -5,6 +5,7 @@
 """
 
 import json
+import logging
 import os
 import secrets
 from pathlib import Path
@@ -115,8 +116,10 @@ class FileUserRepository(IUserRepository):
                             data = json.load(f)
                             if "username" in data:
                                 self._username_index[data["username"]] = user_id
-                    except Exception:
-                        pass
+                    except (OSError, json.JSONDecodeError) as e:
+                        logging.warning(f"[UserRepository] 加载用户索引失败 {user_id}: {e}")
+                    except Exception as e:
+                        logging.error(f"[UserRepository] 加载用户索引异常 {user_id}: {e}")
 
     def _update_index(self, user: User):
         """更新用户名索引"""

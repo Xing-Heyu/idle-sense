@@ -246,7 +246,6 @@ class WindowsNodeClient:
             if not is_valid:
                 return f"代码安全检查失败: {'; '.join(errors)}"
 
-            # ===== 自动包装用户代码 =====
             wrapper = f"""
 # ===== 系统环境初始化 =====
 import json, time
@@ -255,6 +254,7 @@ from datetime import datetime
 __node_id__ = "{self.node_id}"
 __task_id__ = "{task_id}"
 __start_time__ = time.time()
+__error__ = None
 
 # ===== 用户代码开始 =====
 {code!r}
@@ -267,19 +267,21 @@ __result__ = locals().get('__result__', None)
 if __result__ is None:
     import io
     import contextlib
+    import traceback
     f = io.StringIO()
     with contextlib.redirect_stdout(f):
         try:
             exec({code!r})
-        except:
-            pass
+        except Exception as _e:
+            __error__ = str(_e)
     __result__ = f.getvalue()
 
-if not __result__:
+if __error__:
+    __result__ = f"[错误] {{__error__}}"
+elif not __result__:
     __result__ = "(无输出)"
-
-# 添加执行信息
-__result__ = f"[{{__node_id__}}] {{__result__}}"
+else:
+    __result__ = f"[{{__node_id__}}] {{__result__}}"
 """
 
             local_vars = {}

@@ -1,6 +1,14 @@
 """
 scheduler/simple_server.py
-优化版任务调度器 - 修复节点显示问题
+优化版任务调度器 - 修复节点显示问题 + Legacy 模块集成
+
+集成的 Legacy 模块:
+- health_check: 健康检查
+- distributed_lock: 分布式锁
+- retry_recovery: 重试恢复
+- timeout_manager: 超时管理
+- monitoring: 监控指标
+- event_bus: 事件总线
 """
 
 import asyncio
@@ -12,9 +20,10 @@ import threading
 import time
 import uuid
 from collections import defaultdict
+from contextlib import asynccontextmanager
 from typing import Any, Optional
 
-from fastapi import BackgroundTasks, Body, FastAPI, HTTPException, Request
+from fastapi import BackgroundTasks, Body, FastAPI, HTTPException, Request, Response
 from pydantic import BaseModel
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
@@ -25,8 +34,6 @@ try:
 except ImportError:
     RATE_LIMITING_AVAILABLE = False
 
-# 导入统一沙箱（新架构）
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 try:
     from src.infrastructure.sandbox.sandbox import BasicSandbox, SandboxConfig
 
@@ -36,6 +43,31 @@ except ImportError:
 
     SANDBOX_AVAILABLE = False
     print("Warning: Using legacy sandbox, consider migrating to new architecture")
+
+LEGACY_INTEGRATION_ENABLED = os.getenv("LEGACY_INTEGRATION", "true").lower() == "true"
+integrator = None
+
+if LEGACY_INTEGRATION_ENABLED:
+    try:
+        from legacy.integration import get_integrator
+        from legacy.integration.integrator import IntegrationConfig
+        
+        legacy_config = IntegrationConfig(
+            enable_health_check=True,
+            enable_distributed_lock=True,
+            enable_retry_recovery=True,
+            enable_timeout_manager=True,
+            enable_monitoring=True,
+            enable_event_bus=True,
+        )
+        integrator = get_integrator(legacy_config)
+        print("[Legacy] 模块集成器已加载")
+    except ImportError as e:
+        print(f"[Legacy] 模块集成器导入失败: {e}")
+        LEGACY_INTEGRATION_ENABLED = False
+    except Exception as e:
+        print(f"[Legacy] 模块集成器初始化失败: {e}")
+        LEGACY_INTEGRATION_ENABLED = False
 
 
 # ==================== 数据模型定义 ====================
@@ -902,8 +934,51 @@ class PersistentSchedulerStorage:
 
 
 # ==================== FastAPI 应用 ====================
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """应用生命周期管理"""
+    global ENABLE_FEDERATION, federation, integrator
+    
+    print("=" * 60)
+    print("优化版任务调度器 v2.0.0")
+    print(f"服务器ID: {storage.server_id}")
+    print(f"存储后端: {backend}")
+    if isinstance(storage, PersistentSchedulerStorage):
+        persistence_info = storage.get_system_stats().get("persistence", {})
+        print(f"数据库路径: {persistence_info.get('db_path', 'N/A')}")
+        print(f"缓存任务数: {persistence_info.get('cached_tasks', 0)}")
+    print("功能: 节点三状态判断、智能调度、稳定显示、SQLite持久化")
+    print("=" * 60)
+    
+    if LEGACY_INTEGRATION_ENABLED and integrator:
+        integrator.initialize(storage=storage, server_id=storage.server_id)
+        print("[Legacy] 模块已初始化")
+    
+    start_cleanup_thread()
+    
+    if ENABLE_FEDERATION and federation:
+        try:
+            from legacy.scheduler.p2p_federation import start_federation
+            start_federation()
+            print("[调度器] 联邦模块已启动")
+        except Exception as e:
+            print(f"[警告] 联邦模块启动失败: {e}")
+    
+    yield
+    
+    stop_cleanup_thread()
+    if LEGACY_INTEGRATION_ENABLED and integrator:
+        integrator.shutdown()
+        print("[Legacy] 模块已关闭")
+    if isinstance(storage, PersistentSchedulerStorage):
+        storage.shutdown()
+
+
 app = FastAPI(
-    title="优化版闲置计算调度器", description="修复节点显示问题，增强稳定性", version="2.0.0"
+    title="优化版闲置计算调度器",
+    description="修复节点显示问题，增强稳定性",
+    version="2.0.0",
+    lifespan=lifespan,
 )
 
 rate_limiter = None
@@ -984,36 +1059,60 @@ else:
 
 
 # ==================== 后台任务 ====================
+_cleanup_thread: Optional[threading.Thread] = None
+_cleanup_running = False
+
+
+def _cleanup_worker():
+    """后台清理线程"""
+    global _cleanup_running
+    while _cleanup_running:
+        try:
+            time.sleep(60)  # 每60秒检查一次
+            if not _cleanup_running:
+                break
+            
+            cleaned = storage.cleanup_dead_nodes(timeout_seconds=180)
+            if cleaned > 0:
+                print(f"[清理] 移除了 {cleaned} 个离线节点")
+            
+            # 同时清理超时任务
+            if hasattr(storage, 'cleanup_timeout_tasks'):
+                try:
+                    tasks_cleaned = storage.cleanup_timeout_tasks()
+                    if tasks_cleaned > 0:
+                        print(f"[清理] 清理了 {tasks_cleaned} 个超时任务")
+                except Exception as e:
+                    print(f"[清理] 任务清理错误: {e}")
+                    
+        except Exception as e:
+            print(f"[清理错误] {e}")
+
+
 def periodic_cleanup():
-    """定期清理"""
+    """定期清理（手动触发）"""
     try:
         cleaned = storage.cleanup_dead_nodes(timeout_seconds=180)
         if cleaned > 0:
-            print(f"[清理] 移除了 {cleaned} 个死亡节点")
+            print(f"[清理] 移除了 {cleaned} 个离线节点")
     except Exception as e:
         print(f"[清理错误] {e}")
 
 
-@app.on_event("startup")
-def startup_event():
-    """启动事件"""
-    print("=" * 60)
-    print("优化版任务调度器 v2.0.0")
-    print(f"服务器ID: {storage.server_id}")
-    print(f"存储后端: {backend}")
-    if isinstance(storage, PersistentSchedulerStorage):
-        persistence_info = storage.get_system_stats().get("persistence", {})
-        print(f"数据库路径: {persistence_info.get('db_path', 'N/A')}")
-        print(f"缓存任务数: {persistence_info.get('cached_tasks', 0)}")
-    print("功能: 节点三状态判断、智能调度、稳定显示、SQLite持久化")
-    print("=" * 60)
+def start_cleanup_thread():
+    """启动清理线程"""
+    global _cleanup_thread, _cleanup_running
+    if _cleanup_thread is None or not _cleanup_thread.is_alive():
+        _cleanup_running = True
+        _cleanup_thread = threading.Thread(target=_cleanup_worker, daemon=True, name="NodeCleanup")
+        _cleanup_thread.start()
+        print("[系统] 节点清理线程已启动")
 
 
-@app.on_event("shutdown")
-def shutdown_event():
-    """关闭事件"""
-    if isinstance(storage, PersistentSchedulerStorage):
-        storage.shutdown()
+def stop_cleanup_thread():
+    """停止清理线程"""
+    global _cleanup_running
+    _cleanup_running = False
 
 
 # ==================== API端点 ====================
@@ -1041,6 +1140,72 @@ async def health_check():
         "nodes": stats["nodes"],
         "tasks": {"pending": stats["tasks"]["pending"], "assigned": stats["tasks"]["assigned"]},
     }
+
+
+@app.get("/api/health/detailed")
+async def detailed_health_check():
+    """详细健康检查 - Legacy 模块"""
+    if not LEGACY_INTEGRATION_ENABLED or not integrator:
+        return {"enabled": False, "message": "Legacy 模块未启用"}
+    
+    health_report = integrator.get_health_report()
+    return {
+        "enabled": True,
+        "health_report": health_report,
+        "timestamp": time.time(),
+    }
+
+
+@app.get("/metrics")
+async def prometheus_metrics():
+    """Prometheus 指标端点 - Legacy 监控模块"""
+    if not LEGACY_INTEGRATION_ENABLED or not integrator:
+        return Response(
+            content="# Legacy 模块未启用\n",
+            media_type="text/plain; version=0.0.4"
+        )
+    
+    metrics_output = integrator.get_metrics_prometheus()
+    return Response(
+        content=metrics_output,
+        media_type="text/plain; version=0.0.4"
+    )
+
+
+@app.get("/api/monitoring/stats")
+async def monitoring_stats():
+    """监控统计 - Legacy 监控模块"""
+    if not LEGACY_INTEGRATION_ENABLED or not integrator:
+        return {"enabled": False, "message": "Legacy 模块未启用"}
+    
+    stats = integrator.get_system_stats()
+    return {
+        "enabled": True,
+        "stats": stats,
+        "timestamp": time.time(),
+    }
+
+
+@app.get("/api/legacy/status")
+async def legacy_status():
+    """Legacy 模块状态"""
+    modules_status = {
+        "enabled": LEGACY_INTEGRATION_ENABLED,
+        "integrator_loaded": integrator is not None,
+        "modules": {}
+    }
+    
+    if LEGACY_INTEGRATION_ENABLED and integrator:
+        modules_status["modules"] = {
+            "health_check": integrator.health_checker is not None,
+            "distributed_lock": integrator.distributed_lock is not None,
+            "retry_recovery": integrator.retry_manager is not None,
+            "timeout_manager": integrator.timeout_manager is not None,
+            "monitoring": integrator.system_monitor is not None,
+            "event_bus": integrator.event_bus is not None,
+        }
+    
+    return modules_status
 
 
 @app.post("/submit")
@@ -1274,6 +1439,96 @@ try:
 except ImportError:
     print("[调度器] CORS中间件不可用")
 
+# ==================== 联邦模式支持 ====================
+ENABLE_FEDERATION = os.getenv("ENABLE_FEDERATION", "true").lower() == "true"
+FEDERATION_PORT = int(os.getenv("FEDERATION_PORT", "8765"))
+
+federation = None
+
+if ENABLE_FEDERATION:
+    try:
+        from legacy.scheduler.p2p_federation import init_federation, start_federation, get_federation
+        
+        federation = init_federation(
+            scheduler_id=storage.server_id,
+            http_port=int(os.getenv("PORT", os.getenv("SCHEDULER_PORT", "8000"))),
+            federation_port=FEDERATION_PORT,
+            storage=storage,
+        )
+        
+        print("[调度器] 联邦模式已启用")
+    except ImportError as e:
+        print(f"[警告] 联邦模块导入失败: {e}")
+        print("[警告] 将以独立模式运行")
+        ENABLE_FEDERATION = False
+
+
+@app.get("/api/federation/stats")
+async def get_federation_stats():
+    """获取联邦统计信息"""
+    if not ENABLE_FEDERATION or not federation:
+        return {
+            "enabled": False,
+            "message": "联邦模式未启用",
+        }
+    
+    return {
+        "enabled": True,
+        **federation.get_federation_stats(),
+    }
+
+
+@app.get("/api/federation/nodes")
+async def get_federation_nodes():
+    """获取全网节点（本地 + 远程）"""
+    if not ENABLE_FEDERATION or not federation:
+        nodes = storage.get_available_nodes(include_busy=True)
+        return {
+            "enabled": False,
+            "local_count": len(nodes),
+            "remote_count": 0,
+            "nodes": nodes,
+        }
+    
+    all_nodes = federation.get_all_nodes()
+    local_count = sum(1 for n in all_nodes if n.get("source") == "local")
+    remote_count = sum(1 for n in all_nodes if n.get("source") == "remote")
+    
+    return {
+        "enabled": True,
+        "local_count": local_count,
+        "remote_count": remote_count,
+        "total_count": len(all_nodes),
+        "nodes": all_nodes,
+    }
+
+
+@app.post("/api/federation/forward/{task_id}")
+async def forward_task_to_federation(task_id: int):
+    """手动转发任务到联邦网络"""
+    if not ENABLE_FEDERATION or not federation:
+        raise HTTPException(status_code=400, detail="联邦模式未启用")
+    
+    task_status = storage.get_task_status(task_id)
+    if not task_status:
+        raise HTTPException(status_code=404, detail="任务不存在")
+    
+    if task_status["status"] not in ["pending"]:
+        raise HTTPException(status_code=400, detail="只能转发 pending 状态的任务")
+    
+    success = federation.forward_task(
+        task_id=task_id,
+        code=task_status.get("code", ""),
+        timeout=300,
+        resources=task_status.get("required_resources", {}),
+    )
+    
+    if success:
+        return {"success": True, "message": f"任务 {task_id} 已转发到联邦网络"}
+    else:
+        raise HTTPException(status_code=500, detail="转发失败，无可用远程调度器")
+
+
 # ==================== 启动 ====================
 if __name__ == "__main__":
     import uvicorn
@@ -1283,7 +1538,11 @@ if __name__ == "__main__":
 
     print(f"[调度器] 启动服务器: http://{host}:{port}")
     print(f"[调度器] 服务器ID: {storage.server_id}")
+    print(f"[调度器] 联邦模式: {'启用' if ENABLE_FEDERATION else '禁用'}")
+    if ENABLE_FEDERATION:
+        print(f"[调度器] 联邦端口: {FEDERATION_PORT}")
     print("[调度器] 提示: 可通过环境变量 PORT 或 SCHEDULER_PORT 修改端口")
+    print("[调度器] 提示: 设置 ENABLE_FEDERATION=false 可禁用联邦模式")
 
     uvicorn.run(app, host=host, port=port, log_level="info")
 # ==================== 节点显示修复模块 ====================

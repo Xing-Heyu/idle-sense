@@ -206,7 +206,13 @@ class BasicSandbox(BaseSandbox):
                 error=f"执行超时（{self.config.timeout}秒）",
                 execution_time=self.config.timeout,
             )
+        except OSError as e:
+            logging.error(f"[BasicSandbox] 系统错误: {e}")
+            return ExecutionResult(
+                success=False, error=f"系统错误: {str(e)}", execution_time=time.time() - start_time
+            )
         except Exception as e:
+            logging.exception(f"[BasicSandbox] 未预期的执行异常")
             return ExecutionResult(
                 success=False, error=f"执行异常: {str(e)}", execution_time=time.time() - start_time
             )
@@ -308,7 +314,13 @@ class DockerSandbox(BaseSandbox):
                 error=f"执行超时（{self.config.timeout}秒）",
                 execution_time=self.config.timeout,
             )
+        except OSError as e:
+            logging.error(f"[DockerSandbox] 系统错误: {e}")
+            return ExecutionResult(
+                success=False, error=f"系统错误: {str(e)}", execution_time=time.time() - start_time
+            )
         except Exception as e:
+            logging.exception(f"[DockerSandbox] 未预期的执行异常")
             return ExecutionResult(
                 success=False, error=f"执行异常: {str(e)}", execution_time=time.time() - start_time
             )
@@ -408,7 +420,13 @@ class GVisorSandbox(DockerSandbox):
                 error=f"执行超时（{self.config.timeout}秒）",
                 execution_time=self.config.timeout,
             )
+        except OSError as e:
+            logging.error(f"[GVisorSandbox] 系统错误: {e}")
+            return ExecutionResult(
+                success=False, error=f"系统错误: {str(e)}", execution_time=time.time() - start_time
+            )
         except Exception as e:
+            logging.exception(f"[GVisorSandbox] 未预期的执行异常")
             return ExecutionResult(
                 success=False, error=f"执行异常: {str(e)}", execution_time=time.time() - start_time
             )
@@ -591,7 +609,13 @@ class FirecrackerSandbox(BaseSandbox):
                 error=f"执行超时（{self.config.timeout}秒）",
                 execution_time=self.config.timeout,
             )
+        except OSError as e:
+            logging.error(f"[FirecrackerSandbox] 系统错误: {e}")
+            return ExecutionResult(
+                success=False, error=f"系统错误: {str(e)}", execution_time=time.time() - start_time
+            )
         except Exception as e:
+            logging.exception(f"[FirecrackerSandbox] 未预期的执行异常")
             return ExecutionResult(
                 success=False, error=f"执行异常: {str(e)}", execution_time=time.time() - start_time
             )
@@ -770,7 +794,18 @@ class WASMSandbox(BaseSandbox):
             else:
                 return self._execute_with_cli(code, start_time)
 
+        except ImportError as e:
+            logging.error(f"[WASMSandbox] 运行时未安装: {e}")
+            return ExecutionResult(
+                success=False, error=f"WASM运行时未安装: {str(e)}", execution_time=time.time() - start_time
+            )
+        except OSError as e:
+            logging.error(f"[WASMSandbox] 系统错误: {e}")
+            return ExecutionResult(
+                success=False, error=f"系统错误: {str(e)}", execution_time=time.time() - start_time
+            )
         except Exception as e:
+            logging.exception(f"[WASMSandbox] 未预期的执行异常")
             return ExecutionResult(
                 success=False, error=f"执行异常: {str(e)}", execution_time=time.time() - start_time
             )

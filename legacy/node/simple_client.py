@@ -141,6 +141,8 @@ class NodeClient:
             with open(id_file, "w") as f:
                 f.write(node_id)
             log(f"[节点ID] 生成并保存新ID: {node_id}")
+        except OSError as e:
+            log(f"[警告] 无法保存节点ID (权限错误): {e}")
         except Exception as e:
             log(f"[警告] 无法保存节点ID: {e}")
 
@@ -229,7 +231,11 @@ class NodeClient:
                     "disk": self.capacity["disk"] * 0.3,
                 }
             return available
-        except Exception:
+        except (AttributeError, OSError) as e:
+            log(f"[警告] 资源计算失败 (系统错误): {e}")
+            return {"cpu": 0.5, "memory": 512, "disk": 1000}
+        except Exception as e:
+            log(f"[警告] 资源计算失败: {e}")
             return {"cpu": 0.5, "memory": 512, "disk": 1000}
 
     def _check_idle(self) -> tuple[bool, dict[str, Any]]:
@@ -248,14 +254,14 @@ class NodeClient:
             memory = psutil.virtual_memory()
 
             idle_thresholds = {
-                "gaming_laptop": {"cpu_threshold": 75.0, "memory_threshold": 85.0},
-                "ultrabook": {"cpu_threshold": 70.0, "memory_threshold": 80.0},
-                "desktop": {"cpu_threshold": 80.0, "memory_threshold": 90.0},
+                "gaming_laptop": {"cpu_threshold": 70.0, "memory_threshold": 80.0},
+                "ultrabook": {"cpu_threshold": 65.0, "memory_threshold": 75.0},
+                "desktop": {"cpu_threshold": 75.0, "memory_threshold": 85.0},
             }
 
             thresholds = idle_thresholds.get(self.device_type, idle_thresholds["desktop"])
-            ABSOLUTE_CPU_LIMIT = 90.0
-            ABSOLUTE_MEMORY_LIMIT = 95.0
+            ABSOLUTE_CPU_LIMIT = 85.0
+            ABSOLUTE_MEMORY_LIMIT = 90.0
 
             is_system_idle = True
 
@@ -293,6 +299,17 @@ class NodeClient:
                 )
 
             return is_system_idle, idle_info
+        except (AttributeError, OSError) as e:
+            log(f"[警告] 空闲检测失败 (系统错误): {e}")
+            return True, {
+                "cpu_percent": 50.0,
+                "memory_percent": 60.0,
+                "user_idle_time_sec": 60,
+                "is_screen_locked": False,
+                "is_idle": True,
+                "reason": f"system_error: {str(e)[:30]}",
+                "device_type": self.device_type,
+            }
         except Exception as e:
             log(f"[警告] 空闲检测失败: {e}")
             return True, {
@@ -398,7 +415,6 @@ class NodeClient:
             if not is_valid:
                 return f"代码安全检查失败: {'; '.join(errors)}"
 
-            # ===== 自动包装用户代码 =====
             wrapper = f"""
 # ===== 系统环境初始化 =====
 import json, time
@@ -407,6 +423,7 @@ from datetime import datetime
 __node_id__ = "{self.node_id}"
 __task_id__ = "unknown"
 __start_time__ = time.time()
+__error__ = None
 
 # ===== 用户代码开始 =====
 {code!r}
@@ -419,18 +436,21 @@ __result__ = locals().get('__result__', None)
 if __result__ is None:
     import io
     import contextlib
+    import traceback
     f = io.StringIO()
     with contextlib.redirect_stdout(f):
         try:
             exec({code!r})
-        except:
-            pass
+        except Exception as _e:
+            __error__ = str(_e)
     __result__ = f.getvalue()
 
-if not __result__:
+if __error__:
+    __result__ = f"[错误] {{__error__}}"
+elif not __result__:
     __result__ = "(无输出)"
-
-__result__ = f"[{{__node_id__}}] {{__result__}}"
+else:
+    __result__ = f"[{{__node_id__}}] {{__result__}}"
 """
 
             local_vars = {}

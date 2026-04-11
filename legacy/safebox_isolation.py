@@ -137,54 +137,11 @@ def execute_user_code():
         safe_globals['__builtins__']['__import__'] = _safe_import
 
         # 预导入安全的数学模块
-        try:
-            import math
-            safe_globals['math'] = math
-        except:
-            pass
-
-        try:
-            import random
-            safe_globals['random'] = random
-        except:
-            pass
-
-        try:
-            import statistics
-            safe_globals['statistics'] = statistics
-        except:
-            pass
-
-        # 预导入安全的文件操作模块
-        try:
-            import io
-            safe_globals['io'] = io
-        except:
-            pass
-
-        try:
-            import csv
-            safe_globals['csv'] = csv
-        except:
-            pass
-
-        try:
-            import json
-            safe_globals['json'] = json
-        except:
-            pass
-
-        try:
-            import base64
-            safe_globals['base64'] = base64
-        except:
-            pass
-
-        try:
-            import hashlib
-            safe_globals['hashlib'] = hashlib
-        except:
-            pass
+        for _module_name in ['math', 'random', 'statistics', 'io', 'csv', 'json', 'base64', 'hashlib']:
+            try:
+                safe_globals[_module_name] = __import__(_module_name)
+            except ImportError:
+                pass
 
         # 限制危险模块
         dangerous_modules = ['os', 'sys', 'subprocess', 'shutil', 'socket', 'threading', 'multiprocessing']

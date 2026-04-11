@@ -42,6 +42,7 @@ class HTTPConnectionPool:
         timeout: int = 30,
         pool_connections: int = 10,
         pool_maxsize: int = 20,
+        verify_ssl: bool = True,
     ):
         if self._initialized:
             return
@@ -54,6 +55,7 @@ class HTTPConnectionPool:
             "timeout": timeout,
             "pool_connections": pool_connections,
             "pool_maxsize": pool_maxsize,
+            "verify_ssl": verify_ssl,
         }
         self.session = self._create_session()
 
@@ -76,6 +78,8 @@ class HTTPConnectionPool:
 
         session.mount("http://", adapter)
         session.mount("https://", adapter)
+        
+        session.verify = self.config["verify_ssl"]
 
         return session
 

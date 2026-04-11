@@ -24,9 +24,20 @@ def render(user_id: Optional[str] = None):
 
     col1, col2 = st.columns([3, 1])
     with col1:
-        search_query = st.text_input("搜索任务ID或内容", placeholder="输入任务ID或关键词...")
+        search_query = st.text_input(
+            "搜索任务ID或内容",
+            placeholder="输入任务ID或关键词...",
+            key="task_results_search_query"
+        )
     with col2:
-        display_count = st.number_input("显示数量", min_value=5, max_value=100, value=20, step=5)
+        display_count = st.number_input(
+            "显示数量",
+            min_value=5,
+            max_value=100,
+            value=20,
+            step=5,
+            key="task_results_display_count"
+        )
 
     success, results = client.get_all_results()
     if success and results.get("results"):
@@ -80,8 +91,11 @@ def render(user_id: Optional[str] = None):
 
             st.subheader("📄 查看完整结果")
 
+            task_ids = [r.get("task_id", "N/A") for r in results_list]
             selected_task_id = st.selectbox(
-                "选择任务查看完整结果", [r.get("task_id", "N/A") for r in results_list]
+                "选择任务查看完整结果",
+                task_ids,
+                key="task_results_select_task"
             )
 
             if selected_task_id:
@@ -117,6 +131,7 @@ def render(user_id: Optional[str] = None):
                             data=result_text,
                             file_name=f"task_{selected_task_id}_result.txt",
                             mime="text/plain",
+                            key=f"download_result_{selected_task_id}"
                         )
                     else:
                         st.info("该任务没有结果")
