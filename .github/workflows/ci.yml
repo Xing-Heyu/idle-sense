@@ -33,7 +33,7 @@ jobs:
         run: black --check .
         
       - name: Run MyPy (Type Check)
-        run: mypy src/ tests/ --ignore-missing-imports
+        run: mypy src/ tests/
 
   test:
     name: Tests (${{ matrix.os }}, Python ${{ matrix.python }})
