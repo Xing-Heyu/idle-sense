@@ -18,7 +18,6 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Optional, Union
 
-
 SENSITIVE_FIELDS = {
     'password', 'passwd', 'pwd',
     'token', 'access_token', 'refresh_token', 'auth_token',
@@ -42,44 +41,44 @@ MASK_VALUE = '***'
 def sanitize_value(key: str, value: Any) -> Any:
     """
     对敏感字段的值进行脱敏处理
-    
+
     Args:
         key: 字段名
         value: 字段值
-        
+
     Returns:
         脱敏后的值
     """
     if not isinstance(key, str):
         return value
-    
+
     key_lower = key.lower().replace('-', '_')
-    
+
     for sensitive in SENSITIVE_FIELDS:
         if sensitive in key_lower:
             return MASK_VALUE
-    
+
     if isinstance(value, str):
         for pattern, replacement in SENSITIVE_PATTERNS:
             if pattern.search(value):
                 value = pattern.sub(replacement, value)
-    
+
     return value
 
 
 def sanitize_dict(data: dict[str, Any]) -> dict[str, Any]:
     """
     递归脱敏字典中的敏感信息
-    
+
     Args:
         data: 原始字典
-        
+
     Returns:
         脱敏后的字典
     """
     if not isinstance(data, dict):
         return data
-    
+
     result = {}
     for key, value in data.items():
         if isinstance(value, dict):
@@ -91,7 +90,7 @@ def sanitize_dict(data: dict[str, Any]) -> dict[str, Any]:
             ]
         else:
             result[key] = sanitize_value(key, value)
-    
+
     return result
 
 

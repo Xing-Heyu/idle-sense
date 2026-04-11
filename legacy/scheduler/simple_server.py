@@ -51,7 +51,7 @@ if LEGACY_INTEGRATION_ENABLED:
     try:
         from legacy.integration import get_integrator
         from legacy.integration.integrator import IntegrationConfig
-        
+
         legacy_config = IntegrationConfig(
             enable_health_check=True,
             enable_distributed_lock=True,
@@ -938,7 +938,7 @@ class PersistentSchedulerStorage:
 async def lifespan(app: FastAPI):
     """应用生命周期管理"""
     global ENABLE_FEDERATION, federation, integrator
-    
+
     print("=" * 60)
     print("优化版任务调度器 v2.0.0")
     print(f"服务器ID: {storage.server_id}")
@@ -949,13 +949,13 @@ async def lifespan(app: FastAPI):
         print(f"缓存任务数: {persistence_info.get('cached_tasks', 0)}")
     print("功能: 节点三状态判断、智能调度、稳定显示、SQLite持久化")
     print("=" * 60)
-    
+
     if LEGACY_INTEGRATION_ENABLED and integrator:
         integrator.initialize(storage=storage, server_id=storage.server_id)
         print("[Legacy] 模块已初始化")
-    
+
     start_cleanup_thread()
-    
+
     if ENABLE_FEDERATION and federation:
         try:
             from legacy.scheduler.p2p_federation import start_federation
@@ -963,9 +963,9 @@ async def lifespan(app: FastAPI):
             print("[调度器] 联邦模块已启动")
         except Exception as e:
             print(f"[警告] 联邦模块启动失败: {e}")
-    
+
     yield
-    
+
     stop_cleanup_thread()
     if LEGACY_INTEGRATION_ENABLED and integrator:
         integrator.shutdown()
@@ -1071,11 +1071,11 @@ def _cleanup_worker():
             time.sleep(60)  # 每60秒检查一次
             if not _cleanup_running:
                 break
-            
+
             cleaned = storage.cleanup_dead_nodes(timeout_seconds=180)
             if cleaned > 0:
                 print(f"[清理] 移除了 {cleaned} 个离线节点")
-            
+
             # 同时清理超时任务
             if hasattr(storage, 'cleanup_timeout_tasks'):
                 try:
@@ -1084,7 +1084,7 @@ def _cleanup_worker():
                         print(f"[清理] 清理了 {tasks_cleaned} 个超时任务")
                 except Exception as e:
                     print(f"[清理] 任务清理错误: {e}")
-                    
+
         except Exception as e:
             print(f"[清理错误] {e}")
 
@@ -1147,7 +1147,7 @@ async def detailed_health_check():
     """详细健康检查 - Legacy 模块"""
     if not LEGACY_INTEGRATION_ENABLED or not integrator:
         return {"enabled": False, "message": "Legacy 模块未启用"}
-    
+
     health_report = integrator.get_health_report()
     return {
         "enabled": True,
@@ -1164,7 +1164,7 @@ async def prometheus_metrics():
             content="# Legacy 模块未启用\n",
             media_type="text/plain; version=0.0.4"
         )
-    
+
     metrics_output = integrator.get_metrics_prometheus()
     return Response(
         content=metrics_output,
@@ -1177,7 +1177,7 @@ async def monitoring_stats():
     """监控统计 - Legacy 监控模块"""
     if not LEGACY_INTEGRATION_ENABLED or not integrator:
         return {"enabled": False, "message": "Legacy 模块未启用"}
-    
+
     stats = integrator.get_system_stats()
     return {
         "enabled": True,
@@ -1194,7 +1194,7 @@ async def legacy_status():
         "integrator_loaded": integrator is not None,
         "modules": {}
     }
-    
+
     if LEGACY_INTEGRATION_ENABLED and integrator:
         modules_status["modules"] = {
             "health_check": integrator.health_checker is not None,
@@ -1204,7 +1204,7 @@ async def legacy_status():
             "monitoring": integrator.system_monitor is not None,
             "event_bus": integrator.event_bus is not None,
         }
-    
+
     return modules_status
 
 
@@ -1447,15 +1447,19 @@ federation = None
 
 if ENABLE_FEDERATION:
     try:
-        from legacy.scheduler.p2p_federation import init_federation, start_federation, get_federation
-        
+        from legacy.scheduler.p2p_federation import (  # noqa: F401
+            get_federation,
+            init_federation,
+            start_federation,
+        )
+
         federation = init_federation(
             scheduler_id=storage.server_id,
             http_port=int(os.getenv("PORT", os.getenv("SCHEDULER_PORT", "8000"))),
             federation_port=FEDERATION_PORT,
             storage=storage,
         )
-        
+
         print("[调度器] 联邦模式已启用")
     except ImportError as e:
         print(f"[警告] 联邦模块导入失败: {e}")
@@ -1471,7 +1475,7 @@ async def get_federation_stats():
             "enabled": False,
             "message": "联邦模式未启用",
         }
-    
+
     return {
         "enabled": True,
         **federation.get_federation_stats(),
@@ -1489,11 +1493,11 @@ async def get_federation_nodes():
             "remote_count": 0,
             "nodes": nodes,
         }
-    
+
     all_nodes = federation.get_all_nodes()
     local_count = sum(1 for n in all_nodes if n.get("source") == "local")
     remote_count = sum(1 for n in all_nodes if n.get("source") == "remote")
-    
+
     return {
         "enabled": True,
         "local_count": local_count,
@@ -1508,21 +1512,21 @@ async def forward_task_to_federation(task_id: int):
     """手动转发任务到联邦网络"""
     if not ENABLE_FEDERATION or not federation:
         raise HTTPException(status_code=400, detail="联邦模式未启用")
-    
+
     task_status = storage.get_task_status(task_id)
     if not task_status:
         raise HTTPException(status_code=404, detail="任务不存在")
-    
+
     if task_status["status"] not in ["pending"]:
         raise HTTPException(status_code=400, detail="只能转发 pending 状态的任务")
-    
+
     success = federation.forward_task(
         task_id=task_id,
         code=task_status.get("code", ""),
         timeout=300,
         resources=task_status.get("required_resources", {}),
     )
-    
+
     if success:
         return {"success": True, "message": f"任务 {task_id} 已转发到联邦网络"}
     else:

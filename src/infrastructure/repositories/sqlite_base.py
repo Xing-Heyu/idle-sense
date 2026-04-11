@@ -9,6 +9,7 @@ SQLite 连接池实现
 """
 
 import asyncio
+import contextlib
 import logging
 import os
 
@@ -114,10 +115,8 @@ class SQLiteConnectionPool:
                         return conn
                     except Exception as e:
                         self._logger.warning(f"Connection validation failed: {e}")
-                        try:
+                        with contextlib.suppress(Exception):
                             await conn.close()
-                        except Exception:
-                            pass
                         self._current_connections -= 1
                         continue
 

@@ -21,41 +21,41 @@ class SessionInfo:
 def validate_password_strength(password: str) -> tuple[bool, str]:
     """
     验证密码强度
-    
+
     要求:
     - 至少8个字符
     - 包含至少一个大写字母
     - 包含至少一个小写字母
     - 包含至少一个数字
-    
+
     Returns:
         (是否有效, 错误信息)
     """
     if not password:
         return False, "密码不能为空"
-    
+
     if len(password) < 8:
         return False, "密码长度至少8位"
-    
+
     if len(password) > 128:
         return False, "密码长度不能超过128位"
-    
+
     if not re.search(r'[A-Z]', password):
         return False, "密码必须包含至少一个大写字母"
-    
+
     if not re.search(r'[a-z]', password):
         return False, "密码必须包含至少一个小写字母"
-    
+
     if not re.search(r'\d', password):
         return False, "密码必须包含至少一个数字"
-    
+
     common_passwords = {
-        'password', 'Password1', 'Password123', 'Admin123', 
+        'password', 'Password1', 'Password123', 'Admin123',
         'Qwerty123', 'Letmein1', 'Welcome1', 'Passw0rd'
     }
     if password in common_passwords:
         return False, "密码过于简单，请使用更复杂的密码"
-    
+
     return True, ""
 
 

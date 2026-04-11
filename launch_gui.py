@@ -58,7 +58,7 @@ class IdleSenseLauncher:
         arch_text = """本地运行: 调度器 + 节点 + Web界面
 联邦互联: 自动发现其他调度器
 任务共享: 本地无空闲节点时自动转发"""
-        
+
         ttk.Label(
             arch_frame,
             text=arch_text,
@@ -178,7 +178,7 @@ class IdleSenseLauncher:
             self.is_running = True
             self.start_btn.config(text="⏹️ 停止服务")
             self.status_label.config(text="● 运行中")
-            
+
             self.log("")
             self.log("=" * 50)
             self.log("对等个人中心已启动!")
@@ -205,7 +205,7 @@ class IdleSenseLauncher:
         if self.node_process:
             self.node_process.terminate()
             self.node_process = None
-        
+
         self.is_running = False
         self.start_btn.config(text="🚀 一键启动")
         self.status_label.config(text="● 已停止")

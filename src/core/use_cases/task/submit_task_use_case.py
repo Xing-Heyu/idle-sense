@@ -16,9 +16,9 @@
         print(f"任务提交成功: {response.task_id}")
 """
 
-from dataclasses import dataclass
 import logging
 import re
+from dataclasses import dataclass
 from typing import Optional
 
 from src.core.entities import TaskFactory
@@ -68,7 +68,7 @@ class SubmitTaskResponse:
     task_id: str = ""
     message: str = ""
     errors: list[str] = None
-    
+
     def __post_init__(self):
         if self.errors is None:
             self.errors = []

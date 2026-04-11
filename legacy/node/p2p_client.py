@@ -20,8 +20,8 @@ Usage:
 
 import argparse
 import asyncio
+import contextlib
 import hashlib
-import json
 import os
 import platform
 import socket
@@ -29,17 +29,13 @@ import sys
 import time
 import uuid
 from dataclasses import dataclass, field
-from datetime import datetime
-from typing import Any, Callable, Optional
+from typing import Any, Optional
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 
 from legacy.p2p_network import (
-    GossipProtocol,
-    KademliaDHT,
     Message,
     MessageType,
-    NATTraversal,
     P2PNode,
     PeerInfo,
     PeerState,
@@ -139,7 +135,7 @@ class P2PClient(P2PNode):
         }
 
         if PSUTIL_AVAILABLE:
-            try:
+            with contextlib.suppress(Exception):
                 capabilities.update(
                     {
                         "cpu_cores": psutil.cpu_count(logical=True),
@@ -147,8 +143,6 @@ class P2PClient(P2PNode):
                         "cpu_freq_mhz": psutil.cpu_freq().current if psutil.cpu_freq() else 0,
                     }
                 )
-            except Exception:
-                pass
 
         return capabilities
 
@@ -198,7 +192,7 @@ class P2PClient(P2PNode):
             print(f"[P2P Scheduler] Running as scheduler on port {self.port}")
         else:
             self._worker_task = asyncio.create_task(self._worker_loop())
-            print(f"[P2P Worker] Started, waiting for tasks...")
+            print("[P2P Worker] Started, waiting for tasks...")
 
         asyncio.create_task(self._announce_presence())
 
@@ -209,10 +203,8 @@ class P2PClient(P2PNode):
 
         if self._worker_task:
             self._worker_task.cancel()
-            try:
+            with contextlib.suppress(asyncio.CancelledError):
                 await self._worker_task
-            except asyncio.CancelledError:
-                pass
 
         await self.broadcast(
             "peer_status",
@@ -241,7 +233,7 @@ class P2PClient(P2PNode):
             await asyncio.sleep(60)
 
     async def _worker_loop(self):
-        print(f"[P2P Worker] Worker loop started")
+        print("[P2P Worker] Worker loop started")
         while self._running:
             try:
                 is_idle, idle_info = await self._check_idle()

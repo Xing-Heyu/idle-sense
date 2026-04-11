@@ -78,7 +78,7 @@ class HTTPConnectionPool:
 
         session.mount("http://", adapter)
         session.mount("https://", adapter)
-        
+
         session.verify = self.config["verify_ssl"]
 
         return session

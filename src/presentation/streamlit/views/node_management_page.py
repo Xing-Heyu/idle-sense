@@ -118,12 +118,12 @@ def render(user_id: Optional[str] = None):
 
     with col2:
         st.markdown("#### 🛑 停止节点")
-        st.write("停止当前节点的计算服务")
+        st.write("停止当前节点或移除遗留节点")
 
         if st.session_state.get("active_node_id"):
             st.info(f"当前节点: {st.session_state.active_node_id[:12]}...")
 
-            if st.button("🛑 停止节点", type="secondary", width="stretch"):
+            if st.button("🛑 停止当前节点", type="secondary", width="stretch"):
                 with st.spinner("停止中..."):
                     success, result = client.stop_node(st.session_state.active_node_id)
 
@@ -134,6 +134,38 @@ def render(user_id: Optional[str] = None):
                         st.rerun()
                     else:
                         st.error(f"❌ 停止失败: {result.get('error', '未知错误')}")
+
+        st.markdown("---")
+        st.markdown("**移除我的遗留节点:**")
+
+        my_nodes = [n for n in nodes_list if n.get("owner") == user_id] if user_id else []
+
+        if my_nodes:
+            node_select_options = {
+                f"{n.get('node_id', 'unknown')[:12]}... ({n.get('status', 'unknown')})": n.get("node_id")
+                for n in my_nodes
+            }
+            selected_to_stop = st.selectbox(
+                "选择要移除的节点",
+                list(node_select_options.keys()),
+                key="select_node_to_stop"
+            )
+
+            if st.button("🗑️ 移除选中节点", type="secondary", width="stretch") and selected_to_stop and selected_to_stop in node_select_options:
+                node_id_to_stop = node_select_options[selected_to_stop]
+                with st.spinner(f"移除节点 {node_id_to_stop[:12]}..."):
+                    success, result = client.stop_node(node_id_to_stop)
+
+                if success:
+                    st.success(f"✅ 节点 {node_id_to_stop[:12]} 已移除")
+                    if st.session_state.get("active_node_id") == node_id_to_stop:
+                        st.session_state.active_node_id = None
+                    time.sleep(1)
+                    st.rerun()
+                else:
+                    st.error(f"❌ 移除失败: {result.get('error', '未知错误')}")
+        elif nodes_list:
+            st.info("没有属于您的节点")
         else:
             st.info("当前没有活跃的节点")
 

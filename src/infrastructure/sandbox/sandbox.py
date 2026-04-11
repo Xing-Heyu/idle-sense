@@ -212,7 +212,7 @@ class BasicSandbox(BaseSandbox):
                 success=False, error=f"系统错误: {str(e)}", execution_time=time.time() - start_time
             )
         except Exception as e:
-            logging.exception(f"[BasicSandbox] 未预期的执行异常")
+            logging.exception("[BasicSandbox] 未预期的执行异常")
             return ExecutionResult(
                 success=False, error=f"执行异常: {str(e)}", execution_time=time.time() - start_time
             )
@@ -320,7 +320,7 @@ class DockerSandbox(BaseSandbox):
                 success=False, error=f"系统错误: {str(e)}", execution_time=time.time() - start_time
             )
         except Exception as e:
-            logging.exception(f"[DockerSandbox] 未预期的执行异常")
+            logging.exception("[DockerSandbox] 未预期的执行异常")
             return ExecutionResult(
                 success=False, error=f"执行异常: {str(e)}", execution_time=time.time() - start_time
             )
@@ -426,7 +426,7 @@ class GVisorSandbox(DockerSandbox):
                 success=False, error=f"系统错误: {str(e)}", execution_time=time.time() - start_time
             )
         except Exception as e:
-            logging.exception(f"[GVisorSandbox] 未预期的执行异常")
+            logging.exception("[GVisorSandbox] 未预期的执行异常")
             return ExecutionResult(
                 success=False, error=f"执行异常: {str(e)}", execution_time=time.time() - start_time
             )
@@ -615,7 +615,7 @@ class FirecrackerSandbox(BaseSandbox):
                 success=False, error=f"系统错误: {str(e)}", execution_time=time.time() - start_time
             )
         except Exception as e:
-            logging.exception(f"[FirecrackerSandbox] 未预期的执行异常")
+            logging.exception("[FirecrackerSandbox] 未预期的执行异常")
             return ExecutionResult(
                 success=False, error=f"执行异常: {str(e)}", execution_time=time.time() - start_time
             )
@@ -805,7 +805,7 @@ class WASMSandbox(BaseSandbox):
                 success=False, error=f"系统错误: {str(e)}", execution_time=time.time() - start_time
             )
         except Exception as e:
-            logging.exception(f"[WASMSandbox] 未预期的执行异常")
+            logging.exception("[WASMSandbox] 未预期的执行异常")
             return ExecutionResult(
                 success=False, error=f"执行异常: {str(e)}", execution_time=time.time() - start_time
             )
